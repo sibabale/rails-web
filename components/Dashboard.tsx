@@ -5,15 +5,28 @@ interface DashboardProps {
   onLogout: () => void;
 }
 
+interface Account {
+  id: string;
+  account_number: string;
+  account_type: string;
+  user_id: string;
+  balance: string;
+  currency: string;
+  status: string;
+  created_at: string;
+  metadata?: Record<string, string>;
+}
+
 const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
   const [activeTab, setActiveTab] = useState('Overview');
   const [isProduction, setIsProduction] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isCopilotOpen, setIsCopilotOpen] = useState(false);
   const [isSchemaVisible, setIsSchemaVisible] = useState(false);
+  const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
   const [logs, setLogs] = useState<{id: string, time: string, action: string, status: string, amount: string}[]>([]);
   
-  // Weekend Settlement State
+  // Weekend Settlement State (Based on Prisma schema logic provided by user)
   const [reserve, setReserve] = useState({ total: 25000000, available: 18450000 });
   const [settlementFees, setSettlementFees] = useState(142900);
   const [banks, setBanks] = useState([
@@ -22,6 +35,32 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
     { name: 'NEDBANK', code: 'NED001', connected: true, surety: 4000000 },
     { name: 'CAPITEC', code: 'CAP001', connected: true, surety: 3000000 },
     { name: 'STANDARD', code: 'STD001', connected: false, surety: 5000000 }
+  ]);
+
+  // Sample Account Data (Rust Schema Aligned)
+  const [accounts, setAccounts] = useState<Account[]>([
+    { 
+      id: '550e8400-e29b-41d4-a716-446655440000',
+      account_number: '1002938475',
+      account_type: 'Checking',
+      user_id: '8a12-99b1-cc09',
+      balance: '842,000.00',
+      currency: 'USD',
+      status: 'Active',
+      created_at: '2024-03-12',
+      metadata: { region: 'us-east-1', compliance_tier: 'high-frequency', ledger_shard: 'shard-001' }
+    },
+    { 
+      id: 'd9b0-a112-f993-8821-443322110011',
+      account_number: '5002194833',
+      account_type: 'Saving',
+      user_id: '4f11-2290-db01',
+      balance: '12,400.00',
+      currency: 'USD',
+      status: 'Active',
+      created_at: '2024-03-14',
+      metadata: { region: 'eu-west-1', compliance_tier: 'standard', ledger_shard: 'shard-002' }
+    }
   ]);
 
   // AI Copilot State
@@ -67,7 +106,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
         model: 'gemini-3-flash-preview',
         contents: userMsg,
         config: {
-          systemInstruction: "You are the Rails Infrastructure Copilot. You help developers build banking applications using the Rails SDK. You know everything about immutable ledgers, double-entry accounting, and the 'Weekend Settlement' feature where Rails provides 24/7 liquidity when traditional banks are closed. You know that Rails takes a 1% fee on weekend transactions and requires banks to provide 'Surety Funds' to the Rails Reserve. Keep answers concise, developer-focused, and slightly technical."
+          systemInstruction: "You are the Rails Infrastructure Copilot. You help developers build banking applications using the Rails SDK. You know everything about immutable ledgers, double-entry accounting, and the 'Weekend Settlement' feature. You know that Rails takes a 1% fee on weekend transactions and requires banks to provide 'Surety Funds'. Keep answers concise, developer-focused, and slightly technical."
         }
       });
       
@@ -76,6 +115,13 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
       setChatHistory(prev => [...prev, { role: 'ai', text: "Error: AI Node Timeout. Check Infrastructure logs." }]);
     } finally {
       setIsThinking(false);
+    }
+  };
+
+  const handleDecommission = (id: string) => {
+    if (confirm("Are you sure you want to decommission this account? This will permanently freeze all ledger entries for this UUID in the merkle tree.")) {
+      setAccounts(prev => prev.filter(acc => acc.id !== id));
+      setSelectedAccountId(null);
     }
   };
 
@@ -100,60 +146,223 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
     </div>
   );
 
+  const renderAccountDetails = (account: Account) => (
+    <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-500">
+      <div className="flex items-center gap-4 text-zinc-500 mb-2">
+        <button onClick={() => setSelectedAccountId(null)} className="hover:text-white flex items-center gap-1 transition-colors">
+          <span className="material-symbols-sharp !text-[18px]">arrow_back</span>
+          <span className="text-[10px] font-mono font-bold uppercase tracking-widest">Back to Accounts</span>
+        </button>
+        <span className="text-zinc-800">/</span>
+        <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-zinc-300">{account.account_number}</span>
+      </div>
+
+      <div className="flex justify-between items-start">
+        <div>
+          <h2 className="text-3xl font-bold tracking-tighter mb-2">Account Details</h2>
+          <p className="text-sm font-mono text-zinc-500">ID: {account.id}</p>
+        </div>
+        <div className="flex gap-3">
+          <button className="px-4 py-2 border border-zinc-800 text-xs font-bold rounded-lg hover:bg-zinc-900 transition-colors">
+            Rotate Keys
+          </button>
+          <button 
+            onClick={() => handleDecommission(account.id)}
+            className="px-4 py-2 bg-red-600/10 border border-red-900/50 text-red-500 text-xs font-bold rounded-lg hover:bg-red-600/20 transition-colors"
+          >
+            Decommission
+          </button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="bg-black border border-zinc-800/50 p-6 rounded-2xl">
+          <p className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest mb-1 font-bold">Balance</p>
+          <h3 className="text-2xl font-bold tracking-tight">{account.balance} <span className="text-zinc-600 text-sm ml-1 font-mono">{account.currency}</span></h3>
+        </div>
+        <div className="bg-black border border-zinc-800/50 p-6 rounded-2xl">
+          <p className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest mb-1 font-bold">Status</p>
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]"></span>
+            <h3 className="text-lg font-bold tracking-tight uppercase">{account.status}</h3>
+          </div>
+        </div>
+        <div className="bg-black border border-zinc-800/50 p-6 rounded-2xl">
+          <p className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest mb-1 font-bold">Type</p>
+          <h3 className="text-lg font-bold tracking-tight uppercase">{account.account_type}</h3>
+        </div>
+        <div className="bg-black border border-zinc-800/50 p-6 rounded-2xl">
+          <p className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest mb-1 font-bold">Shard</p>
+          <h3 className="text-lg font-bold tracking-tight uppercase font-mono">{account.metadata?.ledger_shard || 'global'}</h3>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        <div className="lg:col-span-8 space-y-6">
+          <div className="bg-black border border-zinc-800/50 rounded-2xl overflow-hidden shadow-sm">
+            <div className="px-6 py-4 border-b border-zinc-900 bg-zinc-950/50 flex justify-between items-center">
+               <h4 className="text-[10px] font-mono font-bold uppercase tracking-widest text-zinc-500">Audit History</h4>
+               <span className="text-[10px] font-mono text-zinc-700">Displaying recent entries</span>
+            </div>
+            <div className="divide-y divide-zinc-900 font-mono text-xs">
+               {[
+                 { action: 'TRANSACTION_DEBIT', amount: 'R1,200.00', date: '2024-03-20 14:22', ref: 'tx_00x11' },
+                 { action: 'TRANSACTION_CREDIT', amount: 'R5,000.00', date: '2024-03-19 09:11', ref: 'tx_00x12' },
+                 { action: 'ACCOUNT_FROZEN', amount: '---', date: '2024-03-18 18:45', ref: 'sys_00x13' },
+               ].map((tx, idx) => (
+                 <div key={idx} className="p-6 flex items-center justify-between hover:bg-zinc-900/30 transition-colors">
+                    <div className="flex items-center gap-4">
+                       <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${tx.action.includes('CREDIT') ? 'bg-emerald-500/10 text-emerald-500' : 'bg-zinc-800 text-zinc-400'}`}>
+                          <span className="material-symbols-sharp !text-[18px]">{tx.action.includes('CREDIT') ? 'south_west' : 'history'}</span>
+                       </div>
+                       <div>
+                          <p className="text-white font-bold">{tx.action}</p>
+                          <p className="text-zinc-600 text-[9px]">{tx.ref}</p>
+                       </div>
+                    </div>
+                    <div className="text-right">
+                       <p className="text-zinc-300 font-bold">{tx.amount}</p>
+                       <p className="text-[9px] text-zinc-700">{tx.date}</p>
+                    </div>
+                 </div>
+               ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="lg:col-span-4 space-y-6">
+          <div className="bg-black border border-zinc-800/50 rounded-2xl p-6">
+            <h4 className="text-[10px] font-mono font-bold uppercase tracking-widest text-zinc-500 mb-6">Metadata</h4>
+            <div className="space-y-4 font-mono">
+              {Object.entries(account.metadata || {}).map(([key, val]) => (
+                <div key={key}>
+                  <p className="text-[10px] text-zinc-600 uppercase mb-1">{key.replace('_', ' ')}</p>
+                  <p className="text-xs text-white bg-zinc-900/50 p-2 rounded border border-zinc-800 truncate">{val}</p>
+                </div>
+              ))}
+              <div>
+                <p className="text-[10px] text-zinc-600 uppercase mb-1">Created At</p>
+                <p className="text-xs text-zinc-400 p-2 border border-zinc-800 rounded">{account.created_at}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
   const renderContent = () => {
     switch (activeTab) {
       case 'Overview':
         return (
           <div className="space-y-8 animate-in fade-in duration-500">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="bg-black border border-zinc-800/50 p-6 rounded-2xl shadow-sm relative overflow-hidden group">
+            {/* Real-time Infrastructure Health Bar */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              {[
+                { label: 'ACH Rail', status: 'Nominal', p99: '1.2s', health: 100 },
+                { label: 'FedWire', status: 'Nominal', p99: '42ms', health: 100 },
+                { label: 'Rails Internal', status: 'Nominal', p99: '4ms', health: 100 },
+                { label: 'SEPA Bridge', status: 'Degraded', p99: '4.8s', health: 84 },
+              ].map((rail) => (
+                <div key={rail.label} className="bg-black border border-zinc-800/50 p-4 rounded-xl flex flex-col justify-between">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[9px] font-mono font-bold text-zinc-500 uppercase tracking-widest">{rail.label}</span>
+                    <span className={`w-1.5 h-1.5 rounded-full ${rail.health === 100 ? 'bg-emerald-500' : 'bg-amber-500 animate-pulse'}`}></span>
+                  </div>
+                  <div className="flex items-baseline justify-between">
+                    <span className="text-lg font-bold tracking-tight">{rail.status}</span>
+                    <span className="text-[10px] font-mono text-zinc-600">p99: {rail.p99}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Core Operational Stats */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-2 bg-black border border-zinc-800/50 p-6 rounded-2xl relative overflow-hidden group">
                 <div className="relative z-10">
-                  <p className="text-xs font-mono text-zinc-500 uppercase tracking-widest mb-2">Settled Volume (24h)</p>
-                  <h2 className="text-3xl font-bold tracking-tighter mb-4">$1,242,910.00</h2>
+                  <div className="flex items-center justify-between mb-6">
+                    <div>
+                      <p className="text-xs font-mono text-zinc-500 uppercase tracking-widest mb-1 font-bold">Settled Volume (24h)</p>
+                      <h2 className="text-3xl font-bold tracking-tighter">$1,242,910.00</h2>
+                    </div>
+                    <div className="flex gap-2">
+                      <span className="text-[10px] font-mono bg-zinc-900 border border-zinc-800 px-2 py-1 rounded text-zinc-400">1D</span>
+                      <span className="text-[10px] font-mono bg-white text-black px-2 py-1 rounded">1H</span>
+                    </div>
+                  </div>
                   <VolumeChart />
                 </div>
-                <div className="absolute inset-0 bg-gradient-to-t from-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+                <div className="absolute inset-0 bg-gradient-to-t from-emerald-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
               </div>
-              <div className="bg-black border border-zinc-800/50 p-6 rounded-2xl shadow-sm flex flex-col justify-between">
+
+              {/* Weekend Surety Monitor */}
+              <div className="bg-black border border-zinc-800/50 p-6 rounded-2xl flex flex-col justify-between">
                 <div>
-                  <p className="text-xs font-mono text-zinc-500 uppercase tracking-widest mb-2">Active Ledgers</p>
-                  <h2 className="text-3xl font-bold tracking-tighter">42</h2>
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="material-symbols-sharp !text-[16px] text-zinc-500">account_balance_wallet</span>
+                    <p className="text-xs font-mono text-zinc-500 uppercase tracking-widest font-bold">Surety Pool Health</p>
+                  </div>
+                  <h2 className="text-3xl font-bold tracking-tighter">R{(reserve.available / 1000000).toFixed(1)}M</h2>
+                  <p className="text-[10px] font-mono text-zinc-600 mt-1 italic">Total Reserved: R{(reserve.total / 1000000).toFixed(1)}M</p>
                 </div>
-                <div className="mt-4 flex flex-wrap gap-2">
-                  {['US', 'EU', 'SG', 'UK'].map(region => (
-                    <span key={region} className="text-[9px] font-mono border border-zinc-800 px-1.5 py-0.5 rounded text-zinc-500">{region}</span>
-                  ))}
-                </div>
-              </div>
-              <div className="bg-black border border-zinc-800/50 p-6 rounded-2xl shadow-sm">
-                <p className="text-xs font-mono text-zinc-500 uppercase tracking-widest mb-2">p99 Latency</p>
-                <div className="flex items-baseline gap-2">
-                   <h2 className="text-3xl font-bold tracking-tighter font-mono">42</h2>
-                   <span className="text-emerald-500 text-xs font-mono">ms</span>
-                </div>
-                <div className="mt-8 space-y-2">
-                   <div className="h-1 w-full bg-zinc-900 rounded-full overflow-hidden">
-                      <div className="h-full bg-emerald-500 w-[92%]"></div>
+                <div className="mt-8 space-y-4">
+                   <div className="space-y-1.5">
+                      <div className="flex justify-between text-[9px] font-mono text-zinc-500 uppercase">
+                        <span>Liquidity utilization</span>
+                        <span>{((reserve.total - reserve.available) / reserve.total * 100).toFixed(1)}%</span>
+                      </div>
+                      <div className="h-1.5 w-full bg-zinc-900 rounded-full overflow-hidden">
+                        <div 
+                          className="h-full bg-white transition-all duration-1000" 
+                          style={{ width: `${((reserve.total - reserve.available) / reserve.total * 100)}%` }}
+                        ></div>
+                      </div>
                    </div>
-                   <p className="text-[9px] font-mono text-zinc-600 uppercase">System Availability: 99.998%</p>
+                   <div className="bg-zinc-900/50 border border-zinc-800 p-3 rounded-lg">
+                      <p className="text-[9px] font-mono text-zinc-500 leading-relaxed">
+                        Rails facilitating <span className="text-white font-bold">84.2%</span> of out-of-hours transaction volume via Surety Injection.
+                      </p>
+                   </div>
                 </div>
               </div>
             </div>
 
+            {/* Distributed Infrastructure Map & Shards */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
               <div className="space-y-4">
-                <h3 className="text-sm font-mono text-zinc-500 uppercase tracking-widest">Global Node Status</h3>
-                <div className="grid grid-cols-4 gap-2">
-                   {Array.from({length: 16}).map((_, i) => (
-                      <div key={i} className={`h-8 rounded border border-zinc-900 flex items-center justify-center ${i === 12 ? 'bg-amber-500/10 border-amber-500/20 text-amber-500' : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-500'}`}>
-                         <span className="material-symbols-sharp !text-[14px]">{i === 12 ? 'warning' : 'check_circle'}</span>
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xs font-mono text-zinc-500 uppercase tracking-widest font-bold">Ledger Shard Sync</h3>
+                  <span className="text-[10px] font-mono text-zinc-700">6 Shards Active</span>
+                </div>
+                <div className="grid grid-cols-1 gap-2">
+                   {[
+                     { id: 'shard-001', region: 'us-east', height: '14,221,009', status: 'Synced' },
+                     { id: 'shard-002', region: 'eu-west', height: '12,998,112', status: 'Synced' },
+                     { id: 'shard-003', region: 'ap-south', height: '9,221,440', status: 'Lagging (4ms)' },
+                   ].map((shard) => (
+                      <div key={shard.id} className="bg-black border border-zinc-800/50 p-4 rounded-xl flex items-center justify-between group hover:border-zinc-700 transition-colors">
+                        <div className="flex items-center gap-3">
+                           <div className={`w-1.5 h-1.5 rounded-full ${shard.status.includes('Lagging') ? 'bg-amber-500' : 'bg-emerald-500'}`}></div>
+                           <div>
+                              <p className="text-xs font-bold text-white uppercase font-mono">{shard.id}</p>
+                              <p className="text-[9px] text-zinc-600 uppercase tracking-tighter">{shard.region}</p>
+                           </div>
+                        </div>
+                        <div className="text-right">
+                           <p className="text-xs font-mono text-zinc-400">{shard.height}</p>
+                           <p className={`text-[9px] font-bold uppercase tracking-widest ${shard.status.includes('Lagging') ? 'text-amber-500' : 'text-zinc-700'}`}>{shard.status}</p>
+                        </div>
                       </div>
                    ))}
                 </div>
               </div>
 
               <div className="space-y-4">
-                <h3 className="text-sm font-mono text-zinc-500 uppercase tracking-widest">Live Ledger Events</h3>
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xs font-mono text-zinc-500 uppercase tracking-widest font-bold">Recent System Events</h3>
+                  <button className="text-[10px] font-mono text-zinc-500 hover:text-white uppercase">View All Logs</button>
+                </div>
                 <div className="bg-black border border-zinc-800/50 rounded-2xl overflow-hidden">
                   <table className="w-full text-left">
                     <tbody className="divide-y divide-zinc-900 font-mono text-[11px]">
@@ -162,12 +371,12 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
                           <td className="px-4 py-3">
                             <div className="flex items-center gap-2">
                               <span className="w-1.5 h-1.5 rounded-full bg-zinc-700 group-hover:bg-white"></span>
-                              <span className="text-white font-bold">{log.action}</span>
+                              <span className="text-zinc-300 font-bold">{log.action}</span>
                             </div>
                           </td>
                           <td className="px-4 py-3 text-zinc-600 truncate max-w-[80px]">{log.id}</td>
                           <td className="px-4 py-3 text-right">
-                             <span className="text-zinc-400">{log.amount}</span>
+                             <span className="text-emerald-500/80 font-bold">{log.amount}</span>
                           </td>
                         </tr>
                       ))}
@@ -179,12 +388,15 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
           </div>
         );
       case 'Accounts':
+        const selectedAccount = accounts.find(a => a.id === selectedAccountId);
+        if (selectedAccount) return renderAccountDetails(selectedAccount);
+
         return (
           <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-500">
             <div className="flex justify-between items-center">
               <div>
                 <h2 className="text-2xl font-bold tracking-tight font-heading">Financial Accounts</h2>
-                <p className="text-sm text-zinc-500">Core system accounts based on <code>AccountResponse</code> schema.</p>
+                <p className="text-sm text-zinc-500">System ledger accounts. Click row to inspect details.</p>
               </div>
               <div className="flex gap-2">
                 <button 
@@ -208,7 +420,6 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
               <div className="bg-zinc-950 border border-zinc-800 p-6 rounded-2xl animate-in slide-in-from-top duration-300">
                 <div className="flex justify-between items-center mb-4">
                   <span className="text-[10px] font-mono font-bold text-zinc-500 uppercase tracking-widest">Model: AccountResponse (Rust)</span>
-                  <span className="text-[10px] font-mono text-zinc-700">source: infra/src/models/account.rs</span>
                 </div>
                 <pre className="text-[11px] font-mono text-zinc-400 leading-relaxed overflow-x-auto">
 {`#[derive(Debug, Serialize)]
@@ -233,45 +444,24 @@ pub struct AccountResponse {
                   <tr>
                     <th className="px-6 py-4">Account Number / ID</th>
                     <th className="px-6 py-4">Type</th>
-                    <th className="px-6 py-4">User UUID</th>
                     <th className="px-6 py-4">Status</th>
                     <th className="px-6 py-4 text-right">Balance</th>
                     <th className="px-6 py-4 text-right">Created At</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-zinc-900 font-mono text-xs">
-                  {[
-                    { 
-                      id: '550e8400-e29b-41d4-a716-446655440000',
-                      account_number: '1002938475',
-                      account_type: 'Checking',
-                      user_id: '8a12-99b1-cc09',
-                      balance: '842,000.00',
-                      currency: 'USD',
-                      status: 'Active',
-                      created_at: '2024-03-12'
-                    },
-                    { 
-                      id: 'd9b0-a112-f993-8821-443322110011',
-                      account_number: '5002194833',
-                      account_type: 'Saving',
-                      user_id: '4f11-2290-db01',
-                      balance: '12,400.00',
-                      currency: 'USD',
-                      status: 'Active',
-                      created_at: '2024-03-14'
-                    },
-                  ].map((acc) => (
-                    <tr key={acc.id} className="hover:bg-zinc-900/30 transition-colors group">
+                  {accounts.map((acc) => (
+                    <tr 
+                      key={acc.id} 
+                      onClick={() => setSelectedAccountId(acc.id)}
+                      className="hover:bg-zinc-900/30 transition-colors group cursor-pointer"
+                    >
                       <td className="px-6 py-5">
-                        <span className="text-white font-bold block">{acc.account_number}</span>
-                        <span className="text-zinc-600 text-[9px] font-mono uppercase tracking-tighter truncate w-32 block">{acc.id}</span>
+                        <span className="text-white font-bold block group-hover:underline underline-offset-4">{acc.account_number}</span>
+                        <span className="text-zinc-600 text-[9px] truncate w-32 block">{acc.id}</span>
                       </td>
                       <td className="px-6 py-5">
                         <span className="text-zinc-300 font-medium">{acc.account_type}</span>
-                      </td>
-                      <td className="px-6 py-5">
-                        <span className="text-zinc-500 text-[10px] font-mono">{acc.user_id}</span>
                       </td>
                       <td className="px-6 py-5">
                         <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase ${acc.status === 'Active' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-red-500/10 text-red-500'}`}>
@@ -279,7 +469,7 @@ pub struct AccountResponse {
                         </span>
                       </td>
                       <td className="px-6 py-5 text-right font-bold text-white">{acc.balance} <span className="text-zinc-600 text-[10px] ml-1">{acc.currency}</span></td>
-                      <td className="px-6 py-5 text-right text-zinc-500 font-mono italic">{acc.created_at}</td>
+                      <td className="px-6 py-5 text-right text-zinc-500 italic">{acc.created_at}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -293,123 +483,92 @@ pub struct AccountResponse {
             <div className="flex justify-between items-center">
               <div>
                 <h2 className="text-2xl font-bold tracking-tight font-heading">Weekend Settlement Engine</h2>
-                <p className="text-sm text-zinc-500">Manage 24/7 liquidity and bank surety funds.</p>
+                <p className="text-sm text-zinc-500">Off-hours liquidity routing via Rails Surety Reserve.</p>
               </div>
               <div className="flex gap-2">
                 <button className="flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-lg border border-zinc-800 text-zinc-400 hover:text-white transition-colors">
                   <span className="material-symbols-sharp">receipt_long</span>
-                  Export Audit Log
+                  Audit Logs
                 </button>
                 <button className="flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-lg bg-white text-black hover:bg-zinc-200 transition-colors">
                   <span className="material-symbols-sharp">account_balance_wallet</span>
-                  Top-up Surety Reserve
+                  Surety Top-up
                 </button>
               </div>
             </div>
 
-            {/* Reserve Monitoring */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="bg-black border border-zinc-800/50 p-6 rounded-2xl">
-                <p className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest mb-2 font-bold">Total Surety Pool</p>
+                <p className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest mb-2 font-bold">Surety Pool</p>
                 <h2 className="text-3xl font-bold tracking-tighter">R{reserve.total.toLocaleString()}</h2>
-                <div className="mt-4 flex items-center justify-between text-[10px] font-mono text-zinc-600">
-                  <span>CAPACITY UTILIZATION</span>
-                  <span>{((reserve.total - reserve.available) / reserve.total * 100).toFixed(1)}%</span>
-                </div>
-                <div className="mt-2 h-1 w-full bg-zinc-900 rounded-full overflow-hidden">
+                <div className="mt-4 h-1 w-full bg-zinc-900 rounded-full overflow-hidden">
                    <div className="h-full bg-white transition-all duration-700" style={{ width: `${((reserve.total - reserve.available) / reserve.total * 100)}%` }}></div>
                 </div>
               </div>
               <div className="bg-black border border-zinc-800/50 p-6 rounded-2xl">
-                <p className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest mb-2 font-bold">Available Reserve</p>
+                <p className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest mb-2 font-bold">Liquidity Injection Available</p>
                 <h2 className="text-3xl font-bold tracking-tighter text-emerald-500">R{reserve.available.toLocaleString()}</h2>
                 <div className="mt-4 flex items-center gap-2 text-[10px] font-bold text-emerald-500/80">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                  READY FOR LIQUIDITY INJECTION
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> SYSTEM READY
                 </div>
               </div>
-              <div className="bg-black border border-zinc-800/50 p-6 rounded-2xl border-white/5">
-                <p className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest mb-2 font-bold">Projected Rails Fees (1%)</p>
+              <div className="bg-black border border-zinc-800/50 p-6 rounded-2xl">
+                <p className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest mb-2 font-bold">Weekend Fee Accrual (1%)</p>
                 <h2 className="text-3xl font-bold tracking-tighter">R{settlementFees.toLocaleString()}</h2>
                 <div className="mt-4 flex items-center gap-2 text-[10px] font-bold text-zinc-500">
-                  <span className="material-symbols-sharp !text-[14px]">auto_graph</span>
-                  +14% VS PREVIOUS WEEKEND
+                  <span className="material-symbols-sharp !text-[14px]">trending_up</span> +14% WEEK-OVER-WEEK
                 </div>
               </div>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-              {/* Bank Connectivity Sidebar */}
               <div className="lg:col-span-4 space-y-4">
-                <h3 className="text-xs font-mono text-zinc-500 uppercase tracking-widest font-bold">Bank Bridge Status</h3>
+                <h3 className="text-xs font-mono text-zinc-500 uppercase tracking-widest font-bold">Bridge Status</h3>
                 <div className="bg-black border border-zinc-800/50 rounded-2xl overflow-hidden divide-y divide-zinc-900">
                   {banks.map(bank => (
                     <div key={bank.code} className="p-4 flex items-center justify-between group hover:bg-zinc-900/30 transition-colors">
                       <div className="flex items-center gap-3">
-                        <div className={`w-2 h-2 rounded-full ${bank.connected ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.3)]' : 'bg-zinc-800'}`}></div>
+                        <div className={`w-2 h-2 rounded-full ${bank.connected ? 'bg-emerald-500' : 'bg-zinc-800'}`}></div>
                         <div>
                           <p className="text-xs font-bold text-white tracking-tight">{bank.name}</p>
                           <p className="text-[9px] font-mono text-zinc-600">{bank.code}</p>
                         </div>
                       </div>
                       <div className="text-right">
-                        <p className="text-[10px] font-mono text-zinc-400">R{(bank.surety / 1000000).toFixed(1)}M Surety</p>
-                        <p className={`text-[9px] font-bold uppercase tracking-tighter ${bank.connected ? 'text-zinc-600' : 'text-zinc-800'}`}>
-                          {bank.connected ? 'Bridged' : 'Standby'}
-                        </p>
+                        <p className="text-[10px] font-mono text-zinc-400">R{(bank.surety / 1000000).toFixed(1)}M</p>
                       </div>
                     </div>
                   ))}
                 </div>
               </div>
 
-              {/* Recent Settlement Transactions */}
               <div className="lg:col-span-8 space-y-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-xs font-mono text-zinc-500 uppercase tracking-widest font-bold">Live Settlement Feed</h3>
-                  <div className="flex gap-4">
-                    <span className="text-[9px] font-mono text-zinc-700 flex items-center gap-1">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> PENDING
-                    </span>
-                    <span className="text-[9px] font-mono text-zinc-700 flex items-center gap-1">
-                      <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span> DELAYED
-                    </span>
-                  </div>
-                </div>
+                <h3 className="text-xs font-mono text-zinc-500 uppercase tracking-widest font-bold">Real-time Settlement Feed</h3>
                 <div className="bg-black border border-zinc-800/50 rounded-2xl overflow-hidden shadow-2xl">
                   <table className="w-full text-left">
                     <thead className="text-[10px] font-mono text-zinc-600 uppercase bg-zinc-950 border-b border-zinc-900">
                       <tr>
-                        <th className="px-6 py-4">Transaction Ref</th>
-                        <th className="px-6 py-4">Flow (Source → Dest)</th>
-                        <th className="px-6 py-4">Amount</th>
+                        <th className="px-6 py-4">Tx Ref</th>
+                        <th className="px-6 py-4">Routing</th>
+                        <th className="px-6 py-4 text-right">Amount</th>
                         <th className="px-6 py-4 text-right">Status</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-zinc-900 font-mono text-xs">
                       {[
-                        { ref: 'txn_99x221a', sender: 'FNB', receiver: 'ABSA', amount: 142000, status: 'pending', time: '14:22:01' },
-                        { ref: 'txn_0x221bb', sender: 'NEDBANK', receiver: 'CAPITEC', amount: 92000, status: 'pending', time: '14:21:44' },
-                        { ref: 'txn_99x112c', sender: 'FNB', receiver: 'STANDARD', amount: 4500000, status: 'delayed', time: '14:20:12' },
-                        { ref: 'txn_88z224d', sender: 'ABSA', receiver: 'FNB', amount: 12500, status: 'pending', time: '14:19:55' },
+                        { ref: 'txn_99x221a', sender: 'FNB', receiver: 'ABSA', amount: 142000, status: 'pending' },
+                        { ref: 'txn_0x221bb', sender: 'NEDBANK', receiver: 'CAPITEC', amount: 92000, status: 'pending' },
+                        { ref: 'txn_99x112c', sender: 'FNB', receiver: 'STD', amount: 450000, status: 'delayed' },
                       ].map(tx => (
-                        <tr key={tx.ref} className="hover:bg-zinc-900/30 transition-colors group">
-                          <td className="px-6 py-5">
-                            <span className="text-zinc-400 font-bold block">{tx.ref}</span>
-                            <span className="text-zinc-600 text-[9px]">{tx.time}</span>
+                        <tr key={tx.ref} className="hover:bg-zinc-900/30 transition-colors">
+                          <td className="px-6 py-4 text-zinc-400 font-bold">{tx.ref}</td>
+                          <td className="px-6 py-4">
+                            <span className="text-white font-bold">{tx.sender}</span>
+                            <span className="text-zinc-700 mx-2">→</span>
+                            <span className="text-zinc-500">{tx.receiver}</span>
                           </td>
-                          <td className="px-6 py-5">
-                            <div className="flex items-center gap-2">
-                              <span className="text-white font-bold">{tx.sender}</span>
-                              <span className="text-zinc-800">→</span>
-                              <span className="text-zinc-400">{tx.receiver}</span>
-                            </div>
-                          </td>
-                          <td className="px-6 py-5">
-                            <p className="text-white font-bold">R{tx.amount.toLocaleString()}</p>
-                            <p className="text-[9px] text-zinc-600">FEE: R{(tx.amount * 0.01).toLocaleString()}</p>
-                          </td>
-                          <td className="px-6 py-5 text-right">
+                          <td className="px-6 py-4 text-right text-white">R{tx.amount.toLocaleString()}</td>
+                          <td className="px-6 py-4 text-right">
                             <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase ${
                               tx.status === 'pending' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-amber-500/10 text-amber-500'
                             }`}>
@@ -420,17 +579,6 @@ pub struct AccountResponse {
                       ))}
                     </tbody>
                   </table>
-                </div>
-                <div className="bg-zinc-950/50 border border-white/5 p-4 rounded-xl flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <span className="material-symbols-sharp text-zinc-600">info</span>
-                    <p className="text-[10px] font-mono text-zinc-500">
-                      Transactions marked as <span className="text-amber-500 font-bold">DELAYED</span> require additional surety funds from the source bank.
-                    </p>
-                  </div>
-                  <button className="text-[10px] font-mono font-bold uppercase underline underline-offset-4 text-zinc-400 hover:text-white transition-colors">
-                    Release Delayed Batch
-                  </button>
                 </div>
               </div>
             </div>
@@ -464,7 +612,7 @@ pub struct AccountResponse {
             {navItems.map((item) => (
               <button
                 key={item.name}
-                onClick={() => setActiveTab(item.name)}
+                onClick={() => { setActiveTab(item.name); setSelectedAccountId(null); }}
                 className={`w-full flex items-center gap-3 px-3 py-2 text-sm rounded-lg transition-colors ${
                   activeTab === item.name 
                     ? 'bg-white text-black font-semibold' 
@@ -475,23 +623,24 @@ pub struct AccountResponse {
                 {item.name}
               </button>
             ))}
+            
+            <a
+              href="https://docs.rails.infra"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full flex items-center gap-3 px-3 py-2 text-sm rounded-lg text-zinc-500 hover:text-white hover:bg-zinc-900 transition-colors mt-6 border-t border-zinc-900/50 pt-4"
+            >
+              <span className="material-symbols-sharp">description</span>
+              Docs
+              <span className="material-symbols-sharp !text-[12px] ml-auto opacity-30">open_in_new</span>
+            </a>
           </nav>
 
           <div className="mt-8 pt-8 border-t border-zinc-900">
             <p className="text-[10px] font-mono text-zinc-600 uppercase tracking-widest mb-4 font-bold">Environment</p>
             <div className="flex bg-zinc-900/50 p-1 rounded-lg border border-zinc-800">
-              <button 
-                onClick={() => setIsProduction(false)}
-                className={`flex-1 py-1.5 text-[10px] font-bold rounded transition-all ${!isProduction ? 'bg-zinc-800 text-white shadow-sm' : 'text-zinc-500 hover:text-zinc-300'}`}
-              >
-                SANDBOX
-              </button>
-              <button 
-                onClick={() => setIsProduction(true)}
-                className={`flex-1 py-1.5 text-[10px] font-bold rounded transition-all ${isProduction ? 'bg-red-950 text-red-500 shadow-sm' : 'text-zinc-500 hover:text-zinc-300'}`}
-              >
-                PROD
-              </button>
+              <button onClick={() => setIsProduction(false)} className={`flex-1 py-1.5 text-[10px] font-bold rounded transition-all ${!isProduction ? 'bg-zinc-800 text-white' : 'text-zinc-500 hover:text-zinc-300'}`}>SANDBOX</button>
+              <button onClick={() => setIsProduction(true)} className={`flex-1 py-1.5 text-[10px] font-bold rounded transition-all ${isProduction ? 'bg-red-950 text-red-500' : 'text-zinc-500 hover:text-zinc-300'}`}>PROD</button>
             </div>
           </div>
         </div>
@@ -535,13 +684,10 @@ pub struct AccountResponse {
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                <span className="text-[10px] font-mono text-emerald-500 uppercase font-bold">System Nominal</span>
+                <span className="text-[10px] font-mono text-emerald-500 uppercase font-bold">Nominal</span>
               </div>
               <button className="p-2 text-zinc-500 hover:text-white transition-colors flex items-center justify-center">
                 <span className="material-symbols-sharp">notifications</span>
-              </button>
-              <button className="p-2 text-zinc-500 hover:text-white transition-colors flex items-center justify-center">
-                <span className="material-symbols-sharp">settings</span>
               </button>
             </div>
           </header>
@@ -576,7 +722,7 @@ pub struct AccountResponse {
               <div className="p-4 border-b border-zinc-800 bg-zinc-900/50 flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <span className="material-symbols-sharp !text-[16px] text-zinc-400">terminal</span>
-                  <span className="text-[10px] font-mono font-bold uppercase text-zinc-300">Rails Copilot v1.2</span>
+                  <span className="text-[10px] font-mono font-bold uppercase text-zinc-300">Rails Copilot</span>
                 </div>
                 <button onClick={() => setIsCopilotOpen(false)} className="text-zinc-500 hover:text-white">
                   <span className="material-symbols-sharp !text-[16px]">close</span>
@@ -584,12 +730,6 @@ pub struct AccountResponse {
               </div>
               
               <div className="flex-1 overflow-y-auto p-4 space-y-4 no-scrollbar">
-                {chatHistory.length === 0 && (
-                  <div className="text-center py-10">
-                    <span className="material-symbols-sharp text-zinc-800 !text-[48px] mb-4">forum</span>
-                    <p className="text-[10px] font-mono text-zinc-600 uppercase tracking-widest">Query the infrastructure node...</p>
-                  </div>
-                )}
                 {chatHistory.map((msg, i) => (
                   <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                     <div className={`max-w-[85%] p-3 rounded-xl text-xs font-mono leading-relaxed ${msg.role === 'user' ? 'bg-zinc-800 text-zinc-300' : 'bg-white/5 text-zinc-400 border border-white/5'}`}>
@@ -597,17 +737,7 @@ pub struct AccountResponse {
                     </div>
                   </div>
                 ))}
-                {isThinking && (
-                  <div className="flex justify-start">
-                    <div className="bg-white/5 p-3 rounded-xl">
-                      <span className="flex gap-1">
-                        <span className="w-1 h-1 bg-zinc-600 rounded-full animate-bounce"></span>
-                        <span className="w-1 h-1 bg-zinc-600 rounded-full animate-bounce [animation-delay:0.2s]"></span>
-                        <span className="w-1 h-1 bg-zinc-600 rounded-full animate-bounce [animation-delay:0.4s]"></span>
-                      </span>
-                    </div>
-                  </div>
-                )}
+                {isThinking && <div className="text-[10px] font-mono text-zinc-600 animate-pulse">Thinking...</div>}
                 <div ref={chatEndRef} />
               </div>
 
@@ -621,12 +751,6 @@ pub struct AccountResponse {
                     onChange={(e) => setChatInput(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
                   />
-                  <button 
-                    onClick={handleSendMessage}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-600 hover:text-white transition-colors"
-                  >
-                    <span className="material-symbols-sharp !text-[16px]">send</span>
-                  </button>
                 </div>
               </div>
             </div>
