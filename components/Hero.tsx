@@ -134,7 +134,7 @@ const Hero: React.FC = () => {
             </div>
 
             {/* Terminal Content */}
-            <div className="relative font-mono text-[11px] md:text-[12px] text-left p-6 md:p-10 min-h-[360px] max-h-[460px] flex flex-col justify-end overflow-hidden leading-loose">
+            <div className="relative font-mono text-[11px] md:text-[12px] text-left p-6 md:p-10 min-h-[360px] max-h-[460px] flex flex-col justify-start overflow-hidden leading-loose">
               <div className="space-y-1 transition-all duration-300 relative z-10">
                 {terminalLines.map((line, i) => (
                   <div 

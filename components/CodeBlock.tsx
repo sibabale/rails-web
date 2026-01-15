@@ -8,7 +8,6 @@ interface CodeBlockProps {
 
 const CodeBlock: React.FC<CodeBlockProps> = ({ snippets }) => {
   const [selectedLang, setSelectedLang] = useState<keyof CodeSnippets>('ts');
-  const [copied, setCopied] = useState(false);
 
   const languages = [
     { id: 'ts', label: 'TypeScript' },
@@ -16,12 +15,6 @@ const CodeBlock: React.FC<CodeBlockProps> = ({ snippets }) => {
     { id: 'rust', label: 'Rust' },
     { id: 'java', label: 'Java' },
   ] as const;
-
-  const handleCopy = () => {
-    navigator.clipboard.writeText(snippets[selectedLang]);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
 
   const highlight = (line: string) => {
     const tokens = line.split(/(".*?"|'.*?'|\/\/.*|\b(?:const|let|var|await|async|import|from|return|func|package|type|struct|pub|fn|mut|impl|use|public|class|new|static|void|interface|enum|if|else|err|for|range|vec|List|of)\b|\.\s*([a-zA-Z_]\w*)\s*(?=\()|\b([A-Z][a-zA-Z0-9_]*)\b|\b\d+\b|\b(?:true|false|null)\b)/g);
@@ -79,12 +72,13 @@ const CodeBlock: React.FC<CodeBlockProps> = ({ snippets }) => {
             </button>
           ))}
         </div>
-        <button
-          onClick={handleCopy}
-          className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-zinc-500 hover:text-white transition-colors"
-        >
-          {copied ? 'Copied' : 'Copy'}
-        </button>
+        
+        <div className="flex items-center gap-2 select-none">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500/50 animate-pulse"></span>
+          <span className="text-[9px] font-mono text-zinc-600 uppercase tracking-[0.2em] font-bold">
+            Live Sandbox
+          </span>
+        </div>
       </div>
 
       <div className="relative">
