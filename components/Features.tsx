@@ -21,9 +21,9 @@ const Features: React.FC = () => {
           {FEATURES.map((feature, index) => (
             <div 
               key={feature.id} 
-              className={`flex flex-col lg:flex-row items-center gap-16 ${index % 2 !== 0 ? 'lg:flex-row-reverse' : ''}`}
+              className={`flex flex-col lg:flex-row items-start gap-16 ${index % 2 !== 0 ? 'lg:flex-row-reverse' : ''}`}
             >
-              <div className="flex-1">
+              <div className="flex-1 lg:pt-4">
                 <div className="w-12 h-12 rounded-xl bg-zinc-900 border border-zinc-800 flex items-center justify-center mb-6">
                   <span className="text-xl font-bold">{index + 1}</span>
                 </div>
@@ -32,18 +32,18 @@ const Features: React.FC = () => {
                   {feature.description}
                 </p>
                 <ul className="space-y-4">
-                  {['Instant instantiation', 'Full audit trail', 'Regulatory ready'].map((item) => (
-                    <li key={item} className="flex items-center gap-3 text-sm text-zinc-300">
-                      <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  {feature.bullets.map((bullet) => (
+                    <li key={bullet} className="flex items-center gap-3 text-sm text-zinc-300">
+                      <svg className="w-4 h-4 text-white shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                       </svg>
-                      {item}
+                      {bullet}
                     </li>
                   ))}
                 </ul>
               </div>
-              <div className="flex-1 w-full">
-                <CodeBlock code={feature.code} />
+              <div className="flex-1 w-full lg:sticky lg:top-24">
+                <CodeBlock snippets={feature.snippets} />
               </div>
             </div>
           ))}
