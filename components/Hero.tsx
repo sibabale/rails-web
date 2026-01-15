@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 
 const Hero: React.FC = () => {
@@ -13,43 +12,43 @@ const Hero: React.FC = () => {
       setTerminalLines([]);
 
       // 1. Install Phase
-      setTerminalLines(['<span class="text-zinc-600 font-bold uppercase tracking-widest text-[10px]"># Initialize SDK</span>']);
+      setTerminalLines(['<span class="text-zinc-600 font-bold uppercase tracking-widest text-[10px] font-mono"># Initialize SDK</span>']);
       await delay(800);
-      setTerminalLines(prev => [...prev, '<span class="flex gap-2 text-zinc-500"><span class="text-zinc-700">$</span> npm install @rails/infra</span>']);
+      setTerminalLines(prev => [...prev, '<span class="flex gap-2 text-zinc-500 font-mono"><span class="text-zinc-700">$</span> npm install @rails/infra</span>']);
       await delay(1200);
-      setTerminalLines(prev => [...prev, '<span class="text-zinc-700">added 142 packages in 0.8s</span>']);
-      setTerminalLines(prev => [...prev, '<span class="text-zinc-400">✓ SDK ready.</span>']);
+      setTerminalLines(prev => [...prev, '<span class="text-zinc-700 font-mono">added 142 packages in 0.8s</span>']);
+      setTerminalLines(prev => [...prev, '<span class="text-zinc-400 font-mono">✓ SDK ready.</span>']);
       
       await delay(1500);
       
       // 2. Login Phase
       setPhase('login');
-      setTerminalLines(prev => [...prev, '', '<span class="text-zinc-600 font-bold uppercase tracking-widest text-[10px]"># Production Auth</span>']);
+      setTerminalLines(prev => [...prev, '', '<span class="text-zinc-600 font-bold uppercase tracking-widest text-[10px] font-mono"># Production Auth</span>']);
       await delay(600);
-      setTerminalLines(prev => [...prev, '<span class="flex gap-2 text-zinc-500"><span class="text-zinc-700">$</span> rails auth login --scope="prod"</span>']);
+      setTerminalLines(prev => [...prev, '<span class="flex gap-2 text-zinc-500 font-mono"><span class="text-zinc-700">$</span> rails auth login --scope="prod"</span>']);
       await delay(1000);
-      setTerminalLines(prev => [...prev, '<span class="text-zinc-700">Verifying security keys...</span>']);
+      setTerminalLines(prev => [...prev, '<span class="text-zinc-700 font-mono">Verifying security keys...</span>']);
       await delay(1200);
-      setTerminalLines(prev => [...prev, '<span class="text-zinc-400">✓ Node: prod_east_04 (Session: 0x9f2...)</span>']);
+      setTerminalLines(prev => [...prev, '<span class="text-zinc-400 font-mono">✓ Node: prod_east_04 (Session: 0x9f2...)</span>']);
       
       await delay(1500);
 
       // 3. Monitor Logs Phase (Looping)
       setPhase('logs');
-      setTerminalLines(prev => [...prev, '', '<span class="flex gap-2 text-zinc-500"><span class="text-zinc-700">$</span> rails tail -f --json</span>']);
+      setTerminalLines(prev => [...prev, '', '<span class="flex gap-2 text-zinc-500 font-mono"><span class="text-zinc-700">$</span> rails tail -f --json</span>']);
       await delay(800);
       
       const logPool = [
-        '<span class="text-cyan-900/80">Account:create</span> <span class="text-zinc-600">acc_****7721 owner:"H**** L***"</span>',
-        '<span class="text-fuchsia-900/80">Payment:init</span> <span class="text-zinc-600">tx_****9912 amount:8,250.00 (WIRE)</span>',
-        '<span class="text-amber-900/80">Ledger:commit</span> <span class="text-zinc-600">block:922,111 entries:4 integrity:OK</span>',
-        '<span class="text-emerald-900/80">Identity:pass</span> <span class="text-zinc-600">org_****911 jurisdiction:"US-DE"</span>',
-        '<span class="text-zinc-700">Rail:ach_batch</span> <span class="text-zinc-600">batch_922 file_gen:OK (42 items)</span>',
-        '<span class="text-cyan-900/80">Account:upd</span> <span class="text-zinc-600">acc_****0012 limits:updated</span>',
-        '<span class="text-fuchsia-900/80">Payment:settle</span> <span class="text-zinc-600">tx_****8811 settled (Lat: 142ms)</span>',
-        '<span class="text-zinc-700">Core:shard_sync</span> <span class="text-zinc-600">node_02 delta:0.00ms status:SYNC</span>',
-        '<span class="text-amber-900/80">Ledger:recon</span> <span class="text-zinc-600">reconciled vol_092 check:PASSED</span>',
-        '<span class="text-emerald-900/80">Webhook:sent</span> <span class="text-zinc-600">evt_****11a -> payload:encrypted</span>'
+        '<span class="text-cyan-900/80 font-bold font-mono">Account:create</span> <span class="text-zinc-600 font-mono">acc_****7721 owner:"H**** L***"</span>',
+        '<span class="text-fuchsia-900/80 font-bold font-mono">Payment:init</span> <span class="text-zinc-600 font-mono">tx_****9912 amount:8,250.00 (WIRE)</span>',
+        '<span class="text-amber-900/80 font-bold font-mono">Ledger:commit</span> <span class="text-zinc-600 font-mono">block:922,111 entries:4 integrity:OK</span>',
+        '<span class="text-emerald-900/80 font-bold font-mono">Identity:pass</span> <span class="text-zinc-600 font-mono">org_****911 jurisdiction:"US-DE"</span>',
+        '<span class="text-zinc-700 font-mono">Rail:ach_batch</span> <span class="text-zinc-600 font-mono">batch_922 file_gen:OK (42 items)</span>',
+        '<span class="text-cyan-900/80 font-bold font-mono">Account:upd</span> <span class="text-zinc-600 font-mono">acc_****0012 limits:updated</span>',
+        '<span class="text-fuchsia-900/80 font-bold font-mono">Payment:settle</span> <span class="text-zinc-600 font-mono">tx_****8811 settled (Lat: 142ms)</span>',
+        '<span class="text-zinc-700 font-mono">Core:shard_sync</span> <span class="text-zinc-600 font-mono">node_02 delta:0.00ms status:SYNC</span>',
+        '<span class="text-amber-900/80 font-bold font-mono">Ledger:recon</span> <span class="text-zinc-600 font-mono">reconciled vol_092 check:PASSED</span>',
+        '<span class="text-emerald-900/80 font-bold font-mono">Webhook:sent</span> <span class="text-zinc-600 font-mono">evt_****11a -> payload:encrypted</span>'
       ];
 
       let logIndex = 0;
@@ -58,7 +57,7 @@ const Hero: React.FC = () => {
         const timestamp = `[${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}]`;
         
         setTerminalLines(prev => {
-          const nextLines = [...prev, `<span class="text-zinc-700 mr-2">${timestamp}</span> ${logPool[logIndex % logPool.length]}`];
+          const nextLines = [...prev, `<span class="text-zinc-700 mr-2 font-mono">${timestamp}</span> ${logPool[logIndex % logPool.length]}`];
           return nextLines.slice(-14);
         });
         logIndex++;
@@ -128,7 +127,7 @@ const Hero: React.FC = () => {
               <div className="flex items-center gap-4">
                 <div className="flex items-center gap-2">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500/50 animate-pulse"></span>
-                  <span className="text-[9px] font-mono text-zinc-600 uppercase">prod_node_04</span>
+                  <span className="text-[9px] font-mono text-zinc-600 uppercase tracking-widest font-bold">prod_node_04</span>
                 </div>
               </div>
             </div>
@@ -144,7 +143,7 @@ const Hero: React.FC = () => {
                   />
                 ))}
                 <div className="flex gap-2 mt-2">
-                  <span className="text-zinc-700">$</span>
+                  <span className="text-zinc-700 font-mono">$</span>
                   <span className="w-1.5 h-3.5 bg-white/20 animate-pulse mt-0.5"></span>
                 </div>
               </div>
