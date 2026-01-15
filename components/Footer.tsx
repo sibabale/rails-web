@@ -8,7 +8,7 @@ const Footer: React.FC = () => {
         <div className="flex flex-col md:flex-row justify-between items-center gap-8">
           <div className="flex items-center gap-2">
             <div className="w-5 h-5 bg-white rounded-sm"></div>
-            <span className="font-bold tracking-tighter">RAILS</span>
+            <span className="font-heading font-bold tracking-tight text-lg">Rails</span>
             <span className="text-zinc-600 ml-4 text-sm font-mono">© 2024 RAILS INFRA INC.</span>
           </div>
           
