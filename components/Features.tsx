@@ -87,12 +87,6 @@ const Features: React.FC = () => {
               <div className="absolute -inset-4 bg-white/5 blur-3xl rounded-full opacity-50 group-hover:opacity-70 transition-opacity" />
               
               <div className="relative">
-                <div className="absolute top-0 right-0 p-4 z-10 pointer-events-none">
-                  <div className="flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-emerald-500/50 animate-pulse"></span>
-                    <span className="text-[10px] font-mono text-zinc-600 uppercase tracking-tighter">Live Sandbox</span>
-                  </div>
-                </div>
                 <CodeBlock snippets={activeFeature.snippets} />
               </div>
 
