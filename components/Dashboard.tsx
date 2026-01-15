@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { GoogleGenAI } from "@google/genai";
 
 interface DashboardProps {
   onLogout: () => void;
@@ -8,14 +9,26 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
   const [activeTab, setActiveTab] = useState('Overview');
   const [isProduction, setIsProduction] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isCopilotOpen, setIsCopilotOpen] = useState(false);
+  const [isSchemaVisible, setIsSchemaVisible] = useState(false);
   const [logs, setLogs] = useState<{id: string, time: string, action: string, status: string, amount: string}[]>([]);
+  
+  // Weekend Settlement State
+  const [reserve, setReserve] = useState({ total: 25000000, available: 18450000 });
+  const [settlementFees, setSettlementFees] = useState(142900);
+  const [banks, setBanks] = useState([
+    { name: 'FNB', code: 'FNB001', connected: true, surety: 5000000 },
+    { name: 'ABSA', code: 'ABSA01', connected: true, surety: 8000000 },
+    { name: 'NEDBANK', code: 'NED001', connected: true, surety: 4000000 },
+    { name: 'CAPITEC', code: 'CAP001', connected: true, surety: 3000000 },
+    { name: 'STANDARD', code: 'STD001', connected: false, surety: 5000000 }
+  ]);
 
-  // Form state for CreateAccountRequest
-  const [formData, setFormData] = useState({
-    user_id: '',
-    account_type: 'checking',
-    currency: 'USD'
-  });
+  // AI Copilot State
+  const [chatInput, setChatInput] = useState("");
+  const [chatHistory, setChatHistory] = useState<{role: 'user' | 'ai', text: string}[]>([]);
+  const [isThinking, setIsThinking] = useState(false);
+  const chatEndRef = useRef<HTMLDivElement>(null);
 
   // Simulation of real-time ledger events
   useEffect(() => {
@@ -36,21 +49,56 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
     return () => clearInterval(interval);
   }, []);
 
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [chatHistory]);
+
+  const handleSendMessage = async () => {
+    if (!chatInput.trim()) return;
+    
+    const userMsg = chatInput;
+    setChatHistory(prev => [...prev, { role: 'user', text: userMsg }]);
+    setChatInput("");
+    setIsThinking(true);
+
+    try {
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      const response = await ai.models.generateContent({
+        model: 'gemini-3-flash-preview',
+        contents: userMsg,
+        config: {
+          systemInstruction: "You are the Rails Infrastructure Copilot. You help developers build banking applications using the Rails SDK. You know everything about immutable ledgers, double-entry accounting, and the 'Weekend Settlement' feature where Rails provides 24/7 liquidity when traditional banks are closed. You know that Rails takes a 1% fee on weekend transactions and requires banks to provide 'Surety Funds' to the Rails Reserve. Keep answers concise, developer-focused, and slightly technical."
+        }
+      });
+      
+      setChatHistory(prev => [...prev, { role: 'ai', text: response.text || "Connection to core node lost. Retry." }]);
+    } catch (err) {
+      setChatHistory(prev => [...prev, { role: 'ai', text: "Error: AI Node Timeout. Check Infrastructure logs." }]);
+    } finally {
+      setIsThinking(false);
+    }
+  };
+
   const navItems = [
     { name: 'Overview', icon: 'dashboard' },
     { name: 'Accounts', icon: 'account_balance' },
+    { name: 'Settlements', icon: 'account_tree' },
     { name: 'Payments', icon: 'payments' },
     { name: 'Ledger', icon: 'book' },
     { name: 'Infrastructure', icon: 'dns' },
   ];
 
-  const handleCreateAccount = (e: React.FormEvent) => {
-    e.preventDefault();
-    // Simulate API call
-    console.log('Dispatching CreateAccountRequest:', formData);
-    setIsCreateModalOpen(false);
-    // In a real app, we'd append the result to the accounts list
-  };
+  const VolumeChart = () => (
+    <div className="h-24 w-full flex items-end gap-1 px-1">
+      {[40, 70, 45, 90, 65, 80, 55, 30, 85, 95, 40, 50, 70, 40, 80, 90, 100, 60, 45, 75, 85, 95, 40, 30].map((h, i) => (
+        <div 
+          key={i} 
+          className="flex-1 bg-white/20 hover:bg-white transition-all rounded-t-sm"
+          style={{ height: `${h}%` }}
+        />
+      ))}
+    </div>
+  );
 
   const renderContent = () => {
     switch (activeTab) {
@@ -58,82 +106,73 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
         return (
           <div className="space-y-8 animate-in fade-in duration-500">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="bg-black border border-zinc-800/50 p-6 rounded-2xl shadow-sm">
-                <p className="text-xs font-mono text-zinc-500 uppercase tracking-widest mb-2">Settled Volume (24h)</p>
-                <h2 className="text-3xl font-bold tracking-tighter">$1,242,910.00</h2>
-                <div className="mt-4 flex items-center gap-2 text-emerald-500 text-[10px] font-bold">
-                  <span className="material-symbols-sharp">trending_up</span>
-                  +12.5% VS YESTERDAY
+              <div className="bg-black border border-zinc-800/50 p-6 rounded-2xl shadow-sm relative overflow-hidden group">
+                <div className="relative z-10">
+                  <p className="text-xs font-mono text-zinc-500 uppercase tracking-widest mb-2">Settled Volume (24h)</p>
+                  <h2 className="text-3xl font-bold tracking-tighter mb-4">$1,242,910.00</h2>
+                  <VolumeChart />
+                </div>
+                <div className="absolute inset-0 bg-gradient-to-t from-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+              </div>
+              <div className="bg-black border border-zinc-800/50 p-6 rounded-2xl shadow-sm flex flex-col justify-between">
+                <div>
+                  <p className="text-xs font-mono text-zinc-500 uppercase tracking-widest mb-2">Active Ledgers</p>
+                  <h2 className="text-3xl font-bold tracking-tighter">42</h2>
+                </div>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {['US', 'EU', 'SG', 'UK'].map(region => (
+                    <span key={region} className="text-[9px] font-mono border border-zinc-800 px-1.5 py-0.5 rounded text-zinc-500">{region}</span>
+                  ))}
                 </div>
               </div>
               <div className="bg-black border border-zinc-800/50 p-6 rounded-2xl shadow-sm">
-                <p className="text-xs font-mono text-zinc-500 uppercase tracking-widest mb-2">Active Ledgers</p>
-                <h2 className="text-3xl font-bold tracking-tighter">42</h2>
-                <div className="mt-4 flex items-center gap-2 text-zinc-500 text-[10px] font-bold uppercase tracking-widest">
-                  Across 8 Jurisdictions
+                <p className="text-xs font-mono text-zinc-500 uppercase tracking-widest mb-2">p99 Latency</p>
+                <div className="flex items-baseline gap-2">
+                   <h2 className="text-3xl font-bold tracking-tighter font-mono">42</h2>
+                   <span className="text-emerald-500 text-xs font-mono">ms</span>
                 </div>
-              </div>
-              <div className="bg-black border border-zinc-800/50 p-6 rounded-2xl shadow-sm">
-                <p className="text-xs font-mono text-zinc-500 uppercase tracking-widest mb-2">API Latency (p99)</p>
-                <h2 className="text-3xl font-bold tracking-tighter font-mono">42<span className="text-zinc-500 text-xl font-sans ml-1">ms</span></h2>
-                <div className="mt-4 flex items-center gap-2 text-emerald-500 text-[10px] font-bold">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                  OPTIMIZED (US-EAST-1)
+                <div className="mt-8 space-y-2">
+                   <div className="h-1 w-full bg-zinc-900 rounded-full overflow-hidden">
+                      <div className="h-full bg-emerald-500 w-[92%]"></div>
+                   </div>
+                   <p className="text-[9px] font-mono text-zinc-600 uppercase">System Availability: 99.998%</p>
                 </div>
               </div>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
               <div className="space-y-4">
-                <h3 className="text-sm font-mono text-zinc-500 uppercase tracking-widest">Global Nodes</h3>
-                <div className="bg-black border border-zinc-800/50 rounded-2xl divide-y divide-zinc-900 overflow-hidden">
-                  {[
-                    { region: 'us-east-1', status: 'Healthy', load: '12%' },
-                    { region: 'eu-west-1', status: 'Healthy', load: '24%' },
-                    { region: 'ap-southeast-1', status: 'Degraded', load: '92%' },
-                  ].map((node) => (
-                    <div key={node.region} className="p-4 flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className={`w-1.5 h-1.5 rounded-full ${node.status === 'Healthy' ? 'bg-emerald-500' : 'bg-amber-500'}`}></div>
-                        <span className="text-xs font-mono font-bold uppercase">{node.region}</span>
+                <h3 className="text-sm font-mono text-zinc-500 uppercase tracking-widest">Global Node Status</h3>
+                <div className="grid grid-cols-4 gap-2">
+                   {Array.from({length: 16}).map((_, i) => (
+                      <div key={i} className={`h-8 rounded border border-zinc-900 flex items-center justify-center ${i === 12 ? 'bg-amber-500/10 border-amber-500/20 text-amber-500' : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-500'}`}>
+                         <span className="material-symbols-sharp !text-[14px]">{i === 12 ? 'warning' : 'check_circle'}</span>
                       </div>
-                      <div className="flex gap-4 items-center">
-                        <span className="text-[10px] text-zinc-500 font-mono">LOAD: {node.load}</span>
-                        <span className={`text-[10px] font-bold uppercase ${node.status === 'Healthy' ? 'text-zinc-500' : 'text-amber-500'}`}>{node.status}</span>
-                      </div>
-                    </div>
-                  ))}
+                   ))}
                 </div>
               </div>
 
               <div className="space-y-4">
                 <h3 className="text-sm font-mono text-zinc-500 uppercase tracking-widest">Live Ledger Events</h3>
                 <div className="bg-black border border-zinc-800/50 rounded-2xl overflow-hidden">
-                  <div className="p-0">
-                    <table className="w-full text-left">
-                      <thead className="text-[10px] font-mono text-zinc-600 uppercase border-b border-zinc-900">
-                        <tr>
-                          <th className="px-4 py-3 font-bold">Type</th>
-                          <th className="px-4 py-3 font-bold">Transaction ID</th>
-                          <th className="px-4 py-3 font-bold text-right">Value</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-zinc-900 font-mono text-[11px]">
-                        {logs.map((log) => (
-                          <tr key={log.id} className="hover:bg-zinc-900/30 transition-colors group">
-                            <td className="px-4 py-3">
+                  <table className="w-full text-left">
+                    <tbody className="divide-y divide-zinc-900 font-mono text-[11px]">
+                      {logs.map((log) => (
+                        <tr key={log.id} className="hover:bg-zinc-900/30 transition-colors group">
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-2">
+                              <span className="w-1.5 h-1.5 rounded-full bg-zinc-700 group-hover:bg-white"></span>
                               <span className="text-white font-bold">{log.action}</span>
-                              <span className="block text-zinc-600 text-[9px]">{log.time}</span>
-                            </td>
-                            <td className="px-4 py-3 text-zinc-400 font-medium group-hover:text-zinc-200">{log.id}</td>
-                            <td className="px-4 py-3 text-right">
-                               <span className={log.amount.startsWith('$') ? 'text-zinc-300' : 'text-zinc-500'}>{log.amount}</span>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 text-zinc-600 truncate max-w-[80px]">{log.id}</td>
+                          <td className="px-4 py-3 text-right">
+                             <span className="text-zinc-400">{log.amount}</span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               </div>
             </div>
@@ -145,16 +184,48 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
             <div className="flex justify-between items-center">
               <div>
                 <h2 className="text-2xl font-bold tracking-tight font-heading">Financial Accounts</h2>
-                <p className="text-sm text-zinc-500">Core system accounts based on AccountResponse schema.</p>
+                <p className="text-sm text-zinc-500">Core system accounts based on <code>AccountResponse</code> schema.</p>
               </div>
-              <button 
-                onClick={() => setIsCreateModalOpen(true)}
-                className={`flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-lg transition-colors shadow-sm ${isProduction ? 'bg-red-600 hover:bg-red-700 text-white' : 'bg-white text-black hover:bg-zinc-200'}`}
-              >
-                <span className="material-symbols-sharp">add</span>
-                Create Account
-              </button>
+              <div className="flex gap-2">
+                <button 
+                  onClick={() => setIsSchemaVisible(!isSchemaVisible)}
+                  className="flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-lg transition-colors border border-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-900"
+                >
+                  <span className="material-symbols-sharp">code</span>
+                  {isSchemaVisible ? 'Hide Schema' : 'View Schema'}
+                </button>
+                <button 
+                  onClick={() => setIsCreateModalOpen(true)}
+                  className={`flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-lg transition-colors shadow-sm ${isProduction ? 'bg-red-600 hover:bg-red-700 text-white' : 'bg-white text-black hover:bg-zinc-200'}`}
+                >
+                  <span className="material-symbols-sharp">add</span>
+                  Create Account
+                </button>
+              </div>
             </div>
+
+            {isSchemaVisible && (
+              <div className="bg-zinc-950 border border-zinc-800 p-6 rounded-2xl animate-in slide-in-from-top duration-300">
+                <div className="flex justify-between items-center mb-4">
+                  <span className="text-[10px] font-mono font-bold text-zinc-500 uppercase tracking-widest">Model: AccountResponse (Rust)</span>
+                  <span className="text-[10px] font-mono text-zinc-700">source: infra/src/models/account.rs</span>
+                </div>
+                <pre className="text-[11px] font-mono text-zinc-400 leading-relaxed overflow-x-auto">
+{`#[derive(Debug, Serialize)]
+pub struct AccountResponse {
+    pub id: Uuid,
+    pub account_number: String,
+    pub account_type: AccountType,
+    pub user_id: Uuid,
+    pub balance: Decimal,
+    pub currency: String,
+    pub status: AccountStatus,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}`}
+                </pre>
+              </div>
+            )}
             
             <div className="bg-black border border-zinc-800/50 rounded-2xl overflow-hidden shadow-2xl">
               <table className="w-full text-left">
@@ -190,21 +261,11 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
                       status: 'Active',
                       created_at: '2024-03-14'
                     },
-                    { 
-                      id: '7721-bb01-e942-0012-332211445566',
-                      account_number: '8810293341',
-                      account_type: 'Checking',
-                      user_id: '9921-axb0-f881',
-                      balance: '3,100,502.12',
-                      currency: 'USD',
-                      status: 'Suspended',
-                      created_at: '2024-02-28'
-                    },
                   ].map((acc) => (
                     <tr key={acc.id} className="hover:bg-zinc-900/30 transition-colors group">
                       <td className="px-6 py-5">
                         <span className="text-white font-bold block">{acc.account_number}</span>
-                        <span className="text-zinc-600 text-[9px] font-mono group-hover:text-zinc-500 uppercase tracking-tighter truncate w-32 block">{acc.id}</span>
+                        <span className="text-zinc-600 text-[9px] font-mono uppercase tracking-tighter truncate w-32 block">{acc.id}</span>
                       </td>
                       <td className="px-6 py-5">
                         <span className="text-zinc-300 font-medium">{acc.account_type}</span>
@@ -213,240 +274,181 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
                         <span className="text-zinc-500 text-[10px] font-mono">{acc.user_id}</span>
                       </td>
                       <td className="px-6 py-5">
-                        <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase ${
-                          acc.status === 'Active' ? 'bg-emerald-500/10 text-emerald-500' : 
-                          acc.status === 'Suspended' ? 'bg-amber-500/10 text-amber-500' : 
-                          'bg-red-500/10 text-red-500'
-                        }`}>
+                        <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase ${acc.status === 'Active' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-red-500/10 text-red-500'}`}>
                           {acc.status}
                         </span>
                       </td>
-                      <td className="px-6 py-5 text-right">
-                        <span className="text-white font-bold">{acc.balance}</span>
-                        <span className="text-zinc-500 text-[9px] ml-1">{acc.currency}</span>
-                      </td>
-                      <td className="px-6 py-5 text-right text-zinc-500 text-[10px] font-mono italic">
-                        {acc.created_at}
-                      </td>
+                      <td className="px-6 py-5 text-right font-bold text-white">{acc.balance} <span className="text-zinc-600 text-[10px] ml-1">{acc.currency}</span></td>
+                      <td className="px-6 py-5 text-right text-zinc-500 font-mono italic">{acc.created_at}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
-            
-            <div className="bg-zinc-900/20 border border-zinc-800 p-4 rounded-xl flex items-center gap-4">
-              <span className="material-symbols-sharp text-zinc-500">info</span>
-              <p className="text-[11px] text-zinc-500 leading-relaxed font-mono">
-                The <span className="text-zinc-300">AccountResponse</span> entity matches the internal Rust binary model. 
-                Balances are handled with Decimal precision for high-integrity calculations.
-              </p>
-            </div>
           </div>
         );
-      case 'Payments':
+      case 'Settlements':
         return (
           <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-500">
-             <div className="flex justify-between items-center">
+            <div className="flex justify-between items-center">
               <div>
-                <h2 className="text-2xl font-bold tracking-tight">Payment Rails</h2>
-                <p className="text-sm text-zinc-500">Real-time ACH, Wire, and Internal routing status.</p>
+                <h2 className="text-2xl font-bold tracking-tight font-heading">Weekend Settlement Engine</h2>
+                <p className="text-sm text-zinc-500">Manage 24/7 liquidity and bank surety funds.</p>
               </div>
               <div className="flex gap-2">
-                <button className="flex items-center gap-2 px-4 py-2 border border-zinc-800 text-zinc-400 text-xs font-bold rounded-lg hover:bg-zinc-900 transition-colors">
-                  <span className="material-symbols-sharp">filter_list</span>
-                  Filter
+                <button className="flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-lg border border-zinc-800 text-zinc-400 hover:text-white transition-colors">
+                  <span className="material-symbols-sharp">receipt_long</span>
+                  Export Audit Log
                 </button>
-                <button className={`flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-lg transition-colors ${isProduction ? 'bg-red-600 hover:bg-red-700 text-white' : 'bg-white text-black hover:bg-zinc-200'}`}>
-                  <span className="material-symbols-sharp">send</span>
-                  Init Transfer
+                <button className="flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-lg bg-white text-black hover:bg-zinc-200 transition-colors">
+                  <span className="material-symbols-sharp">account_balance_wallet</span>
+                  Top-up Surety Reserve
                 </button>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              {[
-                { label: 'ACH', status: 'Nominal', time: '1-2 Days' },
-                { label: 'FedWire', status: 'Nominal', time: 'Instant' },
-                { label: 'SEPA', status: 'Nominal', time: '4h' },
-                { label: 'Internal', status: 'Nominal', time: 'ms' },
-              ].map(rail => (
-                <div key={rail.label} className="bg-black border border-zinc-800/50 p-4 rounded-xl">
-                  <p className="text-[10px] font-mono text-zinc-500 uppercase font-bold">{rail.label}</p>
-                  <div className="flex items-center justify-between mt-2">
-                    <span className="text-xs text-white font-bold">{rail.time}</span>
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                  </div>
+            {/* Reserve Monitoring */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="bg-black border border-zinc-800/50 p-6 rounded-2xl">
+                <p className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest mb-2 font-bold">Total Surety Pool</p>
+                <h2 className="text-3xl font-bold tracking-tighter">R{reserve.total.toLocaleString()}</h2>
+                <div className="mt-4 flex items-center justify-between text-[10px] font-mono text-zinc-600">
+                  <span>CAPACITY UTILIZATION</span>
+                  <span>{((reserve.total - reserve.available) / reserve.total * 100).toFixed(1)}%</span>
                 </div>
-              ))}
+                <div className="mt-2 h-1 w-full bg-zinc-900 rounded-full overflow-hidden">
+                   <div className="h-full bg-white transition-all duration-700" style={{ width: `${((reserve.total - reserve.available) / reserve.total * 100)}%` }}></div>
+                </div>
+              </div>
+              <div className="bg-black border border-zinc-800/50 p-6 rounded-2xl">
+                <p className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest mb-2 font-bold">Available Reserve</p>
+                <h2 className="text-3xl font-bold tracking-tighter text-emerald-500">R{reserve.available.toLocaleString()}</h2>
+                <div className="mt-4 flex items-center gap-2 text-[10px] font-bold text-emerald-500/80">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                  READY FOR LIQUIDITY INJECTION
+                </div>
+              </div>
+              <div className="bg-black border border-zinc-800/50 p-6 rounded-2xl border-white/5">
+                <p className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest mb-2 font-bold">Projected Rails Fees (1%)</p>
+                <h2 className="text-3xl font-bold tracking-tighter">R{settlementFees.toLocaleString()}</h2>
+                <div className="mt-4 flex items-center gap-2 text-[10px] font-bold text-zinc-500">
+                  <span className="material-symbols-sharp !text-[14px]">auto_graph</span>
+                  +14% VS PREVIOUS WEEKEND
+                </div>
+              </div>
             </div>
 
-            <div className="bg-black border border-zinc-800/50 rounded-2xl overflow-hidden">
-               <div className="px-6 py-4 border-b border-zinc-900 flex justify-between items-center bg-black/40">
-                  <h4 className="text-[10px] font-mono font-bold uppercase tracking-widest text-zinc-500">Recent Transactions</h4>
-                  <span className="text-[10px] font-mono text-zinc-700">Displaying last 24h</span>
-               </div>
-               <div className="divide-y divide-zinc-900">
-                  {[
-                    { id: 'tx_9921', from: 'Corporate Pool', to: 'Merchant_0x11', val: '$50,000.00', rail: 'FEDWIRE', status: 'Settled' },
-                    { id: 'tx_9922', from: 'User_412', to: 'Internal_Holding', val: '$1,200.00', rail: 'INTERNAL', status: 'Settled' },
-                    { id: 'tx_9923', from: 'Sweeper_Node', to: 'Wells_Fargo_Ops', val: '$142,900.00', rail: 'ACH', status: 'Pending' },
-                  ].map(tx => (
-                    <div key={tx.id} className="p-6 flex items-center justify-between hover:bg-zinc-900/30 transition-colors">
-                      <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 bg-zinc-900 rounded-lg flex items-center justify-center">
-                          <span className="material-symbols-sharp text-zinc-500">{tx.rail === 'FEDWIRE' ? 'speed' : 'account_balance_wallet'}</span>
-                        </div>
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+              {/* Bank Connectivity Sidebar */}
+              <div className="lg:col-span-4 space-y-4">
+                <h3 className="text-xs font-mono text-zinc-500 uppercase tracking-widest font-bold">Bank Bridge Status</h3>
+                <div className="bg-black border border-zinc-800/50 rounded-2xl overflow-hidden divide-y divide-zinc-900">
+                  {banks.map(bank => (
+                    <div key={bank.code} className="p-4 flex items-center justify-between group hover:bg-zinc-900/30 transition-colors">
+                      <div className="flex items-center gap-3">
+                        <div className={`w-2 h-2 rounded-full ${bank.connected ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.3)]' : 'bg-zinc-800'}`}></div>
                         <div>
-                          <p className="text-xs font-bold text-white">{tx.from} → {tx.to}</p>
-                          <p className="text-[10px] font-mono text-zinc-600 mt-0.5">{tx.id} • {tx.rail}</p>
+                          <p className="text-xs font-bold text-white tracking-tight">{bank.name}</p>
+                          <p className="text-[9px] font-mono text-zinc-600">{bank.code}</p>
                         </div>
                       </div>
                       <div className="text-right">
-                        <p className="text-xs font-bold text-white">{tx.val}</p>
-                        <p className={`text-[9px] font-mono uppercase font-bold mt-1 ${tx.status === 'Settled' ? 'text-emerald-500' : 'text-amber-500'}`}>{tx.status}</p>
+                        <p className="text-[10px] font-mono text-zinc-400">R{(bank.surety / 1000000).toFixed(1)}M Surety</p>
+                        <p className={`text-[9px] font-bold uppercase tracking-tighter ${bank.connected ? 'text-zinc-600' : 'text-zinc-800'}`}>
+                          {bank.connected ? 'Bridged' : 'Standby'}
+                        </p>
                       </div>
                     </div>
                   ))}
-               </div>
-            </div>
-          </div>
-        );
-      case 'Ledger':
-        return (
-          <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-500">
-            <div className="flex justify-between items-center">
-              <div>
-                <h2 className="text-2xl font-bold tracking-tight">Double-Entry Journal</h2>
-                <p className="text-sm text-zinc-500">Immutable records of all asset movements with cryptographic integrity.</p>
+                </div>
               </div>
-              <button className="flex items-center gap-2 px-4 py-2 border border-zinc-800 text-zinc-400 text-xs font-bold rounded-lg hover:bg-zinc-900 transition-colors">
-                <span className="material-symbols-sharp">verified_user</span>
-                Verify State
-              </button>
-            </div>
 
-            <div className="bg-[#050505] border border-white/5 rounded-2xl overflow-hidden font-mono text-[11px] md:text-xs">
-              <div className="px-6 py-4 border-b border-white/5 bg-black/40 flex justify-between items-center">
-                <div className="flex gap-4">
-                  <span className="text-zinc-600">BLOCK_HEIGHT: <span className="text-white font-bold">942,112</span></span>
-                  <span className="text-zinc-600">MERKLE_ROOT: <span className="text-white font-bold">0x9f...a2</span></span>
+              {/* Recent Settlement Transactions */}
+              <div className="lg:col-span-8 space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xs font-mono text-zinc-500 uppercase tracking-widest font-bold">Live Settlement Feed</h3>
+                  <div className="flex gap-4">
+                    <span className="text-[9px] font-mono text-zinc-700 flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> PENDING
+                    </span>
+                    <span className="text-[9px] font-mono text-zinc-700 flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span> DELAYED
+                    </span>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2 text-emerald-500/80">
-                  <span className="material-symbols-sharp text-[16px]">lock</span>
-                  <span className="text-[10px] font-bold">INTEGRITY_VERIFIED</span>
-                </div>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse">
-                  <thead className="bg-black/20 text-zinc-600 uppercase">
-                    <tr>
-                      <th className="px-6 py-3 border-b border-white/5">Sequence</th>
-                      <th className="px-6 py-3 border-b border-white/5">Account ID</th>
-                      <th className="px-6 py-3 border-b border-white/5">Debit</th>
-                      <th className="px-6 py-3 border-b border-white/5">Credit</th>
-                      <th className="px-6 py-3 border-b border-white/5">Description</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-white/5">
-                    {[
-                      { seq: '942112:0', acc: 'acc_treasury_01', d: '-', c: '$1,000.00', desc: 'Fee Income' },
-                      { seq: '942112:1', acc: 'acc_ops_04', d: '$1,000.00', c: '-', desc: 'Fee Accrual' },
-                      { seq: '942111:0', acc: 'acc_user_421', d: '$4,200.00', c: '-', desc: 'ACH Withdrawal' },
-                      { seq: '942111:1', acc: 'acc_holding_pool', d: '-', c: '$4,200.00', desc: 'ACH Liquidity' },
-                    ].map(entry => ( entry &&
-                      <tr key={entry.seq} className="hover:bg-white/5 transition-colors">
-                        <td className="px-6 py-4 text-zinc-500">{entry.seq}</td>
-                        <td className="px-6 py-4 text-zinc-300 font-bold">{entry.acc}</td>
-                        <td className="px-6 py-4 text-emerald-500">{entry.d}</td>
-                        <td className="px-6 py-4 text-zinc-400">{entry.c}</td>
-                        <td className="px-6 py-4 text-zinc-600 italic">{entry.desc}</td>
+                <div className="bg-black border border-zinc-800/50 rounded-2xl overflow-hidden shadow-2xl">
+                  <table className="w-full text-left">
+                    <thead className="text-[10px] font-mono text-zinc-600 uppercase bg-zinc-950 border-b border-zinc-900">
+                      <tr>
+                        <th className="px-6 py-4">Transaction Ref</th>
+                        <th className="px-6 py-4">Flow (Source → Dest)</th>
+                        <th className="px-6 py-4">Amount</th>
+                        <th className="px-6 py-4 text-right">Status</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        );
-      case 'Infrastructure':
-        return (
-          <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-500">
-            <div className="flex justify-between items-center">
-              <div>
-                <h2 className="text-2xl font-bold tracking-tight">System Configuration</h2>
-                <p className="text-sm text-zinc-500">Manage API nodes, webhook endpoints, and security keys.</p>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              <div className="bg-black border border-zinc-800/50 p-6 rounded-2xl">
-                <div className="flex items-center gap-3 mb-6">
-                  <span className="material-symbols-sharp text-zinc-500">vpn_key</span>
-                  <h4 className="text-sm font-bold uppercase tracking-widest text-zinc-300">API Credentials</h4>
+                    </thead>
+                    <tbody className="divide-y divide-zinc-900 font-mono text-xs">
+                      {[
+                        { ref: 'txn_99x221a', sender: 'FNB', receiver: 'ABSA', amount: 142000, status: 'pending', time: '14:22:01' },
+                        { ref: 'txn_0x221bb', sender: 'NEDBANK', receiver: 'CAPITEC', amount: 92000, status: 'pending', time: '14:21:44' },
+                        { ref: 'txn_99x112c', sender: 'FNB', receiver: 'STANDARD', amount: 4500000, status: 'delayed', time: '14:20:12' },
+                        { ref: 'txn_88z224d', sender: 'ABSA', receiver: 'FNB', amount: 12500, status: 'pending', time: '14:19:55' },
+                      ].map(tx => (
+                        <tr key={tx.ref} className="hover:bg-zinc-900/30 transition-colors group">
+                          <td className="px-6 py-5">
+                            <span className="text-zinc-400 font-bold block">{tx.ref}</span>
+                            <span className="text-zinc-600 text-[9px]">{tx.time}</span>
+                          </td>
+                          <td className="px-6 py-5">
+                            <div className="flex items-center gap-2">
+                              <span className="text-white font-bold">{tx.sender}</span>
+                              <span className="text-zinc-800">→</span>
+                              <span className="text-zinc-400">{tx.receiver}</span>
+                            </div>
+                          </td>
+                          <td className="px-6 py-5">
+                            <p className="text-white font-bold">R{tx.amount.toLocaleString()}</p>
+                            <p className="text-[9px] text-zinc-600">FEE: R{(tx.amount * 0.01).toLocaleString()}</p>
+                          </td>
+                          <td className="px-6 py-5 text-right">
+                            <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase ${
+                              tx.status === 'pending' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-amber-500/10 text-amber-500'
+                            }`}>
+                              {tx.status}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
-                <div className="space-y-4">
-                   <div className="p-3 bg-zinc-900/50 border border-zinc-800 rounded-lg flex items-center justify-between">
-                      <div className="font-mono">
-                        <p className="text-[10px] text-zinc-500">{isProduction ? 'PROD_KEY_01' : 'SANDBOX_KEY_01'}</p>
-                        <p className="text-xs font-bold">{isProduction ? 'rails_live_******************2a1' : 'rails_test_******************78d'}</p>
-                      </div>
-                      <button className="p-2 hover:bg-zinc-800 rounded transition-colors">
-                        <span className="material-symbols-sharp text-zinc-600">content_copy</span>
-                      </button>
-                   </div>
-                   <button className={`w-full py-2 bg-zinc-900 border border-zinc-800 rounded-lg text-[10px] font-bold uppercase hover:bg-zinc-800 transition-colors ${isProduction ? 'text-red-500 border-red-900/50' : 'text-zinc-500'}`}>
-                      Rotate All Keys
-                   </button>
-                </div>
-              </div>
-
-              <div className="bg-black border border-zinc-800/50 p-6 rounded-2xl">
-                <div className="flex items-center gap-3 mb-6">
-                  <span className="material-symbols-sharp text-zinc-500">webhook</span>
-                  <h4 className="text-sm font-bold uppercase tracking-widest text-zinc-300">Webhook Endpoints</h4>
-                </div>
-                <div className="space-y-4">
-                  {[
-                    { url: 'https://api.acme.co/webhooks/rails', status: 'Healthy', latency: '42ms' },
-                  ].map(wh => (
-                    <div key={wh.url} className="p-3 bg-zinc-900/50 border border-zinc-800 rounded-lg">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className={`text-[9px] font-bold uppercase ${wh.status === 'Healthy' ? 'text-emerald-500' : 'text-amber-500'}`}>{wh.status}</span>
-                        <span className="text-[9px] font-mono text-zinc-600">{wh.latency}</span>
-                      </div>
-                      <p className="text-xs font-mono truncate text-zinc-400">{wh.url}</p>
-                    </div>
-                  ))}
-                  <button className="w-full py-2 bg-white text-black rounded-lg text-[10px] font-bold uppercase hover:bg-zinc-200 transition-colors">
-                    Add New Endpoint
+                <div className="bg-zinc-950/50 border border-white/5 p-4 rounded-xl flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <span className="material-symbols-sharp text-zinc-600">info</span>
+                    <p className="text-[10px] font-mono text-zinc-500">
+                      Transactions marked as <span className="text-amber-500 font-bold">DELAYED</span> require additional surety funds from the source bank.
+                    </p>
+                  </div>
+                  <button className="text-[10px] font-mono font-bold uppercase underline underline-offset-4 text-zinc-400 hover:text-white transition-colors">
+                    Release Delayed Batch
                   </button>
                 </div>
               </div>
             </div>
-
-            <div className="bg-zinc-900/30 border border-zinc-800/50 p-6 rounded-2xl flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-white/5 rounded-full flex items-center justify-center">
-                  <span className="material-symbols-sharp text-white">shield_with_heart</span>
-                </div>
-                <div>
-                  <h5 className="font-bold text-sm">Automated Compliance Node</h5>
-                  <p className="text-xs text-zinc-500">KYC/AML orchestration is currently active for 12,400 entities.</p>
-                </div>
-              </div>
-              <button className="px-4 py-2 border border-zinc-800 text-xs font-bold rounded-lg hover:bg-zinc-900 transition-colors">Configure Engine</button>
-            </div>
           </div>
         );
+      case 'Payments':
+      case 'Ledger':
+      case 'Infrastructure':
+        return <div className="p-12 text-center text-zinc-600 font-mono uppercase tracking-[0.2em] animate-pulse">Endpoint in Stealth... Access Denied</div>;
       default:
         return null;
     }
   };
 
   return (
-    <div className="flex h-screen bg-[#09090b] text-[#fafafa] overflow-hidden">
+    <div className={`flex h-screen bg-[#09090b] text-[#fafafa] overflow-hidden selection:bg-white selection:text-black transition-all duration-700 ${isProduction ? 'shadow-[inset_0_0_100px_rgba(220,38,38,0.05)]' : ''}`}>
       {/* Sidebar */}
-      <aside className="w-64 border-r border-zinc-800/50 flex flex-col bg-black">
+      <aside className="w-64 border-r border-zinc-800/50 flex flex-col bg-black relative z-20">
         <div className="p-6">
           <div className="flex items-center gap-2 mb-8">
             <div className="w-5 h-5 bg-white rounded-sm"></div>
@@ -514,7 +516,6 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col h-screen overflow-hidden relative">
-        {/* Production Warning Banner */}
         {isProduction && (
           <div className="bg-red-950/20 border-b border-red-900/50 px-8 py-2.5 flex items-center justify-between animate-in slide-in-from-top duration-300">
             <div className="flex items-center gap-3">
@@ -523,9 +524,6 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
                 Live Production Environment — Real Assets at Risk
               </span>
             </div>
-            <span className="text-[9px] font-mono text-red-500/60 uppercase italic">
-              All operations are legally binding and settled via banking rails.
-            </span>
           </div>
         )}
 
@@ -533,9 +531,6 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
           <header className="h-16 border-b border-zinc-800/50 flex items-center justify-between px-8 bg-black/40 backdrop-blur-sm sticky top-0 z-10">
             <div className="flex items-center gap-4">
               <h1 className="text-lg font-bold tracking-tight">{activeTab}</h1>
-              {isProduction && (
-                 <span className="text-[9px] bg-red-500 text-white font-bold px-1.5 py-0.5 rounded uppercase tracking-tighter">LIVE</span>
-              )}
             </div>
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20">
@@ -551,115 +546,92 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
             </div>
           </header>
 
-          <div className="p-8 max-w-6xl mx-auto">
+          <div className="p-8 max-w-6xl mx-auto pb-32">
             {renderContent()}
           </div>
         </main>
 
-        {/* Big Modal - Create Account */}
+        {/* Create Modal */}
         {isCreateModalOpen && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/80 backdrop-blur-sm animate-in fade-in duration-300">
-            <div className="w-full max-w-2xl bg-[#0a0a0b] border border-zinc-800 rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
-              <div className="p-8 border-b border-zinc-900 bg-zinc-950/50">
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-2xl font-bold tracking-tight font-heading">Initialize New Account</h3>
-                  <button 
-                    onClick={() => setIsCreateModalOpen(false)}
-                    className="p-2 text-zinc-500 hover:text-white transition-colors"
-                  >
-                    <span className="material-symbols-sharp">close</span>
-                  </button>
-                </div>
-                <p className="text-sm text-zinc-500">Dispatching a <code>CreateAccountRequest</code> to the core infrastructure engine.</p>
-              </div>
-
-              <form onSubmit={handleCreateAccount} className="p-8 space-y-8">
-                <div className="space-y-6">
-                  {/* User ID Section */}
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-mono font-bold uppercase tracking-widest text-zinc-500 ml-1 flex items-center gap-2">
-                      <span className="material-symbols-sharp !text-[14px]">fingerprint</span>
-                      User ID (UUID)
-                    </label>
-                    <div className="relative group">
-                      <input
-                        required
-                        type="text"
-                        placeholder="8a12-99b1-cc09-..."
-                        className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-4 text-white font-mono text-sm focus:outline-none focus:border-zinc-500 transition-all hover:bg-zinc-800/50"
-                        value={formData.user_id}
-                        onChange={(e) => setFormData({...formData, user_id: e.target.value})}
-                      />
-                      <div className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-mono text-zinc-700 pointer-events-none">UUID v4</div>
-                    </div>
-                  </div>
-
-                  {/* Split Row for Type and Currency */}
-                  <div className="grid grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-mono font-bold uppercase tracking-widest text-zinc-500 ml-1 flex items-center gap-2">
-                        <span className="material-symbols-sharp !text-[14px]">category</span>
-                        Account Type
-                      </label>
-                      <select 
-                        className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-4 text-white text-sm focus:outline-none focus:border-zinc-500 transition-all appearance-none cursor-pointer hover:bg-zinc-800/50"
-                        value={formData.account_type}
-                        onChange={(e) => setFormData({...formData, account_type: e.target.value})}
-                      >
-                        <option value="checking">Checking</option>
-                        <option value="saving">Saving</option>
-                      </select>
-                    </div>
-
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-mono font-bold uppercase tracking-widest text-zinc-500 ml-1 flex items-center gap-2">
-                        <span className="material-symbols-sharp !text-[14px]">payments</span>
-                        Base Currency
-                      </label>
-                      <select 
-                        className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-4 text-white text-sm focus:outline-none focus:border-zinc-500 transition-all appearance-none cursor-pointer hover:bg-zinc-800/50"
-                        value={formData.currency}
-                        onChange={(e) => setFormData({...formData, currency: e.target.value})}
-                      >
-                        <option value="USD">USD - US Dollar</option>
-                        <option value="EUR">EUR - Euro</option>
-                        <option value="GBP">GBP - British Pound</option>
-                        <option value="JPY">JPY - Japanese Yen</option>
-                      </select>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="bg-zinc-900/30 border border-dashed border-zinc-800 p-4 rounded-2xl">
-                  <div className="flex items-start gap-3">
-                    <span className="material-symbols-sharp text-zinc-600 !text-[18px] mt-0.5">verified_user</span>
-                    <div className="text-[10px] font-mono text-zinc-500 leading-relaxed uppercase">
-                      Account number will be auto-generated upon submission. 
-                      Initial balance is defaulted to <span className="text-white">0.00</span> in accordance with <code>sqlx::FromRow</code> mapping.
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex gap-4 pt-4">
-                  <button 
-                    type="button"
-                    onClick={() => setIsCreateModalOpen(false)}
-                    className="flex-1 py-4 bg-zinc-900 hover:bg-zinc-800 text-white font-bold rounded-2xl transition-all border border-zinc-800"
-                  >
-                    Cancel
-                  </button>
-                  <button 
-                    type="submit"
-                    className={`flex-1 py-4 font-bold rounded-2xl transition-all shadow-xl flex items-center justify-center gap-2 group ${isProduction ? 'bg-red-600 hover:bg-red-700 text-white' : 'bg-white text-black hover:bg-zinc-200'}`}
-                  >
-                    Initialize Account
-                    <span className="material-symbols-sharp !text-[18px] transform group-hover:translate-x-1 transition-transform">rocket_launch</span>
-                  </button>
-                </div>
-              </form>
-            </div>
+             <div className="w-full max-w-2xl bg-[#0a0a0b] border border-zinc-800 rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300 p-12">
+                <h3 className="text-2xl font-bold mb-6">Initialize Account</h3>
+                <p className="text-zinc-500 mb-8 font-mono text-xs uppercase tracking-widest">Awaiting CreateAccountRequest payload...</p>
+                <button onClick={() => setIsCreateModalOpen(false)} className="w-full py-4 bg-white text-black font-bold rounded-xl">Close Terminal</button>
+             </div>
           </div>
         )}
+
+        {/* Rails Copilot AI */}
+        <div className={`fixed bottom-8 right-8 z-[50] transition-all duration-500 transform ${isCopilotOpen ? 'w-96 h-[500px]' : 'w-12 h-12'}`}>
+          {!isCopilotOpen ? (
+            <button 
+              onClick={() => setIsCopilotOpen(true)}
+              className="w-full h-full bg-white text-black rounded-full flex items-center justify-center shadow-2xl hover:scale-110 transition-transform"
+            >
+              <span className="material-symbols-sharp">smart_toy</span>
+            </button>
+          ) : (
+            <div className="w-full h-full bg-[#0d0d0e] border border-zinc-800 rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-300">
+              <div className="p-4 border-b border-zinc-800 bg-zinc-900/50 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="material-symbols-sharp !text-[16px] text-zinc-400">terminal</span>
+                  <span className="text-[10px] font-mono font-bold uppercase text-zinc-300">Rails Copilot v1.2</span>
+                </div>
+                <button onClick={() => setIsCopilotOpen(false)} className="text-zinc-500 hover:text-white">
+                  <span className="material-symbols-sharp !text-[16px]">close</span>
+                </button>
+              </div>
+              
+              <div className="flex-1 overflow-y-auto p-4 space-y-4 no-scrollbar">
+                {chatHistory.length === 0 && (
+                  <div className="text-center py-10">
+                    <span className="material-symbols-sharp text-zinc-800 !text-[48px] mb-4">forum</span>
+                    <p className="text-[10px] font-mono text-zinc-600 uppercase tracking-widest">Query the infrastructure node...</p>
+                  </div>
+                )}
+                {chatHistory.map((msg, i) => (
+                  <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                    <div className={`max-w-[85%] p-3 rounded-xl text-xs font-mono leading-relaxed ${msg.role === 'user' ? 'bg-zinc-800 text-zinc-300' : 'bg-white/5 text-zinc-400 border border-white/5'}`}>
+                      {msg.text}
+                    </div>
+                  </div>
+                ))}
+                {isThinking && (
+                  <div className="flex justify-start">
+                    <div className="bg-white/5 p-3 rounded-xl">
+                      <span className="flex gap-1">
+                        <span className="w-1 h-1 bg-zinc-600 rounded-full animate-bounce"></span>
+                        <span className="w-1 h-1 bg-zinc-600 rounded-full animate-bounce [animation-delay:0.2s]"></span>
+                        <span className="w-1 h-1 bg-zinc-600 rounded-full animate-bounce [animation-delay:0.4s]"></span>
+                      </span>
+                    </div>
+                  </div>
+                )}
+                <div ref={chatEndRef} />
+              </div>
+
+              <div className="p-4 border-t border-zinc-800 bg-zinc-950">
+                <div className="relative">
+                  <input 
+                    type="text" 
+                    placeholder="Ask Rails Copilot..." 
+                    className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-[11px] font-mono text-white focus:outline-none focus:border-zinc-500"
+                    value={chatInput}
+                    onChange={(e) => setChatInput(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
+                  />
+                  <button 
+                    onClick={handleSendMessage}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-600 hover:text-white transition-colors"
+                  >
+                    <span className="material-symbols-sharp !text-[16px]">send</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
