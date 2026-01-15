@@ -4,11 +4,19 @@ export interface NavItem {
   href: string;
 }
 
+export interface CodeSnippets {
+  ts: string;
+  go: string;
+  rust: string;
+  java: string;
+}
+
 export interface Feature {
   id: string;
   title: string;
   description: string;
-  code: string;
+  snippets: CodeSnippets;
+  bullets: string[];
 }
 
 export enum ApplicationStatus {

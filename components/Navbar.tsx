@@ -1,6 +1,5 @@
 
 import React from 'react';
-import { NAV_ITEMS } from '../constants';
 
 const Navbar: React.FC = () => {
   return (
@@ -11,22 +10,14 @@ const Navbar: React.FC = () => {
             <div className="w-6 h-6 bg-white rounded-sm"></div>
             <span className="font-bold text-xl tracking-tighter">RAILS</span>
           </a>
-          <div className="hidden md:flex items-center gap-6">
-            {NAV_ITEMS.map((item) => (
-              <a
-                key={item.label}
-                href={item.href}
-                className="text-sm text-zinc-400 hover:text-white transition-colors"
-              >
-                {item.label}
-              </a>
-            ))}
-          </div>
         </div>
         <div className="flex items-center gap-4">
-          <button className="text-sm font-medium text-zinc-400 hover:text-white transition-colors">
+          <a 
+            href="#beta"
+            className="text-sm font-medium text-zinc-400 hover:text-white transition-colors"
+          >
             Login
-          </button>
+          </a>
           <a
             href="#beta"
             className="text-sm font-medium bg-white text-black px-4 py-1.5 rounded-full hover:bg-zinc-200 transition-colors"

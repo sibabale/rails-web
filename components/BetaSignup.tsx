@@ -3,57 +3,142 @@ import React, { useState } from 'react';
 import { ApplicationStatus } from '../types';
 
 const BetaSignup: React.FC = () => {
-  const [email, setEmail] = useState('');
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    company: '',
+    useCase: ''
+  });
   const [status, setStatus] = useState<ApplicationStatus>(ApplicationStatus.IDLE);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email) return;
-    
     setStatus(ApplicationStatus.SUBMITTING);
-    // Simulate API call
+    
+    // Simulate API call with a slight delay for realism
     setTimeout(() => {
       setStatus(ApplicationStatus.SUCCESS);
-      setEmail('');
-    }, 1500);
+    }, 2000);
+  };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
   return (
     <section id="beta" className="py-32 bg-zinc-950 border-t border-zinc-900">
-      <div className="max-w-4xl mx-auto px-6 text-center">
-        <h2 className="text-4xl md:text-6xl font-bold tracking-tighter mb-8">
-          Apply for early access.
-        </h2>
-        <p className="text-xl text-zinc-400 mb-12 max-w-2xl mx-auto">
-          We're hand-selecting a small cohort of partners to build on Rails 
-          during our stealth phase. Be the first to know when we exit beta.
-        </p>
+      <div className="max-w-4xl mx-auto px-6">
+        <div className="text-center mb-16">
+          <h2 className="text-4xl md:text-6xl font-bold tracking-tighter mb-8">
+            Apply for the Private Beta.
+          </h2>
+          <p className="text-xl text-zinc-400 max-w-2xl mx-auto leading-relaxed">
+            Rails is currently in a closed-access phase. We are onboarding a limited number of teams 
+            building critical financial infrastructure.
+          </p>
+        </div>
         
         {status === ApplicationStatus.SUCCESS ? (
-          <div className="p-8 rounded-2xl bg-zinc-900 border border-zinc-800 animate-in fade-in zoom-in duration-500">
-            <h3 className="text-2xl font-bold mb-2">Application Received.</h3>
-            <p className="text-zinc-400">Our team will reach out to you within 24 hours.</p>
+          <div className="max-w-xl mx-auto p-12 rounded-3xl bg-zinc-900/50 border border-zinc-800 text-center animate-in fade-in zoom-in duration-700">
+            <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mx-auto mb-6">
+              <svg className="w-8 h-8 text-black" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <h3 className="text-2xl font-bold mb-4">Application Encrypted & Sent</h3>
+            <p className="text-zinc-400 mb-8">
+              Thank you for your interest in Rails. Our infrastructure team will review your application 
+              and contact you via secure channel if there is a fit for the current cohort.
+            </p>
+            <button 
+              onClick={() => setStatus(ApplicationStatus.IDLE)}
+              className="text-sm font-medium text-zinc-500 hover:text-white transition-colors"
+            >
+              Submit another application
+            </button>
           </div>
         ) : (
-          <form onSubmit={handleSubmit} className="relative max-w-md mx-auto">
-            <div className="flex flex-col sm:flex-row gap-3">
+          <form onSubmit={handleSubmit} className="max-w-xl mx-auto space-y-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <label className="text-xs font-mono uppercase tracking-widest text-zinc-500 ml-1">Full Name</label>
+                <input
+                  name="name"
+                  type="text"
+                  required
+                  placeholder="John Doe"
+                  className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-white transition-all hover:bg-zinc-800/50"
+                  value={formData.name}
+                  onChange={handleChange}
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-mono uppercase tracking-widest text-zinc-500 ml-1">Company</label>
+                <input
+                  name="company"
+                  type="text"
+                  required
+                  placeholder="Acme Inc"
+                  className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-white transition-all hover:bg-zinc-800/50"
+                  value={formData.company}
+                  onChange={handleChange}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-xs font-mono uppercase tracking-widest text-zinc-500 ml-1">Work Email</label>
               <input
+                name="email"
                 type="email"
                 required
-                placeholder="Enter your work email"
-                className="flex-1 bg-zinc-900 border border-zinc-800 rounded-full px-6 py-4 text-white focus:outline-none focus:border-white transition-colors"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                placeholder="john@acme.com"
+                className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-white transition-all hover:bg-zinc-800/50"
+                value={formData.email}
+                onChange={handleChange}
               />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-xs font-mono uppercase tracking-widest text-zinc-500 ml-1">Primary Use Case</label>
+              <textarea
+                name="useCase"
+                required
+                rows={4}
+                placeholder="Tell us about the banking rails you're looking to build..."
+                className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-white transition-all hover:bg-zinc-800/50 resize-none"
+                value={formData.useCase}
+                onChange={handleChange}
+              />
+            </div>
+
+            <div className="pt-4">
               <button
+                type="submit"
                 disabled={status === ApplicationStatus.SUBMITTING}
-                className="bg-white text-black font-bold rounded-full px-8 py-4 hover:bg-zinc-200 transition-all disabled:opacity-50"
+                className="w-full bg-white text-black font-bold rounded-xl py-4 hover:bg-zinc-200 transition-all disabled:opacity-50 flex items-center justify-center gap-3 group"
               >
-                {status === ApplicationStatus.SUBMITTING ? 'Applying...' : 'Apply'}
+                {status === ApplicationStatus.SUBMITTING ? (
+                  <>
+                    <svg className="animate-spin h-5 w-5 text-black" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span>Submitting Application...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>Submit Application</span>
+                    <svg className="w-4 h-4 transform group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                    </svg>
+                  </>
+                )}
               </button>
             </div>
-            <p className="mt-4 text-xs text-zinc-500">
-              By applying, you agree to our confidential beta terms.
+            
+            <p className="text-center text-[10px] uppercase tracking-widest text-zinc-600 font-mono">
+              Access is strictly confidential. All data is encrypted at rest.
             </p>
           </form>
         )}
