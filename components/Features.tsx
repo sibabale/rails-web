@@ -8,14 +8,14 @@ const Features: React.FC = () => {
   const activeFeature = FEATURES.find(f => f.id === activeFeatureId) || FEATURES[0];
 
   return (
-    <section id="infrastructure" className="py-24 bg-black relative">
+    <section id="infrastructure" className="py-24 bg-white dark:bg-black relative transition-colors duration-300">
       <div className="max-w-7xl mx-auto px-6">
         <div className="mb-16">
-          <h2 className="text-sm font-mono text-zinc-500 uppercase tracking-[0.3em] mb-4">Core Infrastructure</h2>
-          <h3 className="text-4xl md:text-6xl font-bold tracking-tighter mb-6">
-            Everything you need to<br /><span className="text-zinc-500">launch a bank.</span>
+          <h2 className="text-sm font-mono text-zinc-400 dark:text-zinc-500 uppercase tracking-[0.3em] mb-4">Core Infrastructure</h2>
+          <h3 className="text-4xl md:text-6xl font-bold tracking-tighter mb-6 text-zinc-900 dark:text-white">
+            Everything you need to<br /><span className="text-zinc-400 dark:text-zinc-500">launch a bank.</span>
           </h3>
-          <p className="text-zinc-400 max-w-xl text-lg font-light leading-relaxed">
+          <p className="text-zinc-600 dark:text-zinc-400 max-w-xl text-lg font-light leading-relaxed">
             Stop worrying about ledger consistency and banking core logic. 
             Build your unique product on top of our bulletproof infra.
           </p>
@@ -28,7 +28,7 @@ const Features: React.FC = () => {
               <button
                 key={feature.id}
                 onClick={() => setActiveFeatureId(feature.id)}
-                className={`group relative text-left w-full py-8 border-b border-zinc-800/50 transition-all duration-300 ${
+                className={`group relative text-left w-full py-8 border-b border-zinc-100 dark:border-zinc-800/50 transition-all duration-300 ${
                   activeFeatureId === feature.id 
                     ? 'opacity-100' 
                     : 'opacity-40 hover:opacity-100'
@@ -36,11 +36,11 @@ const Features: React.FC = () => {
               >
                 <div className="flex items-start gap-6">
                   <div className={`mt-1 flex-shrink-0 w-1.5 h-1.5 rounded-full transition-all duration-500 ${
-                    activeFeatureId === feature.id ? 'bg-white scale-150 shadow-[0_0_8px_white]' : 'bg-zinc-700'
+                    activeFeatureId === feature.id ? 'bg-zinc-900 dark:bg-white scale-150 shadow-[0_0_8px_rgba(0,0,0,0.1)] dark:shadow-[0_0_8px_white]' : 'bg-zinc-300 dark:bg-zinc-700'
                   }`}></div>
                   <div>
                     <h4 className={`text-xl font-bold mb-2 transition-colors ${
-                      activeFeatureId === feature.id ? 'text-white' : 'text-zinc-400'
+                      activeFeatureId === feature.id ? 'text-zinc-900 dark:text-white' : 'text-zinc-400'
                     }`}>
                       {feature.title}
                     </h4>
@@ -48,14 +48,14 @@ const Features: React.FC = () => {
                       {feature.description}
                     </p>
                     
-                    {/* Inline bullets for the active item to give it more weight */}
+                    {/* Inline bullets */}
                     <div className={`overflow-hidden transition-all duration-500 ease-in-out ${
                       activeFeatureId === feature.id ? 'max-h-40 opacity-100' : 'max-h-0 opacity-0'
                     }`}>
                       <ul className="space-y-2 pb-2">
                         {feature.bullets.map((bullet) => (
-                          <li key={bullet} className="flex items-center gap-2 text-[11px] font-mono text-zinc-400 uppercase tracking-wider">
-                            <span className="w-1 h-px bg-zinc-600"></span>
+                          <li key={bullet} className="flex items-center gap-2 text-[11px] font-mono text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
+                            <span className="w-1 h-px bg-zinc-200 dark:bg-zinc-600"></span>
                             {bullet}
                           </li>
                         ))}
@@ -69,7 +69,7 @@ const Features: React.FC = () => {
             <div className="pt-8">
               <a 
                 href="#beta" 
-                className="inline-flex items-center gap-2 text-sm font-medium text-white hover:text-zinc-400 transition-colors group"
+                className="inline-flex items-center gap-2 text-sm font-medium text-zinc-900 dark:text-white hover:text-zinc-500 dark:hover:text-zinc-400 transition-colors group"
               >
                 View full API reference
                 <span className="material-symbols-sharp !text-[18px] transform group-hover:translate-x-1 transition-transform">arrow_right_alt</span>
@@ -77,19 +77,16 @@ const Features: React.FC = () => {
             </div>
           </div>
 
-          {/* Code Showcase Terminal */}
           <div className="lg:col-span-7 lg:sticky lg:top-24">
             <div className="relative group">
-              {/* Background Glow */}
-              <div className="absolute -inset-4 bg-white/5 blur-3xl rounded-full opacity-50 group-hover:opacity-70 transition-opacity" />
+              <div className="absolute -inset-4 bg-zinc-900/5 dark:bg-white/5 blur-3xl rounded-full opacity-50 group-hover:opacity-70 transition-opacity" />
               
               <div className="relative">
                 <CodeBlock snippets={activeFeature.snippets} />
               </div>
 
-              {/* Terminal Footer Metadata */}
               <div className="mt-4 flex items-center justify-between px-2">
-                <div className="text-[10px] font-mono text-zinc-600 uppercase flex gap-4">
+                <div className="text-[10px] font-mono text-zinc-400 dark:text-zinc-600 uppercase flex gap-4">
                   <span className="flex items-center gap-1.5">
                     <span className="material-symbols-sharp !text-[14px]">lock</span>
                     TLS 1.3
@@ -99,7 +96,7 @@ const Features: React.FC = () => {
                     SOC2 Compliant
                   </span>
                 </div>
-                <span className="text-[10px] font-mono text-zinc-700">v2.4.0-STABLE</span>
+                <span className="text-[10px] font-mono text-zinc-300 dark:text-zinc-700">v2.4.0-STABLE</span>
               </div>
             </div>
           </div>
