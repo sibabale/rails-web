@@ -705,11 +705,12 @@ pub struct AccountResponse {
               </button>
             ))}
             
+            <div className="my-4 h-px bg-zinc-200 dark:bg-zinc-900/50 mx-3" />
             <a
               href="https://docs.rails.infra"
               target="_blank"
               rel="noopener noreferrer"
-              className="w-full flex items-center gap-3 px-3 py-2 text-sm rounded-lg text-zinc-500 dark:text-zinc-500 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors mt-6 border-t border-zinc-200 dark:border-zinc-900/50 pt-4"
+              className="w-full flex items-center gap-3 px-3 py-2 text-sm rounded-lg text-zinc-500 dark:text-zinc-500 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors"
             >
               <span className="material-symbols-sharp">description</span>
               Docs
