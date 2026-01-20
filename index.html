@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en" style="scroll-behavior: smooth;">
 <head>
@@ -27,7 +28,7 @@
             letter-spacing: -0.025em;
         }
         .grid-background {
-            background-image: radial-gradient(#27272a 0.5px, transparent 0.5px);
+            background-image: radial-gradient(#e4e4e7 0.5px, transparent 0.5px);
             background-size: 24px 24px;
         }
         .dark .grid-background {
@@ -38,13 +39,16 @@
           font-size: 20px;
         }
         .glow-effect {
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.03);
+        }
+        .dark .glow-effect {
             box-shadow: 0 0 20px rgba(255, 255, 255, 0.05);
         }
         ::-webkit-scrollbar {
             width: 8px;
         }
         ::-webkit-scrollbar-track {
-            background: transparent;
+            background: #f4f4f5;
         }
         .dark ::-webkit-scrollbar-track {
             background: #09090b;
@@ -73,15 +77,15 @@
 <script type="importmap">
 {
   "imports": {
-    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
     "react/": "https://esm.sh/react@^19.2.3/",
     "react": "https://esm.sh/react@^19.2.3",
-    "@google/genai": "https://esm.sh/@google/genai@^1.36.0"
+    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
+    "@google/genai": "https://esm.sh/@google/genai@^1.37.0"
   }
 }
 </script>
 </head>
-<body class="bg-white text-zinc-900 dark:bg-[#09090b] dark:text-[#fafafa]">
+<body class="bg-white text-zinc-800 dark:bg-[#09090b] dark:text-[#fafafa]">
     <div id="root"></div>
 </body>
 </html>
