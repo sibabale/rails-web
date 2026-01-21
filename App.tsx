@@ -26,7 +26,7 @@ interface UserProfile {
 }
 
 const DashboardSkeleton = () => (
-  <div className="flex h-screen bg-white dark:bg-[#09090b] overflow-hidden">
+  <div className="flex h-screen bg-white dark:bg-zinc-950 overflow-hidden">
     <aside className="w-64 border-r border-zinc-100 dark:border-zinc-800/50 flex flex-col bg-zinc-50 dark:bg-black p-6">
       <div className="flex items-center gap-2 mb-8">
         <div className="w-5 h-5 bg-zinc-200 dark:bg-zinc-800 rounded-sm animate-pulse"></div>

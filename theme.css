@@ -1,0 +1,73 @@
+body {
+  font-family: 'Inter', sans-serif;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+h1, h2, h3, h4, h5, h6, .font-heading {
+  font-family: 'Space Grotesk', sans-serif;
+}
+
+.font-mono {
+  font-family: 'Noto Sans Mono', 'Menlo', 'Monaco', 'Courier New', monospace !important;
+  letter-spacing: -0.025em;
+}
+
+.grid-background {
+  background-image: radial-gradient(#e4e4e7 0.5px, transparent 0.5px);
+  background-size: 24px 24px;
+}
+
+.dark .grid-background {
+  background-image: radial-gradient(#27272a 0.5px, transparent 0.5px);
+}
+
+.material-symbols-sharp {
+  font-variation-settings: 'wght' 300, 'opsz' 20;
+  font-size: 20px;
+}
+
+.glow-effect {
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.03);
+}
+
+.dark .glow-effect {
+  box-shadow: 0 0 20px rgba(255, 255, 255, 0.05);
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f4f4f5;
+}
+
+.dark ::-webkit-scrollbar-track {
+  background: #09090b;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #d4d4d8;
+  border-radius: 10px;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: #27272a;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #a1a1aa;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #3f3f46;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
