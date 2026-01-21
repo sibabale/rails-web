@@ -491,7 +491,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, currentTheme, onToggleT
   };
 
   return (
-    <div className={`flex h-screen bg-white dark:bg-[#09090b] text-zinc-800 dark:text-[#fafafa] overflow-hidden selection:bg-zinc-100 dark:selection:bg-white selection:text-zinc-900 dark:selection:text-black transition-all duration-700 ${isProduction ? 'shadow-[inset_0_0_100px_rgba(220,38,38,0.05)]' : ''}`}>
+    <div className={`flex h-screen bg-white dark:bg-zinc-950 text-zinc-800 dark:text-zinc-50 overflow-hidden selection:bg-zinc-100 dark:selection:bg-white selection:text-zinc-900 dark:selection:text-black transition-all duration-700 ${isProduction ? 'shadow-[inset_0_0_100px_rgba(220,38,38,0.05)]' : ''}`}>
       <aside className="w-64 border-r border-zinc-100 dark:border-zinc-800/50 flex flex-col bg-zinc-50 dark:bg-black relative z-20">
         <div className="p-6">
           <div className="flex items-center gap-2 mb-8">
