@@ -9,7 +9,7 @@ import RegisterPage from './components/RegisterPage';
 import LoginPage from './components/LoginPage';
 import { useAppDispatch, useAppSelector } from './state/hooks';
 import { selectIsProduction } from './state/selectors';
-import { setProduction, setSandbox } from './state/environmentSlice';
+import { setEnvironmentIdForMode, setProduction, setSandbox } from './state/environmentSlice';
 
 interface Session {
   access_token: string;
@@ -164,6 +164,7 @@ function App() {
         // ✅ require env id for a restored session
         if (now < expiryTime && parsedSession.environment_id) {
           setSession(parsedSession);
+          dispatch(setEnvironmentIdForMode({ mode: 'sandbox', environmentId: parsedSession.environment_id }));
           fetchProfile(parsedSession.access_token, parsedSession.environment_id);
           setView('dashboard');
         } else {
@@ -219,6 +220,7 @@ function App() {
 
     setSession(sessionData);
     localStorage.setItem('rails_session', JSON.stringify(sessionData));
+    dispatch(setEnvironmentIdForMode({ mode: 'sandbox', environmentId: sessionData.environment_id }));
     fetchProfile(sessionData.access_token, sessionData.environment_id);
     setView('dashboard');
   };
