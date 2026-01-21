@@ -244,7 +244,7 @@ const ApiKeyManager: React.FC<ApiKeyManagerProps> = ({ session }) => {
             </div>
           )}
 
-          {isLoadingKeys && (
+          {isLoadingKeys && !isRevoking && (
             <div className="mt-3 text-[10px] font-mono text-zinc-400">
               Loading...
             </div>

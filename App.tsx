@@ -7,6 +7,9 @@ import Footer from './components/Footer';
 import Dashboard from './components/Dashboard';
 import RegisterPage from './components/RegisterPage';
 import LoginPage from './components/LoginPage';
+import { useAppDispatch, useAppSelector } from './state/hooks';
+import { selectIsProduction } from './state/selectors';
+import { setProduction, setSandbox } from './state/environmentSlice';
 
 interface Session {
   access_token: string;
@@ -82,13 +85,14 @@ function App() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isLandingLoading, setIsLandingLoading] = useState(true);
   const [isProfileLoading, setIsProfileLoading] = useState(false);
-  const [isProduction, setIsProduction] = useState(false);
+  const dispatch = useAppDispatch();
+  const isProduction = useAppSelector(selectIsProduction);
 
   const API_BASE_URL =
     (import.meta.env.VITE_USERS_SERVICE as string | undefined) || '';
 
   const toggleTheme = () => setTheme(prev => (prev === 'dark' ? 'light' : 'dark'));
-  const toggleEnvironment = () => setIsProduction(prev => !prev);
+  const toggleEnvironment = () => dispatch(isProduction ? setSandbox() : setProduction());
 
   const handleLogout = () => {
     setSession(null);
