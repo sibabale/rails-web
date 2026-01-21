@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { GoogleGenAI } from "@google/genai";
 import ApiKeyManager from './ApiKeyManager';
@@ -7,6 +6,8 @@ interface DashboardProps {
   onLogout: () => void;
   currentTheme?: 'light' | 'dark';
   onToggleTheme?: () => void;
+  isProduction?: boolean;
+  onToggleEnvironment?: () => void;
   session?: any;
   profile?: any;
 }
@@ -23,9 +24,16 @@ interface Account {
   metadata?: Record<string, string>;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ onLogout, currentTheme, onToggleTheme, session, profile }) => {
+const Dashboard: React.FC<DashboardProps> = ({
+  onLogout,
+  currentTheme,
+  onToggleTheme,
+  isProduction = false,
+  onToggleEnvironment,
+  session,
+  profile,
+}) => {
   const [activeTab, setActiveTab] = useState('Overview');
-  const [isProduction, setIsProduction] = useState(true);
   const [timeLeft, setTimeLeft] = useState<string>('');
   const [isLoadingAccounts, setIsLoadingAccounts] = useState(false);
   
@@ -256,22 +264,13 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, currentTheme, onToggleT
                     className="w-full bg-zinc-50/50 dark:bg-zinc-900/50 border border-zinc-100 dark:border-zinc-800 rounded-lg px-4 py-2 text-sm font-mono font-bold text-zinc-800 dark:text-white outline-none cursor-default" 
                   />
                 </div>
-                <div className="space-y-1.5">
+                <div className="col-span-1 md:col-span-2 space-y-1.5">
                   <label className="text-[10px] font-mono text-zinc-400 uppercase tracking-tight">Official Website</label>
                   <input 
                     type="text" 
                     readOnly 
                     value="https://rails.finance" 
                     className="w-full bg-zinc-50/50 dark:bg-zinc-900/50 border border-zinc-100 dark:border-zinc-800 rounded-lg px-4 py-2 text-sm font-bold text-zinc-500 dark:text-zinc-400 outline-none cursor-default" 
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-mono text-zinc-400 uppercase tracking-tight">Jurisdiction</label>
-                  <input 
-                    type="text" 
-                    readOnly 
-                    value="USA (Delaware)" 
-                    className="w-full bg-zinc-50/50 dark:bg-zinc-900/50 border border-zinc-100 dark:border-zinc-800 rounded-lg px-4 py-2 text-sm font-bold text-zinc-800 dark:text-white outline-none cursor-default" 
                   />
                 </div>
               </div>
@@ -524,8 +523,8 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, currentTheme, onToggleT
           <div className="mt-8 pt-8 border-t border-zinc-100 dark:border-zinc-900">
             <p className="text-[10px] font-mono text-zinc-400 dark:text-zinc-600 uppercase tracking-widest mb-4 font-bold">Environment</p>
             <div className="flex bg-zinc-100 dark:bg-zinc-900/50 p-1 rounded-lg border border-zinc-200 dark:border-zinc-800">
-              <button onClick={() => setIsProduction(false)} className={`flex-1 py-1.5 text-[10px] font-bold rounded transition-all cursor-pointer ${!isProduction ? 'bg-white dark:bg-zinc-800 text-zinc-800 dark:text-white shadow-sm' : 'text-zinc-500 hover:text-zinc-300'}`}>SANDBOX</button>
-              <button onClick={() => setIsProduction(true)} className={`flex-1 py-1.5 text-[10px] font-bold rounded transition-all cursor-pointer ${isProduction ? 'bg-red-950 text-red-500 shadow-sm' : 'text-zinc-500 hover:text-zinc-300'}`}>PROD</button>
+              <button onClick={() => { if (isProduction && onToggleEnvironment) onToggleEnvironment(); }} className={`flex-1 py-1.5 text-[10px] font-bold rounded transition-all cursor-pointer ${!isProduction ? 'bg-white dark:bg-zinc-800 text-zinc-800 dark:text-white shadow-sm' : 'text-zinc-500 hover:text-zinc-300'}`}>SANDBOX</button>
+              <button onClick={() => { if (!isProduction && onToggleEnvironment) onToggleEnvironment(); }} className={`flex-1 py-1.5 text-[10px] font-bold rounded transition-all cursor-pointer ${isProduction ? 'bg-red-950 text-red-500 shadow-sm' : 'text-zinc-500 hover:text-zinc-300'}`}>PROD</button>
             </div>
           </div>
         </div>
