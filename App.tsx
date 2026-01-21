@@ -84,11 +84,8 @@ function App() {
   const [isProfileLoading, setIsProfileLoading] = useState(false);
   const [isProduction, setIsProduction] = useState(false);
 
-  // Note: depending on your bundler, process.env may not exist in the browser.
-  // Keeping your original behavior, but recommend switching to Vite import.meta.env if needed.
   const API_BASE_URL =
-    // @ts-expect-error process may be undefined in some bundlers
-    (process?.env?.USERS_SERVICE as string | undefined) || 'https://rails-client-server-production.up.railway.app';
+    (import.meta.env.VITE_USERS_SERVICE as string | undefined) || '';
 
   const toggleTheme = () => setTheme(prev => (prev === 'dark' ? 'light' : 'dark'));
   const toggleEnvironment = () => setIsProduction(prev => !prev);

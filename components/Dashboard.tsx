@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { GoogleGenAI } from "@google/genai";
+import ApiKeyManager from './ApiKeyManager';
 
 interface DashboardProps {
   onLogout: () => void;
@@ -309,24 +310,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, currentTheme, onToggleT
               </div>
             </section>
 
-            <section className="space-y-6 pt-8 border-t border-zinc-50 dark:border-zinc-900">
-              <h4 className="text-[10px] font-mono font-bold uppercase tracking-widest text-zinc-400 mb-4">Security Credentials</h4>
-              <div className="space-y-4">
-                <div className="bg-zinc-50/50 dark:bg-zinc-950 border border-zinc-100 dark:border-zinc-800 p-4 rounded-xl">
-                   <div className="flex items-center justify-between mb-2">
-                     <span className="text-[9px] font-mono font-bold text-zinc-400 uppercase tracking-widest">API Token</span>
-                     <span className="text-[9px] font-mono text-emerald-500 uppercase font-bold tracking-tighter flex items-center gap-1">
-                       <span className="w-1 h-1 bg-emerald-500 rounded-full animate-pulse"></span>
-                       Active
-                     </span>
-                   </div>
-                   <div className="flex items-center gap-3">
-                     <p className="text-xs font-mono text-zinc-600 dark:text-white flex-1 truncate">rails_live_{session?.access_token?.slice(0, 10) || '9221'}********************************</p>
-                     <button className="material-symbols-sharp !text-[16px] text-zinc-400 hover:text-zinc-800 dark:hover:text-white cursor-pointer" onClick={() => navigator.clipboard.writeText("rails_live_" + (session?.access_token || '9221'))}>content_copy</button>
-                   </div>
-                </div>
-              </div>
-            </section>
+            <ApiKeyManager session={session} />
           </div>
         </div>
 

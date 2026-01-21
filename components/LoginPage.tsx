@@ -23,7 +23,8 @@ const LoginPage: React.FC<LoginPageProps> = ({ onBack, onSuccess }) => {
     setLoading(true);
     setError(null);
 
-    const API_BASE_URL = process.env.USERS_SERVICE || 'https://rails-client-server-production.up.railway.app';
+    const API_BASE_URL =
+      (import.meta.env.VITE_USERS_SERVICE as string | undefined) || '';
     const endpoint = `${API_BASE_URL.replace(/\/$/, '')}/api/v1/auth/login`;
 
     try {
