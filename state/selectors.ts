@@ -12,3 +12,16 @@ export const selectIsProduction = createSelector(
   [selectEnvironmentMode],
   (mode) => mode === 'production',
 );
+
+export const selectEnvironmentIds = createSelector(
+  [selectEnvironmentState],
+  (env) => env.environmentIds,
+);
+
+export const selectEnvironmentIdForMode = (mode: 'sandbox' | 'production') =>
+  createSelector([selectEnvironmentIds], (ids) => ids[mode] ?? null);
+
+export const selectActiveEnvironmentId = createSelector(
+  [selectEnvironmentMode, selectEnvironmentIds],
+  (mode, ids) => ids[mode] ?? null,
+);

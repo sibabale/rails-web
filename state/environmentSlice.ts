@@ -4,10 +4,12 @@ export type EnvironmentMode = 'sandbox' | 'production';
 
 interface EnvironmentState {
   mode: EnvironmentMode;
+  environmentIds: Partial<Record<EnvironmentMode, string>>;
 }
 
 const initialState: EnvironmentState = {
   mode: 'sandbox',
+  environmentIds: {},
 };
 
 const environmentSlice = createSlice({
@@ -16,6 +18,12 @@ const environmentSlice = createSlice({
   reducers: {
     setEnvironmentMode: (state, action: PayloadAction<EnvironmentMode>) => {
       state.mode = action.payload;
+    },
+    setEnvironmentIdForMode: (
+      state,
+      action: PayloadAction<{ mode: EnvironmentMode; environmentId: string }>,
+    ) => {
+      state.environmentIds[action.payload.mode] = action.payload.environmentId;
     },
     setSandbox: (state) => {
       state.mode = 'sandbox';
@@ -26,5 +34,5 @@ const environmentSlice = createSlice({
   },
 });
 
-export const { setEnvironmentMode, setSandbox, setProduction } = environmentSlice.actions;
+export const { setEnvironmentMode, setEnvironmentIdForMode, setSandbox, setProduction } = environmentSlice.actions;
 export default environmentSlice.reducer;
