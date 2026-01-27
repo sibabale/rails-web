@@ -132,6 +132,9 @@ function App() {
       return;
     }
 
+    // Get current environment from Redux store to send X-Environment header
+    const currentEnv = getStoreState().environment.current || 'sandbox';
+
     try {
       const response = await fetch(`${CLIENT_SERVER_URL.replace(/\/$/, '')}/api/v1/me`, {
         method: 'GET',
@@ -139,6 +142,7 @@ function App() {
           Authorization: `Bearer ${token}`,
           Accept: 'application/json',
           'X-Environment-Id': environmentId, // ✅ REQUIRED by users-service AuthContext
+          'X-Environment': currentEnv, // ✅ REQUIRED for environment-aware routing
         },
       });
 
@@ -242,6 +246,20 @@ function App() {
     const timer = setTimeout(() => handleLogout(), timeUntilExpiry);
     return () => clearTimeout(timer);
   }, [session]);
+
+  // ✅ Refetch profile when environment changes (e.g., switching from sandbox to production)
+  useEffect(() => {
+    if (!session || !session.access_token) return;
+    
+    // Find environment_id that matches the current environment type
+    const matchingEnv = session.environments?.find(e => e.type === environment);
+    const envIdToUse = matchingEnv?.id || session.environment_id;
+    
+    if (envIdToUse) {
+      fetchProfile(session.access_token, envIdToUse);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [environment]);
 
   const handleAuthSuccess = (data: any) => {
     // ✅ users-service login returns selected_environment_id and environments array
