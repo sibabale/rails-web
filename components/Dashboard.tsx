@@ -42,6 +42,10 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, currentTheme, onToggleT
   const [transactionsError, setTransactionsError] = useState<string | null>(null);
   
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
+  const [selectedTransactionId, setSelectedTransactionId] = useState<string | null>(null);
+  const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
+  const [isLoadingTransactionDetails, setIsLoadingTransactionDetails] = useState(false);
+  const [transactionDetailsError, setTransactionDetailsError] = useState<string | null>(null);
   const [logs, setLogs] = useState<{id: string, time: string, action: string, status: string, amount: string}[]>([]);
   
   const [reserve, setReserve] = useState({ total: 25000000, available: 18450000 });
@@ -156,6 +160,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, currentTheme, onToggleT
   useEffect(() => {
     if (prevEnvironmentRef.current !== environment && activeTab === 'Transactions') {
       setTransactionsPage(1);
+      setSelectedTransactionId(null);
     }
     prevEnvironmentRef.current = environment;
   }, [environment, activeTab]);
@@ -200,6 +205,28 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, currentTheme, onToggleT
       setTransactions([]);
     }
   }, [selectedAccountId, session, environment]);
+
+  // Fetch transaction details when transaction is selected or environment changes
+  useEffect(() => {
+    if (selectedTransactionId && session) {
+      setIsLoadingTransactionDetails(true);
+      setTransactionDetailsError(null);
+      transactionsApi.get(selectedTransactionId, session)
+        .then((data) => {
+          setSelectedTransaction(data);
+        })
+        .catch((err) => {
+          console.error('Failed to fetch transaction details:', err);
+          setTransactionDetailsError(err.message || 'Failed to load transaction details');
+          setSelectedTransaction(null);
+        })
+        .finally(() => {
+          setIsLoadingTransactionDetails(false);
+        });
+    } else {
+      setSelectedTransaction(null);
+    }
+  }, [selectedTransactionId, session, environment]);
 
   useEffect(() => {
     const actions = ['Transfer', 'Ledger:Commit', 'Account:Create', 'ACH:Sweep', 'Wire:Init', 'Auth:Success'];
@@ -398,6 +425,194 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, currentTheme, onToggleT
       </div>
     </div>
   );
+
+  const renderTransactionDetails = (transaction: Transaction) => {
+    const copyToClipboard = (text: string) => {
+      navigator.clipboard.writeText(text).then(() => {
+        // Could add a toast notification here if needed
+      });
+    };
+
+    const formatAmount = (amount: number) => {
+      return (amount / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    };
+
+    const formatDate = (dateString: string) => {
+      return new Date(dateString).toLocaleString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+      });
+    };
+
+    return (
+      <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <div className="flex items-center gap-4">
+          <button 
+            onClick={() => setSelectedTransactionId(null)}
+            className="p-2 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors text-zinc-500 hover:text-zinc-800 dark:hover:text-white"
+          >
+            <span className="material-symbols-sharp">arrow_back</span>
+          </button>
+          <div>
+            <h2 className="text-2xl font-bold tracking-tight text-zinc-800 dark:text-white">Transaction</h2>
+            <p className="text-sm text-zinc-500">Transaction details and metadata</p>
+          </div>
+        </div>
+
+        {/* Section 1: Summary */}
+        <div className="bg-white dark:bg-black border border-zinc-100 dark:border-zinc-800/50 rounded-2xl p-8 space-y-6">
+          <h3 className="text-[10px] font-mono font-bold uppercase tracking-widest text-zinc-400">Summary</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label className="text-[10px] font-mono text-zinc-400 uppercase font-bold tracking-widest block mb-2">Transaction ID</label>
+              <div className="flex items-center gap-2">
+                <p className="text-sm font-mono font-bold text-zinc-800 dark:text-white">{transaction.id}</p>
+                <button
+                  onClick={() => copyToClipboard(transaction.id)}
+                  className="p-1 rounded hover:bg-zinc-100 dark:hover:bg-zinc-900 text-zinc-500 hover:text-zinc-800 dark:hover:text-white transition-colors"
+                  title="Copy to clipboard"
+                >
+                  <span className="material-symbols-sharp !text-[16px]">content_copy</span>
+                </button>
+              </div>
+            </div>
+            <div>
+              <label className="text-[10px] font-mono text-zinc-400 uppercase font-bold tracking-widest block mb-2">Type</label>
+              <p className="text-sm font-bold text-zinc-800 dark:text-white uppercase">{transaction.transaction_kind}</p>
+            </div>
+            <div>
+              <label className="text-[10px] font-mono text-zinc-400 uppercase font-bold tracking-widest block mb-2">Status</label>
+              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase inline-block ${
+                transaction.status?.toLowerCase().trim() === 'posted' 
+                  ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-500' 
+                  : transaction.status?.toLowerCase().trim() === 'pending'
+                  ? 'bg-amber-500/10 text-amber-600 dark:text-amber-500'
+                  : transaction.status?.toLowerCase().trim() === 'failed'
+                  ? 'bg-red-500/10 text-red-600 dark:text-red-500'
+                  : 'bg-zinc-500/10 text-zinc-600 dark:text-zinc-500'
+              }`}>
+                {transaction.status}
+              </span>
+            </div>
+            <div>
+              <label className="text-[10px] font-mono text-zinc-400 uppercase font-bold tracking-widest block mb-2">Amount</label>
+              <p className="text-lg font-bold text-zinc-800 dark:text-white">
+                {formatAmount(transaction.amount)} {transaction.currency}
+              </p>
+            </div>
+            <div>
+              <label className="text-[10px] font-mono text-zinc-400 uppercase font-bold tracking-widest block mb-2">Environment</label>
+              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase inline-block ${
+                transaction.environment === 'production'
+                  ? 'bg-purple-500/10 text-purple-600 dark:text-purple-500'
+                  : 'bg-blue-500/10 text-blue-600 dark:text-blue-500'
+              }`}>
+                {transaction.environment || 'sandbox'}
+              </span>
+            </div>
+            <div>
+              <label className="text-[10px] font-mono text-zinc-400 uppercase font-bold tracking-widest block mb-2">Created At</label>
+              <p className="text-sm font-mono text-zinc-800 dark:text-white">{formatDate(transaction.created_at)}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Section 2: Parties Involved */}
+        <div className="bg-white dark:bg-black border border-zinc-100 dark:border-zinc-800/50 rounded-2xl p-8 space-y-6">
+          <h3 className="text-[10px] font-mono font-bold uppercase tracking-widest text-zinc-400">Parties Involved</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label className="text-[10px] font-mono text-zinc-400 uppercase font-bold tracking-widest block mb-4">From Account</label>
+              <div className="space-y-3">
+                <div>
+                  <label className="text-[9px] font-mono text-zinc-500 uppercase block mb-1">Account ID</label>
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-mono font-bold text-zinc-800 dark:text-white break-all">{transaction.from_account_id}</p>
+                    <button
+                      onClick={() => copyToClipboard(transaction.from_account_id)}
+                      className="p-1 rounded hover:bg-zinc-100 dark:hover:bg-zinc-900 text-zinc-500 hover:text-zinc-800 dark:hover:text-white transition-colors flex-shrink-0"
+                      title="Copy to clipboard"
+                    >
+                      <span className="material-symbols-sharp !text-[16px]">content_copy</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div>
+              <label className="text-[10px] font-mono text-zinc-400 uppercase font-bold tracking-widest block mb-4">To Account</label>
+              <div className="space-y-3">
+                <div>
+                  <label className="text-[9px] font-mono text-zinc-500 uppercase block mb-1">Account ID</label>
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-mono font-bold text-zinc-800 dark:text-white break-all">{transaction.to_account_id}</p>
+                    <button
+                      onClick={() => copyToClipboard(transaction.to_account_id)}
+                      className="p-1 rounded hover:bg-zinc-100 dark:hover:bg-zinc-900 text-zinc-500 hover:text-zinc-800 dark:hover:text-white transition-colors flex-shrink-0"
+                      title="Copy to clipboard"
+                    >
+                      <span className="material-symbols-sharp !text-[16px]">content_copy</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Section 3: Technical Metadata */}
+        <div className="bg-white dark:bg-black border border-zinc-100 dark:border-zinc-800/50 rounded-2xl p-8 space-y-6">
+          <h3 className="text-[10px] font-mono font-bold uppercase tracking-widest text-zinc-400">Technical Metadata</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {transaction.organization_id && (
+              <div>
+                <label className="text-[9px] font-mono text-zinc-500 uppercase block mb-1">Organization ID</label>
+                <div className="flex items-center gap-2">
+                  <p className="text-sm font-mono font-bold text-zinc-800 dark:text-white break-all">{transaction.organization_id}</p>
+                  <button
+                    onClick={() => copyToClipboard(transaction.organization_id)}
+                    className="p-1 rounded hover:bg-zinc-100 dark:hover:bg-zinc-900 text-zinc-500 hover:text-zinc-800 dark:hover:text-white transition-colors flex-shrink-0"
+                    title="Copy to clipboard"
+                  >
+                    <span className="material-symbols-sharp !text-[16px]">content_copy</span>
+                  </button>
+                </div>
+              </div>
+            )}
+            {transaction.idempotency_key && (
+              <div>
+                <label className="text-[9px] font-mono text-zinc-500 uppercase block mb-1">Idempotency Key</label>
+                <div className="flex items-center gap-2">
+                  <p className="text-sm font-mono font-bold text-zinc-800 dark:text-white break-all">{transaction.idempotency_key}</p>
+                  <button
+                    onClick={() => copyToClipboard(transaction.idempotency_key)}
+                    className="p-1 rounded hover:bg-zinc-100 dark:hover:bg-zinc-900 text-zinc-500 hover:text-zinc-800 dark:hover:text-white transition-colors flex-shrink-0"
+                    title="Copy to clipboard"
+                  >
+                    <span className="material-symbols-sharp !text-[16px]">content_copy</span>
+                  </button>
+                </div>
+              </div>
+            )}
+            {transaction.failure_reason && (
+              <div className="md:col-span-2">
+                <label className="text-[9px] font-mono text-zinc-500 uppercase block mb-1">Failure Reason</label>
+                <p className="text-sm font-mono text-red-600 dark:text-red-500 break-all">{transaction.failure_reason}</p>
+              </div>
+            )}
+            <div>
+              <label className="text-[9px] font-mono text-zinc-500 uppercase block mb-1">Updated At</label>
+              <p className="text-sm font-mono text-zinc-800 dark:text-white">{formatDate(transaction.updated_at)}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   const renderIdentityView = () => (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -691,7 +906,11 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, currentTheme, onToggleT
             </thead>
             <tbody className="divide-y divide-zinc-50 dark:divide-zinc-900 font-mono text-xs">
               {transactionsList.map((tx) => (
-                <tr key={tx.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-900/30 transition-colors">
+                <tr 
+                  key={tx.id} 
+                  onClick={() => setSelectedTransactionId(tx.id)}
+                  className="hover:bg-zinc-50 dark:hover:bg-zinc-900/30 transition-colors cursor-pointer"
+                >
                   <td className="px-6 py-5">
                     <span className="text-zinc-700 dark:text-white font-bold">{tx.id.slice(0, 8)}...</span>
                   </td>
@@ -749,6 +968,61 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, currentTheme, onToggleT
       case 'Users':
         return renderUsersView();
       case 'Transactions':
+        if (selectedTransactionId) {
+          if (isLoadingTransactionDetails) {
+            return (
+              <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <div className="flex items-center gap-4">
+                  <button 
+                    onClick={() => setSelectedTransactionId(null)}
+                    className="p-2 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors text-zinc-500 hover:text-zinc-800 dark:hover:text-white"
+                  >
+                    <span className="material-symbols-sharp">arrow_back</span>
+                  </button>
+                  <div>
+                    <h2 className="text-2xl font-bold tracking-tight text-zinc-800 dark:text-white">Transaction</h2>
+                    <p className="text-sm text-zinc-500">Loading transaction details...</p>
+                  </div>
+                </div>
+                <div className="bg-white dark:bg-black border border-zinc-100 dark:border-zinc-800/50 rounded-2xl p-12">
+                  <div className="space-y-4">
+                    {Array.from({ length: 6 }).map((_, i) => (
+                      <div key={i} className="h-16 bg-zinc-50 dark:bg-zinc-900 rounded-lg animate-pulse"></div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            );
+          }
+          if (transactionDetailsError) {
+            return (
+              <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <div className="flex items-center gap-4">
+                  <button 
+                    onClick={() => setSelectedTransactionId(null)}
+                    className="p-2 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors text-zinc-500 hover:text-zinc-800 dark:hover:text-white"
+                  >
+                    <span className="material-symbols-sharp">arrow_back</span>
+                  </button>
+                  <div>
+                    <h2 className="text-2xl font-bold tracking-tight text-zinc-800 dark:text-white">Transaction</h2>
+                    <p className="text-sm text-zinc-500">Transaction details and metadata</p>
+                  </div>
+                </div>
+                <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-6">
+                  <div className="flex items-center gap-3 mb-2">
+                    <span className="material-symbols-sharp text-red-500 !text-[18px]">error</span>
+                    <h3 className="text-sm font-bold text-red-600 dark:text-red-500">Unable to Load Transaction</h3>
+                  </div>
+                  <p className="text-sm text-zinc-600 dark:text-zinc-400">{transactionDetailsError}</p>
+                </div>
+              </div>
+            );
+          }
+          if (selectedTransaction) {
+            return renderTransactionDetails(selectedTransaction);
+          }
+        }
         return renderTransactionsView();
       case 'Overview':
         return (
@@ -1035,7 +1309,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, currentTheme, onToggleT
             {navItems.map((item) => (
               <button
                 key={item.name}
-                onClick={() => { setActiveTab(item.name); setSelectedAccountId(null); }}
+                onClick={() => { setActiveTab(item.name); setSelectedAccountId(null); setSelectedTransactionId(null); }}
                 className={`w-full flex items-center gap-3 px-3 py-2 text-sm rounded-lg transition-colors cursor-pointer outline-none ${
                   activeTab === item.name 
                     ? 'bg-zinc-800 dark:bg-white text-white dark:text-black font-semibold shadow-sm' 
@@ -1059,7 +1333,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, currentTheme, onToggleT
         
         <div className="mt-auto p-6 border-t border-zinc-100 dark:border-zinc-800/50">
           <button 
-            onClick={() => { setActiveTab('Identity'); setSelectedAccountId(null); }}
+            onClick={() => { setActiveTab('Identity'); setSelectedAccountId(null); setSelectedTransactionId(null); }}
             className={`w-full flex items-center gap-3 mb-6 cursor-pointer p-2 -m-2 rounded-xl transition-colors text-left outline-none ${activeTab === 'Identity' ? 'bg-white dark:bg-zinc-900' : 'hover:bg-white dark:hover:bg-zinc-900'}`}
           >
             {profile?.avatar_url ? (
