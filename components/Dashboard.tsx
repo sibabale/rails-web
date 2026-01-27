@@ -1292,14 +1292,14 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, currentTheme, onToggleT
   };
 
   return (
-    <div className={`flex h-screen bg-white dark:bg-[#09090b] text-zinc-800 dark:text-[#fafafa] overflow-hidden selection:bg-zinc-100 dark:selection:bg-white selection:text-zinc-900 dark:selection:text-black transition-all duration-700 ${isProduction ? 'shadow-[inset_0_0_100px_rgba(220,38,38,0.05)]' : ''}`}>
+    <div className={`flex h-screen bg-white dark:bg-[#09090b] text-zinc-800 dark:text-[#fafafa] overflow-hidden selection:bg-zinc-100 dark:selection:bg-white selection:text-zinc-900 dark:selection:text-black transition-all duration-700 ${isProduction ? 'shadow-[inset_0_0_100px_rgba(217,119,6,0.05)]' : ''}`}>
       <aside className="w-64 border-r border-zinc-100 dark:border-zinc-800/50 flex flex-col bg-zinc-50 dark:bg-black relative z-20">
         <div className="p-6">
           <div className="flex items-center gap-2 mb-8">
             <div className="w-5 h-5 bg-zinc-800 dark:bg-white rounded-sm"></div>
             <span className="font-heading font-bold text-lg tracking-tight text-zinc-800 dark:text-white">Rails</span>
             <div className="flex flex-col ml-auto">
-              <span className={`text-[9px] font-mono px-1.5 py-0.5 rounded uppercase font-bold text-center ${isProduction ? 'bg-red-950 text-red-500 shadow-lg shadow-red-900/20' : 'bg-zinc-200 dark:bg-zinc-900 text-zinc-500 dark:text-zinc-500'}`}>
+              <span className={`text-[9px] font-mono px-1.5 py-0.5 rounded uppercase font-bold text-center ${isProduction ? 'bg-amber-950 text-amber-500 shadow-lg shadow-amber-900/20' : 'bg-zinc-200 dark:bg-zinc-900 text-zinc-500 dark:text-zinc-500'}`}>
                 {isProduction ? 'Production' : 'Sandbox'}
               </span>
             </div>
@@ -1326,7 +1326,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, currentTheme, onToggleT
             <p className="text-[10px] font-mono text-zinc-400 dark:text-zinc-600 uppercase tracking-widest mb-4 font-bold">Environment</p>
             <div className="flex bg-zinc-100 dark:bg-zinc-900/50 p-1 rounded-lg border border-zinc-200 dark:border-zinc-800">
               <button onClick={() => dispatch(setEnvironment('sandbox'))} className={`flex-1 py-1.5 text-[10px] font-bold rounded transition-all cursor-pointer ${!isProduction ? 'bg-white dark:bg-zinc-800 text-zinc-800 dark:text-white shadow-sm' : 'text-zinc-500 hover:text-zinc-300'}`}>SANDBOX</button>
-              <button onClick={() => dispatch(setEnvironment('production'))} className={`flex-1 py-1.5 text-[10px] font-bold rounded transition-all cursor-pointer ${isProduction ? 'bg-red-950 text-red-500 shadow-sm' : 'text-zinc-500 hover:text-zinc-300'}`}>PROD</button>
+              <button onClick={() => dispatch(setEnvironment('production'))} className={`flex-1 py-1.5 text-[10px] font-bold rounded transition-all cursor-pointer ${isProduction ? 'bg-amber-950 text-amber-500 shadow-sm' : 'text-zinc-500 hover:text-zinc-300'}`}>PROD</button>
             </div>
           </div>
         </div>
@@ -1360,10 +1360,10 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, currentTheme, onToggleT
 
       <div className="flex-1 flex flex-col h-screen overflow-hidden relative">
         {isProduction && (
-          <div className="bg-red-950/10 border-b border-red-900/30 px-8 py-2.5 flex items-center justify-between animate-in slide-in-from-top duration-300">
+          <div className="bg-amber-950/10 border-b border-amber-900/30 px-8 py-2.5 flex items-center justify-between animate-in slide-in-from-top duration-300">
             <div className="flex items-center gap-3">
-              <span className="material-symbols-sharp text-red-500 animate-pulse !text-[18px]">warning</span>
-              <span className="text-[10px] font-mono font-bold text-red-500 uppercase tracking-widest">
+              <span className="material-symbols-sharp text-amber-500 animate-pulse !text-[18px]">warning</span>
+              <span className="text-[10px] font-mono font-bold text-amber-500 uppercase tracking-widest">
                 Live Production Environment — Real Assets at Risk
               </span>
             </div>
