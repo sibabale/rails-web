@@ -29,9 +29,16 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onBack, onSuccess }) => {
     setLoading(true);
     setError(null);
 
-    const API_BASE_URL =
-      (import.meta.env.VITE_USERS_SERVICE as string | undefined) || '';
-    const endpoint = `${API_BASE_URL.replace(/\/$/, '')}/api/v1/business/register`;
+    const CLIENT_SERVER_URL =
+      (import.meta.env.VITE_CLIENT_SERVER as string | undefined) || '';
+    
+    if (!CLIENT_SERVER_URL) {
+      setError('VITE_CLIENT_SERVER is not configured. All API calls must go through rails-client-server.');
+      setLoading(false);
+      return;
+    }
+    
+    const endpoint = `${CLIENT_SERVER_URL.replace(/\/$/, '')}/api/v1/business/register`;
 
     try {
       const response = await fetch(endpoint, {
@@ -44,11 +51,14 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onBack, onSuccess }) => {
       });
 
       if (!response.ok) {
-        let errorMessage = `Error ${response.status}: ${response.statusText}`;
+        let errorMessage = 'Registration failed. Please try again.';
         try {
           const errorData = await response.json();
-          errorMessage = errorData.message || errorMessage;
-        } catch (jsonErr) {}
+          errorMessage = errorData.message || errorData.error || errorMessage;
+        } catch (jsonErr) {
+          // Log the actual error for debugging
+          console.error('Registration error response (not shown to user):', await response.text());
+        }
         throw new Error(errorMessage);
       }
 
@@ -60,9 +70,10 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onBack, onSuccess }) => {
     } catch (err: any) {
       console.error('Registration Error:', err);
       if (err.name === 'TypeError' && err.message === 'Failed to fetch') {
-        setError(`Unable to connect to the Rails node at ${endpoint}. Check network or CORS configuration for the production host.`);
+        setError('Unable to connect to the service. Please check your connection and try again.');
       } else {
-        setError(err.message || 'An unexpected error occurred during registration.');
+        // Use the error message from the API (should be user-friendly now)
+        setError(err.message || 'An error occurred during registration. Please try again.');
       }
     } finally {
       setLoading(false);

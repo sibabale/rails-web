@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { GoogleGenAI } from "@google/genai";
 import ApiKeyManager from './ApiKeyManager';
+import { accountsApi, usersApi, ledgerApi, type Account as ApiAccount, type Transaction, type User, type LedgerEntry, type LedgerTransaction } from '../lib/api';
 
 interface DashboardProps {
   onLogout: () => void;
@@ -28,35 +29,22 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, currentTheme, onToggleT
   const [isProduction, setIsProduction] = useState(true);
   const [timeLeft, setTimeLeft] = useState<string>('');
   const [isLoadingAccounts, setIsLoadingAccounts] = useState(false);
+  const [isLoadingUsers, setIsLoadingUsers] = useState(false);
+  const [isLoadingTransactions, setIsLoadingTransactions] = useState(false);
+  const [accountsError, setAccountsError] = useState<string | null>(null);
+  const [usersError, setUsersError] = useState<string | null>(null);
+  const [transactionsError, setTransactionsError] = useState<string | null>(null);
   
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
   const [logs, setLogs] = useState<{id: string, time: string, action: string, status: string, amount: string}[]>([]);
   
   const [reserve, setReserve] = useState({ total: 25000000, available: 18450000 });
-  const [accounts, setAccounts] = useState<Account[]>([
-    { 
-      id: '550e8400-e29b-41d4-a716-446655440000',
-      account_number: '1002938475',
-      account_type: 'Checking',
-      user_id: profile?.id || '8a12-99b1-cc09',
-      balance: '842,000.00',
-      currency: 'USD',
-      status: 'Active',
-      created_at: '2024-03-12',
-      metadata: { region: 'us-east-1', compliance_tier: 'high-frequency', ledger_shard: 'shard-001' }
-    },
-    { 
-      id: 'd9b0-a112-f993-8821-443322110011',
-      account_number: '5002194833',
-      account_type: 'Saving',
-      user_id: profile?.id || '4f11-2290-db01',
-      balance: '12,400.00',
-      currency: 'USD',
-      status: 'Active',
-      created_at: '2024-03-14',
-      metadata: { region: 'eu-west-1', compliance_tier: 'standard', ledger_shard: 'shard-002' }
-    }
-  ]);
+  const [accounts, setAccounts] = useState<Account[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [ledgerEntries, setLedgerEntries] = useState<LedgerEntry[]>([]);
+  const [isLoadingLedger, setIsLoadingLedger] = useState(false);
+  const [ledgerError, setLedgerError] = useState<string | null>(null);
 
   useEffect(() => {
     if (session?.timestamp && session?.expires_in) {
@@ -78,13 +66,79 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, currentTheme, onToggleT
     }
   }, [session]);
 
+  // Fetch accounts when Accounts tab is active
   useEffect(() => {
-    if (activeTab === 'Accounts') {
+    if (activeTab === 'Accounts' && session) {
       setIsLoadingAccounts(true);
-      const timer = setTimeout(() => setIsLoadingAccounts(false), 800);
-      return () => clearTimeout(timer);
+      setAccountsError(null);
+      accountsApi.list(session)
+        .then((data) => {
+          // Transform API response to match local Account interface
+          const transformed = data.map((acc: ApiAccount) => ({
+            id: acc.id,
+            account_number: acc.account_number || acc.id.slice(0, 10),
+            account_type: acc.account_type,
+            user_id: acc.user_id || '',
+            balance: typeof acc.balance === 'number' 
+              ? acc.balance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+              : acc.balance || '0.00',
+            currency: acc.currency,
+            status: acc.status,
+            created_at: acc.created_at,
+            metadata: acc.metadata,
+          }));
+          setAccounts(transformed);
+        })
+        .catch((err) => {
+          console.error('Failed to fetch accounts:', err);
+          setAccountsError(err.message || 'Failed to load accounts');
+          // Keep existing mock data as fallback for now
+        })
+        .finally(() => {
+          setIsLoadingAccounts(false);
+        });
     }
-  }, [activeTab]);
+  }, [activeTab, session]);
+
+  // Fetch users when Users tab is active
+  useEffect(() => {
+    if (activeTab === 'Users' && session) {
+      setIsLoadingUsers(true);
+      setUsersError(null);
+      usersApi.list(session)
+        .then((data) => {
+          setUsers(data.users || []);
+        })
+        .catch((err) => {
+          console.error('Failed to fetch users:', err);
+          setUsersError(err.message || 'Failed to load users');
+        })
+        .finally(() => {
+          setIsLoadingUsers(false);
+        });
+    }
+  }, [activeTab, session]);
+
+  // Fetch transactions when account is selected
+  useEffect(() => {
+    if (selectedAccountId && session) {
+      setIsLoadingTransactions(true);
+      setTransactionsError(null);
+      accountsApi.getTransactions(selectedAccountId, session)
+        .then((data) => {
+          setTransactions(data);
+        })
+        .catch((err) => {
+          console.error('Failed to fetch transactions:', err);
+          setTransactionsError(err.message || 'Failed to load transactions');
+        })
+        .finally(() => {
+          setIsLoadingTransactions(false);
+        });
+    } else {
+      setTransactions([]);
+    }
+  }, [selectedAccountId, session]);
 
   useEffect(() => {
     const actions = ['Transfer', 'Ledger:Commit', 'Account:Create', 'ACH:Sweep', 'Wire:Init', 'Auth:Success'];
@@ -104,15 +158,41 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, currentTheme, onToggleT
     return () => clearInterval(interval);
   }, []);
 
-  const handleDecommission = (id: string) => {
-    if (confirm("Are you sure you want to decommission this account? This will permanently freeze all ledger entries for this UUID in the merkle tree.")) {
-      setAccounts(prev => prev.filter(acc => acc.id !== id));
-      setSelectedAccountId(null);
+  // Fetch ledger transactions when Ledger tab is active
+  useEffect(() => {
+    if (activeTab === 'Ledger' && session) {
+      setIsLoadingLedger(true);
+      setLedgerError(null);
+      ledgerApi.listTransactions(session)
+        .then((data) => {
+          // Extract entries from transactions for display
+          const allEntries: LedgerEntry[] = [];
+          (data.transactions || []).forEach((tx) => {
+            if (tx.entries) {
+              allEntries.push(...tx.entries.map(e => ({
+                ...e,
+                external_transaction_id: tx.external_transaction_id,
+                transaction_id: tx.id,
+              })));
+            }
+          });
+          setLedgerEntries(allEntries);
+        })
+        .catch((err) => {
+          console.error('Failed to fetch ledger transactions:', err);
+          setLedgerError(err.message || 'Failed to load ledger data');
+        })
+        .finally(() => {
+          setIsLoadingLedger(false);
+        });
     }
-  };
+  }, [activeTab, session]);
+
+  // Removed handleDecommission - admin users have read-only access, no destructive actions
 
   const navItems = [
     { name: 'Overview', icon: 'dashboard' },
+    { name: 'Users', icon: 'people' },
     { name: 'Accounts', icon: 'account_balance' },
     { name: 'Settlements', icon: 'account_tree' },
     { name: 'Payments', icon: 'payments' },
@@ -166,7 +246,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, currentTheme, onToggleT
               <div>
                 <label className="text-[10px] font-mono text-zinc-400 uppercase font-bold tracking-widest">Status</label>
                 <div className="mt-1">
-                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${account.status === 'Active' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-500' : 'bg-red-500/10 text-red-600 dark:text-red-500'}`}>
+                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${account.status === 'Active' || account.status === 'active' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-500' : 'bg-red-500/10 text-red-600 dark:text-red-500'}`}>
                     {account.status}
                   </span>
                 </div>
@@ -186,6 +266,56 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, currentTheme, onToggleT
                 </div>
               </div>
             )}
+
+            {selectedAccountId && (
+              <div className="pt-8 border-t border-zinc-50 dark:border-zinc-900">
+                <h4 className="text-[10px] font-mono font-bold uppercase tracking-widest text-zinc-400 mb-4">Recent Transactions</h4>
+                {transactionsError ? (
+                  <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4">
+                    <p className="text-xs font-mono text-red-600 dark:text-red-500">{transactionsError}</p>
+                  </div>
+                ) : isLoadingTransactions ? (
+                  <div className="space-y-3">
+                    {Array.from({ length: 3 }).map((_, i) => (
+                      <div key={i} className="h-16 bg-zinc-50 dark:bg-zinc-900 rounded-lg animate-pulse"></div>
+                    ))}
+                  </div>
+                ) : transactions.length === 0 ? (
+                  <div className="bg-zinc-50 dark:bg-zinc-900 rounded-lg p-6 text-center">
+                    <p className="text-xs font-mono text-zinc-400 dark:text-zinc-600">No transactions found</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {transactions.slice(0, 5).map((tx) => (
+                      <div key={tx.id} className="bg-zinc-50 dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 rounded-lg p-4">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-xs font-mono font-bold text-zinc-800 dark:text-white">{tx.transaction_type}</span>
+                          <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase ${
+                            tx.status === 'completed' || tx.status === 'posted' 
+                              ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-500'
+                              : tx.status === 'pending'
+                              ? 'bg-amber-500/10 text-amber-600 dark:text-amber-500'
+                              : 'bg-red-500/10 text-red-600 dark:text-red-500'
+                          }`}>
+                            {tx.status}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-mono text-zinc-500 dark:text-zinc-400">
+                            {new Date(tx.created_at).toLocaleString()}
+                          </span>
+                          <span className="text-xs font-mono font-bold text-zinc-800 dark:text-white">
+                            {typeof tx.amount === 'number' 
+                              ? tx.amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+                              : tx.amount} {tx.currency}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
 
@@ -195,12 +325,9 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, currentTheme, onToggleT
             <p className="text-xs text-zinc-500 mb-6 leading-relaxed">
               Decommissioning an account is irreversible. It will freeze the ledger state in the Merkle root.
             </p>
-            <button 
-              onClick={() => handleDecommission(account.id)}
-              className="w-full py-3 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-xl transition-colors shadow-lg shadow-red-500/10"
-            >
-              Decommission Account
-            </button>
+              <div className="w-full py-3 bg-zinc-100 dark:bg-zinc-900 text-zinc-500 dark:text-zinc-400 text-xs font-bold rounded-xl text-center">
+                Read-Only Access
+              </div>
           </div>
 
           <div className="bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-100 dark:border-zinc-800 rounded-2xl p-6">
@@ -341,10 +468,105 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, currentTheme, onToggleT
     </div>
   );
 
+  const renderUsersView = () => (
+    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-500">
+      <div className="flex justify-between items-center">
+        <div>
+          <h2 className="text-2xl font-bold tracking-tight text-zinc-800 dark:text-white">Users</h2>
+          <p className="text-sm text-zinc-500">View all users in your organization. User creation is done via SDK.</p>
+        </div>
+      </div>
+
+      {usersError ? (
+        <div className="bg-amber-500/10 border border-amber-500/20 rounded-2xl p-6">
+          <div className="flex items-center gap-3 mb-2">
+            <span className="material-symbols-sharp text-amber-500 !text-[18px]">info</span>
+            <h3 className="text-sm font-bold text-amber-600 dark:text-amber-500">Unable to Load Users</h3>
+          </div>
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">{usersError}</p>
+        </div>
+      ) : isLoadingUsers ? (
+        <div className="bg-white dark:bg-black border border-zinc-100 dark:border-zinc-800/50 rounded-2xl overflow-hidden shadow-sm">
+          <table className="w-full text-left">
+            <thead className="text-[10px] font-mono text-zinc-400 dark:text-zinc-600 uppercase border-b border-zinc-50 dark:border-zinc-900 bg-zinc-50 dark:bg-zinc-950">
+              <tr>
+                <th className="px-6 py-4">Name</th>
+                <th className="px-6 py-4">Email</th>
+                <th className="px-6 py-4">Role</th>
+                <th className="px-6 py-4">Status</th>
+                <th className="px-6 py-4">Created</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-zinc-50 dark:divide-zinc-900 font-mono text-xs">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <tr key={i}>
+                  <td className="px-6 py-5"><div className="h-4 w-32 bg-zinc-100 dark:bg-zinc-800 animate-pulse rounded"></div></td>
+                  <td className="px-6 py-5"><div className="h-4 w-40 bg-zinc-100 dark:bg-zinc-800 animate-pulse rounded"></div></td>
+                  <td className="px-6 py-5"><div className="h-4 w-20 bg-zinc-100 dark:bg-zinc-800 animate-pulse rounded"></div></td>
+                  <td className="px-6 py-5"><div className="h-4 w-16 bg-zinc-100 dark:bg-zinc-800 animate-pulse rounded-full"></div></td>
+                  <td className="px-6 py-5"><div className="h-4 w-24 bg-zinc-100 dark:bg-zinc-800 animate-pulse rounded"></div></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : users.length === 0 ? (
+        <div className="bg-white dark:bg-black border border-zinc-100 dark:border-zinc-800/50 rounded-2xl p-12 text-center">
+          <span className="material-symbols-sharp text-zinc-300 dark:text-zinc-700 !text-[48px] mb-4 block">people</span>
+          <p className="text-sm font-mono text-zinc-400 dark:text-zinc-600 uppercase tracking-widest">No Users Found</p>
+          <p className="text-xs text-zinc-500 dark:text-zinc-500 mt-2">Users are created via SDK, not through the dashboard.</p>
+        </div>
+      ) : (
+        <div className="bg-white dark:bg-black border border-zinc-100 dark:border-zinc-800/50 rounded-2xl overflow-hidden shadow-sm">
+          <table className="w-full text-left">
+            <thead className="text-[10px] font-mono text-zinc-400 dark:text-zinc-600 uppercase border-b border-zinc-50 dark:border-zinc-900 bg-zinc-50 dark:bg-zinc-950">
+              <tr>
+                <th className="px-6 py-4">Name</th>
+                <th className="px-6 py-4">Email</th>
+                <th className="px-6 py-4">Role</th>
+                <th className="px-6 py-4">Status</th>
+                <th className="px-6 py-4">Created</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-zinc-50 dark:divide-zinc-900 font-mono text-xs">
+              {users.map((user) => (
+                <tr key={user.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-900/30 transition-colors">
+                  <td className="px-6 py-5">
+                    <span className="text-zinc-700 dark:text-white font-bold">{user.first_name} {user.last_name}</span>
+                  </td>
+                  <td className="px-6 py-5">
+                    <span className="text-zinc-500 dark:text-zinc-300">{user.email}</span>
+                  </td>
+                  <td className="px-6 py-5">
+                    <span className="text-zinc-500 dark:text-zinc-300 uppercase">{user.role}</span>
+                  </td>
+                  <td className="px-6 py-5">
+                    <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase ${
+                      user.status === 'active' 
+                        ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-500' 
+                        : 'bg-zinc-500/10 text-zinc-600 dark:text-zinc-500'
+                    }`}>
+                      {user.status}
+                    </span>
+                  </td>
+                  <td className="px-6 py-5 text-zinc-500 dark:text-zinc-400">
+                    {new Date(user.created_at).toLocaleDateString()}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+
   const renderContent = () => {
     if (activeTab === 'Identity') return renderIdentityView();
 
     switch (activeTab) {
+      case 'Users':
+        return renderUsersView();
       case 'Overview':
         return (
           <div className="space-y-8 animate-in fade-in duration-500">
@@ -410,6 +632,14 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, currentTheme, onToggleT
               </div>
             </div>
             
+            {accountsError && (
+              <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-4 mb-4">
+                <div className="flex items-center gap-2">
+                  <span className="material-symbols-sharp text-red-500 !text-[16px]">error</span>
+                  <p className="text-xs font-mono text-red-600 dark:text-red-500">{accountsError}</p>
+                </div>
+              </div>
+            )}
             <div className="bg-white dark:bg-black border border-zinc-100 dark:border-zinc-800/50 rounded-2xl overflow-hidden shadow-sm">
               <table className="w-full text-left">
                 <thead className="text-[10px] font-mono text-zinc-400 dark:text-zinc-600 uppercase border-b border-zinc-50 dark:border-zinc-900 bg-zinc-50 dark:bg-zinc-950">
@@ -430,6 +660,14 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, currentTheme, onToggleT
                         <td className="px-6 py-5 text-right"><div className="h-4 w-24 bg-zinc-100 dark:bg-zinc-800 animate-pulse rounded ml-auto"></div></td>
                       </tr>
                     ))
+                  ) : accounts.length === 0 ? (
+                    <tr>
+                      <td colSpan={4} className="px-6 py-12 text-center">
+                        <span className="material-symbols-sharp text-zinc-300 dark:text-zinc-700 !text-[32px] mb-2 block">account_balance</span>
+                        <p className="text-sm font-mono text-zinc-400 dark:text-zinc-600 uppercase tracking-widest">No Accounts Found</p>
+                        <p className="text-xs text-zinc-500 dark:text-zinc-500 mt-2">Accounts are created via SDK, not through the dashboard.</p>
+                      </td>
+                    </tr>
                   ) : (
                     accounts.map((acc) => (
                       <tr 
@@ -444,11 +682,11 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, currentTheme, onToggleT
                           <span className="text-zinc-500 dark:text-zinc-300 font-medium">{acc.account_type}</span>
                         </td>
                         <td className="px-6 py-5">
-                          <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase ${acc.status === 'Active' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-500' : 'bg-red-500/10 text-red-600 dark:text-red-500'}`}>
+                          <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase ${acc.status === 'Active' || acc.status === 'active' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-500' : 'bg-red-500/10 text-red-600 dark:text-red-500'}`}>
                             {acc.status}
                           </span>
                         </td>
-                        <td className="px-6 py-5 text-right font-bold text-zinc-800 dark:text-white">{acc.balance}</td>
+                        <td className="px-6 py-5 text-right font-bold text-zinc-800 dark:text-white">{acc.balance} {acc.currency}</td>
                       </tr>
                     ))
                   )}
@@ -474,8 +712,92 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, currentTheme, onToggleT
       case 'Ledger':
         return (
           <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-500">
-            <h2 className="text-2xl font-bold tracking-tight text-zinc-800 dark:text-white">Immutable Ledger</h2>
-            <div className="p-12 text-center text-zinc-400 dark:text-zinc-600 font-mono uppercase tracking-[0.2em] animate-pulse">Syncing Merkle Root...</div>
+            <div className="flex justify-between items-center">
+              <div>
+                <h2 className="text-2xl font-bold tracking-tight text-zinc-800 dark:text-white">Immutable Ledger</h2>
+                <p className="text-sm text-zinc-500">View ledger entries and transactions. Ledger entries are created via SDK.</p>
+              </div>
+            </div>
+            
+            {ledgerError && (
+              <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-4">
+                <div className="flex items-center gap-2">
+                  <span className="material-symbols-sharp text-red-500 !text-[16px]">error</span>
+                  <p className="text-xs font-mono text-red-600 dark:text-red-500">{ledgerError}</p>
+                </div>
+              </div>
+            )}
+            
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="bg-white dark:bg-black border border-zinc-100 dark:border-zinc-800/50 rounded-2xl p-6">
+                <h3 className="text-sm font-bold text-zinc-800 dark:text-white mb-4">Recent Transactions</h3>
+                {isLoadingLedger ? (
+                  <div className="space-y-3">
+                    {Array.from({ length: 3 }).map((_, i) => (
+                      <div key={i} className="h-16 bg-zinc-50 dark:bg-zinc-900 rounded-lg animate-pulse"></div>
+                    ))}
+                  </div>
+                ) : ledgerEntries.length === 0 ? (
+                  <div className="text-center py-8">
+                    <span className="material-symbols-sharp text-zinc-300 dark:text-zinc-700 !text-[32px] mb-2 block">receipt_long</span>
+                    <p className="text-xs font-mono text-zinc-400 dark:text-zinc-600">No transactions found</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {ledgerEntries.slice(0, 5).map((entry) => (
+                      <div key={entry.id} className="bg-zinc-50 dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 rounded-lg p-3">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-xs font-mono font-bold text-zinc-800 dark:text-white">
+                            {entry.external_transaction_id || entry.transaction_id.slice(0, 8)}
+                          </span>
+                          <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase ${
+                            entry.entry_type === 'debit'
+                              ? 'bg-red-500/10 text-red-600 dark:text-red-500'
+                              : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-500'
+                          }`}>
+                            {entry.entry_type}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-mono text-zinc-500 dark:text-zinc-400">
+                            {entry.external_account_id || entry.ledger_account_id.slice(0, 8)}
+                          </span>
+                          <span className="text-xs font-mono font-bold text-zinc-800 dark:text-white">
+                            {typeof entry.amount === 'number' 
+                              ? entry.amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+                              : entry.amount} {entry.currency}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              
+              <div className="bg-white dark:bg-black border border-zinc-100 dark:border-zinc-800/50 rounded-2xl p-6">
+                <h3 className="text-sm font-bold text-zinc-800 dark:text-white mb-4">Ledger Summary</h3>
+                <div className="space-y-4">
+                  <div className="bg-zinc-50 dark:bg-zinc-900 rounded-lg p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs font-mono text-zinc-500 dark:text-zinc-400">Total Entries</span>
+                      <span className="text-lg font-bold text-zinc-800 dark:text-white">{ledgerEntries.length}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-mono text-zinc-500 dark:text-zinc-400">Debits</span>
+                      <span className="text-sm font-mono font-bold text-red-600 dark:text-red-500">
+                        {ledgerEntries.filter(e => e.entry_type === 'debit').length}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-mono text-zinc-500 dark:text-zinc-400">Credits</span>
+                      <span className="text-sm font-mono font-bold text-emerald-600 dark:text-emerald-500">
+                        {ledgerEntries.filter(e => e.entry_type === 'credit').length}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         );
       case 'Infrastructure':
