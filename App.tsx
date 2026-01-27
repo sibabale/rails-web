@@ -84,8 +84,8 @@ function App() {
   const [isProfileLoading, setIsProfileLoading] = useState(false);
   const [isProduction, setIsProduction] = useState(false);
 
-  const API_BASE_URL =
-    (import.meta.env.VITE_USERS_SERVICE as string | undefined) || '';
+  const CLIENT_SERVER_URL =
+    (import.meta.env.VITE_CLIENT_SERVER as string | undefined) || '';
 
   const toggleTheme = () => setTheme(prev => (prev === 'dark' ? 'light' : 'dark'));
   const toggleEnvironment = () => setIsProduction(prev => !prev);
@@ -106,8 +106,14 @@ function App() {
       return;
     }
 
+    if (!CLIENT_SERVER_URL) {
+      console.error('VITE_CLIENT_SERVER is not configured. All API calls must go through rails-client-server.');
+      setIsProfileLoading(false);
+      return;
+    }
+
     try {
-      const response = await fetch(`${API_BASE_URL.replace(/\/$/, '')}/api/v1/me`, {
+      const response = await fetch(`${CLIENT_SERVER_URL.replace(/\/$/, '')}/api/v1/me`, {
         method: 'GET',
         headers: {
           Authorization: `Bearer ${token}`,
