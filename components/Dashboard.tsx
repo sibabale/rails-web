@@ -1,6 +1,8 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { GoogleGenAI } from "@google/genai";
+import { useAppDispatch, useAppSelector } from '../state/hooks';
+import { setEnvironment } from '../state/slices/environmentSlice';
 import ApiKeyManager from './ApiKeyManager';
 import Pagination from './Pagination';
 import { accountsApi, usersApi, ledgerApi, type Account as ApiAccount, type Transaction, type User, type LedgerEntry, type LedgerTransaction, type PaginationMeta } from '../lib/api';
@@ -26,8 +28,11 @@ interface Account {
 }
 
 const Dashboard: React.FC<DashboardProps> = ({ onLogout, currentTheme, onToggleTheme, session, profile }) => {
+  const dispatch = useAppDispatch();
+  const environment = useAppSelector((state) => state.environment.current);
+  const isProduction = environment === 'production';
+  
   const [activeTab, setActiveTab] = useState('Overview');
-  const [isProduction, setIsProduction] = useState(true);
   const [timeLeft, setTimeLeft] = useState<string>('');
   const [isLoadingAccounts, setIsLoadingAccounts] = useState(false);
   const [isLoadingUsers, setIsLoadingUsers] = useState(false);
@@ -86,7 +91,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, currentTheme, onToggleT
     }
   }, [activeTab]);
 
-  // Fetch accounts when Accounts tab is active
+  // Fetch accounts when Accounts tab is active or environment changes
   useEffect(() => {
     if (activeTab === 'Accounts' && session) {
       setIsLoadingAccounts(true);
@@ -119,9 +124,9 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, currentTheme, onToggleT
           setIsLoadingAccounts(false);
         });
     }
-  }, [activeTab, session, accountsPage]);
+  }, [activeTab, session, accountsPage, environment]);
 
-  // Fetch users when Users tab is active
+  // Fetch users when Users tab is active or environment changes
   useEffect(() => {
     if (activeTab === 'Users' && session) {
       setIsLoadingUsers(true);
@@ -139,9 +144,9 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, currentTheme, onToggleT
           setIsLoadingUsers(false);
         });
     }
-  }, [activeTab, session, usersPage]);
+  }, [activeTab, session, usersPage, environment]);
 
-  // Fetch transactions when account is selected
+  // Fetch transactions when account is selected or environment changes
   useEffect(() => {
     if (selectedAccountId && session) {
       setIsLoadingTransactions(true);
@@ -160,7 +165,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, currentTheme, onToggleT
     } else {
       setTransactions([]);
     }
-  }, [selectedAccountId, session]);
+  }, [selectedAccountId, session, environment]);
 
   useEffect(() => {
     const actions = ['Transfer', 'Ledger:Commit', 'Account:Create', 'ACH:Sweep', 'Wire:Init', 'Auth:Success'];
@@ -180,7 +185,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, currentTheme, onToggleT
     return () => clearInterval(interval);
   }, []);
 
-  // Fetch ledger entries when Ledger tab is active
+  // Fetch ledger entries when Ledger tab is active or environment changes
   useEffect(() => {
     if (activeTab === 'Ledger' && session) {
       setIsLoadingLedger(true);
@@ -198,7 +203,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, currentTheme, onToggleT
           setIsLoadingLedger(false);
         });
     }
-  }, [activeTab, session, ledgerPage]);
+  }, [activeTab, session, ledgerPage, environment]);
 
   // Removed handleDecommission - admin users have read-only access, no destructive actions
 
@@ -888,8 +893,8 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, currentTheme, onToggleT
           <div className="mt-8 pt-8 border-t border-zinc-100 dark:border-zinc-900">
             <p className="text-[10px] font-mono text-zinc-400 dark:text-zinc-600 uppercase tracking-widest mb-4 font-bold">Environment</p>
             <div className="flex bg-zinc-100 dark:bg-zinc-900/50 p-1 rounded-lg border border-zinc-200 dark:border-zinc-800">
-              <button onClick={() => setIsProduction(false)} className={`flex-1 py-1.5 text-[10px] font-bold rounded transition-all cursor-pointer ${!isProduction ? 'bg-white dark:bg-zinc-800 text-zinc-800 dark:text-white shadow-sm' : 'text-zinc-500 hover:text-zinc-300'}`}>SANDBOX</button>
-              <button onClick={() => setIsProduction(true)} className={`flex-1 py-1.5 text-[10px] font-bold rounded transition-all cursor-pointer ${isProduction ? 'bg-red-950 text-red-500 shadow-sm' : 'text-zinc-500 hover:text-zinc-300'}`}>PROD</button>
+              <button onClick={() => dispatch(setEnvironment('sandbox'))} className={`flex-1 py-1.5 text-[10px] font-bold rounded transition-all cursor-pointer ${!isProduction ? 'bg-white dark:bg-zinc-800 text-zinc-800 dark:text-white shadow-sm' : 'text-zinc-500 hover:text-zinc-300'}`}>SANDBOX</button>
+              <button onClick={() => dispatch(setEnvironment('production'))} className={`flex-1 py-1.5 text-[10px] font-bold rounded transition-all cursor-pointer ${isProduction ? 'bg-red-950 text-red-500 shadow-sm' : 'text-zinc-500 hover:text-zinc-300'}`}>PROD</button>
             </div>
           </div>
         </div>
