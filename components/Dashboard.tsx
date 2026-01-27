@@ -5,7 +5,7 @@ import { useAppDispatch, useAppSelector } from '../state/hooks';
 import { setEnvironment } from '../state/slices/environmentSlice';
 import ApiKeyManager from './ApiKeyManager';
 import Pagination from './Pagination';
-import { accountsApi, usersApi, ledgerApi, type Account as ApiAccount, type Transaction, type User, type LedgerEntry, type LedgerTransaction, type PaginationMeta } from '../lib/api';
+import { accountsApi, usersApi, transactionsApi, ledgerApi, type Account as ApiAccount, type Transaction, type User, type LedgerEntry, type LedgerTransaction, type PaginationMeta } from '../lib/api';
 
 interface DashboardProps {
   onLogout: () => void;
@@ -48,15 +48,20 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, currentTheme, onToggleT
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [transactionsList, setTransactionsList] = useState<Transaction[]>([]);
   const [ledgerEntries, setLedgerEntries] = useState<LedgerEntry[]>([]);
   const [isLoadingLedger, setIsLoadingLedger] = useState(false);
   const [ledgerError, setLedgerError] = useState<string | null>(null);
+  const [isLoadingTransactionsList, setIsLoadingTransactionsList] = useState(false);
+  const [transactionsListError, setTransactionsListError] = useState<string | null>(null);
   
   // Pagination state
   const [usersPage, setUsersPage] = useState(1);
   const [usersPagination, setUsersPagination] = useState<PaginationMeta | null>(null);
   const [accountsPage, setAccountsPage] = useState(1);
   const [accountsPagination, setAccountsPagination] = useState<PaginationMeta | null>(null);
+  const [transactionsPage, setTransactionsPage] = useState(1);
+  const [transactionsPagination, setTransactionsPagination] = useState<PaginationMeta | null>(null);
   const [ledgerPage, setLedgerPage] = useState(1);
   const [ledgerPagination, setLedgerPagination] = useState<PaginationMeta | null>(null);
 
@@ -146,6 +151,35 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, currentTheme, onToggleT
     }
   }, [activeTab, session, usersPage, environment]);
 
+  // Reset transactions page when environment changes
+  const prevEnvironmentRef = useRef(environment);
+  useEffect(() => {
+    if (prevEnvironmentRef.current !== environment && activeTab === 'Transactions') {
+      setTransactionsPage(1);
+    }
+    prevEnvironmentRef.current = environment;
+  }, [environment, activeTab]);
+
+  // Fetch transactions when Transactions tab is active or environment changes
+  useEffect(() => {
+    if (activeTab === 'Transactions' && session) {
+      setIsLoadingTransactionsList(true);
+      setTransactionsListError(null);
+      transactionsApi.list(session, transactionsPage, 10)
+        .then((response) => {
+          setTransactionsList(response.data || []);
+          setTransactionsPagination(response.pagination);
+        })
+        .catch((err) => {
+          console.error('Failed to fetch transactions:', err);
+          setTransactionsListError(err.message || 'Failed to load transactions');
+        })
+        .finally(() => {
+          setIsLoadingTransactionsList(false);
+        });
+    }
+  }, [activeTab, session, transactionsPage, environment]);
+
   // Fetch transactions when account is selected or environment changes
   useEffect(() => {
     if (selectedAccountId && session) {
@@ -211,6 +245,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, currentTheme, onToggleT
     { name: 'Overview', icon: 'dashboard' },
     { name: 'Users', icon: 'people' },
     { name: 'Accounts', icon: 'account_balance' },
+    { name: 'Transactions', icon: 'swap_horiz' },
     { name: 'Settlements', icon: 'account_tree' },
     { name: 'Payments', icon: 'payments' },
     { name: 'Ledger', icon: 'book' },
@@ -308,11 +343,13 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, currentTheme, onToggleT
                         <div className="flex items-center justify-between mb-2">
                           <span className="text-xs font-mono font-bold text-zinc-800 dark:text-white">{tx.transaction_type}</span>
                           <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase ${
-                            tx.status === 'completed' || tx.status === 'posted' 
+                            tx.status?.toLowerCase() === 'posted' 
                               ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-500'
-                              : tx.status === 'pending'
+                              : tx.status?.toLowerCase() === 'pending'
                               ? 'bg-amber-500/10 text-amber-600 dark:text-amber-500'
-                              : 'bg-red-500/10 text-red-600 dark:text-red-500'
+                              : tx.status?.toLowerCase() === 'failed'
+                              ? 'bg-red-500/10 text-red-600 dark:text-red-500'
+                              : 'bg-zinc-500/10 text-zinc-600 dark:text-zinc-500'
                           }`}>
                             {tx.status}
                           </span>
@@ -586,12 +623,133 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, currentTheme, onToggleT
     </div>
   );
 
+  const renderTransactionsView = () => (
+    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-500">
+      <div className="flex justify-between items-center">
+        <div>
+          <h2 className="text-2xl font-bold tracking-tight text-zinc-800 dark:text-white">Transactions</h2>
+          <p className="text-sm text-zinc-500">View all transactions in your organization. Transactions are created via SDK.</p>
+        </div>
+      </div>
+
+      {transactionsListError ? (
+        <div className="bg-amber-500/10 border border-amber-500/20 rounded-2xl p-6">
+          <div className="flex items-center gap-3 mb-2">
+            <span className="material-symbols-sharp text-amber-500 !text-[18px]">info</span>
+            <h3 className="text-sm font-bold text-amber-600 dark:text-amber-500">Unable to Load Transactions</h3>
+          </div>
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">{transactionsListError}</p>
+        </div>
+      ) : isLoadingTransactionsList ? (
+        <div className="bg-white dark:bg-black border border-zinc-100 dark:border-zinc-800/50 rounded-2xl overflow-hidden shadow-sm">
+          <table className="w-full text-left">
+            <thead className="text-[10px] font-mono text-zinc-400 dark:text-zinc-600 uppercase border-b border-zinc-50 dark:border-zinc-900 bg-zinc-50 dark:bg-zinc-950">
+              <tr>
+                <th className="px-6 py-4">Transaction ID</th>
+                <th className="px-6 py-4">Type</th>
+                <th className="px-6 py-4">Amount</th>
+                <th className="px-6 py-4">Status</th>
+                <th className="px-6 py-4">From Account</th>
+                <th className="px-6 py-4">To Account</th>
+                <th className="px-6 py-4">Created</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-zinc-50 dark:divide-zinc-900 font-mono text-xs">
+              {Array.from({ length: 10 }).map((_, i) => (
+                <tr key={i}>
+                  <td className="px-6 py-5"><div className="h-4 w-32 bg-zinc-100 dark:bg-zinc-800 animate-pulse rounded"></div></td>
+                  <td className="px-6 py-5"><div className="h-4 w-20 bg-zinc-100 dark:bg-zinc-800 animate-pulse rounded"></div></td>
+                  <td className="px-6 py-5"><div className="h-4 w-24 bg-zinc-100 dark:bg-zinc-800 animate-pulse rounded"></div></td>
+                  <td className="px-6 py-5"><div className="h-4 w-16 bg-zinc-100 dark:bg-zinc-800 animate-pulse rounded-full"></div></td>
+                  <td className="px-6 py-5"><div className="h-4 w-32 bg-zinc-100 dark:bg-zinc-800 animate-pulse rounded"></div></td>
+                  <td className="px-6 py-5"><div className="h-4 w-32 bg-zinc-100 dark:bg-zinc-800 animate-pulse rounded"></div></td>
+                  <td className="px-6 py-5"><div className="h-4 w-24 bg-zinc-100 dark:bg-zinc-800 animate-pulse rounded"></div></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : transactionsList.length === 0 ? (
+        <div className="bg-white dark:bg-black border border-zinc-100 dark:border-zinc-800/50 rounded-2xl p-12 text-center">
+          <span className="material-symbols-sharp text-zinc-300 dark:text-zinc-700 !text-[48px] mb-4 block">swap_horiz</span>
+          <p className="text-sm font-mono text-zinc-400 dark:text-zinc-600 uppercase tracking-widest">No Transactions Found</p>
+          <p className="text-xs text-zinc-500 dark:text-zinc-500 mt-2">Transactions are created via SDK, not through the dashboard.</p>
+        </div>
+      ) : (
+        <div className="bg-white dark:bg-black border border-zinc-100 dark:border-zinc-800/50 rounded-2xl overflow-hidden shadow-sm">
+          <table className="w-full text-left">
+            <thead className="text-[10px] font-mono text-zinc-400 dark:text-zinc-600 uppercase border-b border-zinc-50 dark:border-zinc-900 bg-zinc-50 dark:bg-zinc-950">
+              <tr>
+                <th className="px-6 py-4">Transaction ID</th>
+                <th className="px-6 py-4">Type</th>
+                <th className="px-6 py-4">Amount</th>
+                <th className="px-6 py-4">Status</th>
+                <th className="px-6 py-4">From Account</th>
+                <th className="px-6 py-4">To Account</th>
+                <th className="px-6 py-4">Created</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-zinc-50 dark:divide-zinc-900 font-mono text-xs">
+              {transactionsList.map((tx) => (
+                <tr key={tx.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-900/30 transition-colors">
+                  <td className="px-6 py-5">
+                    <span className="text-zinc-700 dark:text-white font-bold">{tx.id.slice(0, 8)}...</span>
+                  </td>
+                  <td className="px-6 py-5">
+                    <span className="text-zinc-500 dark:text-zinc-300 uppercase">{tx.transaction_kind}</span>
+                  </td>
+                  <td className="px-6 py-5">
+                    <span className="text-zinc-800 dark:text-white font-bold">
+                      {(tx.amount / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {tx.currency}
+                    </span>
+                  </td>
+                  <td className="px-6 py-5">
+                    <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase ${
+                      (tx.status?.toLowerCase().trim() === 'posted') 
+                        ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-500' 
+                        : (tx.status?.toLowerCase().trim() === 'pending')
+                        ? 'bg-amber-500/10 text-amber-600 dark:text-amber-500'
+                        : (tx.status?.toLowerCase().trim() === 'failed')
+                        ? 'bg-red-500/10 text-red-600 dark:text-red-500'
+                        : 'bg-zinc-500/10 text-zinc-600 dark:text-zinc-500'
+                    }`}>
+                      {tx.status}
+                    </span>
+                  </td>
+                  <td className="px-6 py-5">
+                    <span className="text-zinc-500 dark:text-zinc-300">{tx.from_account_id.slice(0, 8)}...</span>
+                  </td>
+                  <td className="px-6 py-5">
+                    <span className="text-zinc-500 dark:text-zinc-300">{tx.to_account_id.slice(0, 8)}...</span>
+                  </td>
+                  <td className="px-6 py-5 text-zinc-500 dark:text-zinc-400">
+                    {new Date(tx.created_at).toLocaleDateString()}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {transactionsPagination && (
+            <Pagination
+              page={transactionsPagination.page}
+              totalPages={transactionsPagination.total_pages}
+              totalCount={transactionsPagination.total_count}
+              onPageChange={setTransactionsPage}
+            />
+          )}
+        </div>
+      )}
+    </div>
+  );
+
   const renderContent = () => {
     if (activeTab === 'Identity') return renderIdentityView();
 
     switch (activeTab) {
       case 'Users':
         return renderUsersView();
+      case 'Transactions':
+        return renderTransactionsView();
       case 'Overview':
         return (
           <div className="space-y-8 animate-in fade-in duration-500">

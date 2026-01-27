@@ -147,14 +147,18 @@ export interface Account {
 
 export interface Transaction {
   id: string;
-  account_id: string;
-  amount: string | number;
+  organization_id: string;
+  from_account_id: string;
+  to_account_id: string;
+  amount: number;
   currency: string;
-  transaction_type: string;
-  status: string;
-  description?: string;
+  transaction_kind: 'deposit' | 'withdraw' | 'transfer';
+  status: 'pending' | 'posted' | 'failed';
+  failure_reason?: string | null;
+  idempotency_key: string;
+  environment?: string | null;
   created_at: string;
-  metadata?: Record<string, string>;
+  updated_at: string;
 }
 
 export const accountsApi = {
@@ -175,6 +179,24 @@ export const accountsApi = {
 
   getTransactions: (accountId: string, session: Session | null): Promise<Transaction[]> =>
     apiRequest<Transaction[]>(`/api/v1/accounts/${accountId}/transactions`, { method: 'GET' }, session),
+};
+
+// Transactions Service API
+export const transactionsApi = {
+  list: (session: Session | null, page?: number, perPage?: number): Promise<PaginatedResponse<Transaction>> => {
+    const params = new URLSearchParams();
+    if (page) params.append('page', String(page));
+    if (perPage) params.append('per_page', String(perPage));
+    const query = params.toString();
+    return apiRequest<PaginatedResponse<Transaction>>(
+      `/api/v1/transactions${query ? `?${query}` : ''}`,
+      { method: 'GET' },
+      session
+    );
+  },
+  
+  get: (id: string, session: Session | null): Promise<Transaction> =>
+    apiRequest<Transaction>(`/api/v1/transactions/${id}`, { method: 'GET' }, session),
 };
 
 // Users Service API
