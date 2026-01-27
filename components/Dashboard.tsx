@@ -2,7 +2,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { GoogleGenAI } from "@google/genai";
 import ApiKeyManager from './ApiKeyManager';
-import { accountsApi, usersApi, ledgerApi, type Account as ApiAccount, type Transaction, type User, type LedgerEntry, type LedgerTransaction } from '../lib/api';
+import Pagination from './Pagination';
+import { accountsApi, usersApi, ledgerApi, type Account as ApiAccount, type Transaction, type User, type LedgerEntry, type LedgerTransaction, type PaginationMeta } from '../lib/api';
 
 interface DashboardProps {
   onLogout: () => void;
@@ -45,6 +46,14 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, currentTheme, onToggleT
   const [ledgerEntries, setLedgerEntries] = useState<LedgerEntry[]>([]);
   const [isLoadingLedger, setIsLoadingLedger] = useState(false);
   const [ledgerError, setLedgerError] = useState<string | null>(null);
+  
+  // Pagination state
+  const [usersPage, setUsersPage] = useState(1);
+  const [usersPagination, setUsersPagination] = useState<PaginationMeta | null>(null);
+  const [accountsPage, setAccountsPage] = useState(1);
+  const [accountsPagination, setAccountsPagination] = useState<PaginationMeta | null>(null);
+  const [ledgerPage, setLedgerPage] = useState(1);
+  const [ledgerPagination, setLedgerPagination] = useState<PaginationMeta | null>(null);
 
   useEffect(() => {
     if (session?.timestamp && session?.expires_in) {
@@ -66,15 +75,26 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, currentTheme, onToggleT
     }
   }, [session]);
 
+  // Reset pagination when switching tabs
+  useEffect(() => {
+    if (activeTab === 'Users') {
+      setUsersPage(1);
+    } else if (activeTab === 'Accounts') {
+      setAccountsPage(1);
+    } else if (activeTab === 'Ledger') {
+      setLedgerPage(1);
+    }
+  }, [activeTab]);
+
   // Fetch accounts when Accounts tab is active
   useEffect(() => {
     if (activeTab === 'Accounts' && session) {
       setIsLoadingAccounts(true);
       setAccountsError(null);
-      accountsApi.list(session)
-        .then((data) => {
+      accountsApi.list(session, accountsPage, 10)
+        .then((response) => {
           // Transform API response to match local Account interface
-          const transformed = data.map((acc: ApiAccount) => ({
+          const transformed = response.data.map((acc: ApiAccount) => ({
             id: acc.id,
             account_number: acc.account_number || acc.id.slice(0, 10),
             account_type: acc.account_type,
@@ -88,6 +108,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, currentTheme, onToggleT
             metadata: acc.metadata,
           }));
           setAccounts(transformed);
+          setAccountsPagination(response.pagination);
         })
         .catch((err) => {
           console.error('Failed to fetch accounts:', err);
@@ -98,16 +119,17 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, currentTheme, onToggleT
           setIsLoadingAccounts(false);
         });
     }
-  }, [activeTab, session]);
+  }, [activeTab, session, accountsPage]);
 
   // Fetch users when Users tab is active
   useEffect(() => {
     if (activeTab === 'Users' && session) {
       setIsLoadingUsers(true);
       setUsersError(null);
-      usersApi.list(session)
-        .then((data) => {
-          setUsers(data.users || []);
+      usersApi.list(session, usersPage, 10)
+        .then((response) => {
+          setUsers(response.data || []);
+          setUsersPagination(response.pagination);
         })
         .catch((err) => {
           console.error('Failed to fetch users:', err);
@@ -117,7 +139,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, currentTheme, onToggleT
           setIsLoadingUsers(false);
         });
     }
-  }, [activeTab, session]);
+  }, [activeTab, session, usersPage]);
 
   // Fetch transactions when account is selected
   useEffect(() => {
@@ -158,35 +180,25 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, currentTheme, onToggleT
     return () => clearInterval(interval);
   }, []);
 
-  // Fetch ledger transactions when Ledger tab is active
+  // Fetch ledger entries when Ledger tab is active
   useEffect(() => {
     if (activeTab === 'Ledger' && session) {
       setIsLoadingLedger(true);
       setLedgerError(null);
-      ledgerApi.listTransactions(session)
-        .then((data) => {
-          // Extract entries from transactions for display
-          const allEntries: LedgerEntry[] = [];
-          (data.transactions || []).forEach((tx) => {
-            if (tx.entries) {
-              allEntries.push(...tx.entries.map(e => ({
-                ...e,
-                external_transaction_id: tx.external_transaction_id,
-                transaction_id: tx.id,
-              })));
-            }
-          });
-          setLedgerEntries(allEntries);
+      ledgerApi.listEntries(session, undefined, ledgerPage, 10)
+        .then((response) => {
+          setLedgerEntries(response.data || []);
+          setLedgerPagination(response.pagination);
         })
         .catch((err) => {
-          console.error('Failed to fetch ledger transactions:', err);
+          console.error('Failed to fetch ledger entries:', err);
           setLedgerError(err.message || 'Failed to load ledger data');
         })
         .finally(() => {
           setIsLoadingLedger(false);
         });
     }
-  }, [activeTab, session]);
+  }, [activeTab, session, ledgerPage]);
 
   // Removed handleDecommission - admin users have read-only access, no destructive actions
 
@@ -498,7 +510,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, currentTheme, onToggleT
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-50 dark:divide-zinc-900 font-mono text-xs">
-              {Array.from({ length: 5 }).map((_, i) => (
+              {Array.from({ length: 10 }).map((_, i) => (
                 <tr key={i}>
                   <td className="px-6 py-5"><div className="h-4 w-32 bg-zinc-100 dark:bg-zinc-800 animate-pulse rounded"></div></td>
                   <td className="px-6 py-5"><div className="h-4 w-40 bg-zinc-100 dark:bg-zinc-800 animate-pulse rounded"></div></td>
@@ -556,6 +568,14 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, currentTheme, onToggleT
               ))}
             </tbody>
           </table>
+          {usersPagination && (
+            <Pagination
+              page={usersPagination.page}
+              totalPages={usersPagination.total_pages}
+              totalCount={usersPagination.total_count}
+              onPageChange={setUsersPage}
+            />
+          )}
         </div>
       )}
     </div>
@@ -652,7 +672,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, currentTheme, onToggleT
                 </thead>
                 <tbody className="divide-y divide-zinc-50 dark:divide-zinc-900 font-mono text-xs">
                   {isLoadingAccounts ? (
-                    Array.from({ length: 5 }).map((_, i) => (
+                    Array.from({ length: 10 }).map((_, i) => (
                       <tr key={i}>
                         <td className="px-6 py-5"><div className="h-4 w-32 bg-zinc-100 dark:bg-zinc-800 animate-pulse rounded"></div></td>
                         <td className="px-6 py-5"><div className="h-4 w-20 bg-zinc-100 dark:bg-zinc-800 animate-pulse rounded"></div></td>
@@ -692,6 +712,14 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, currentTheme, onToggleT
                   )}
                 </tbody>
               </table>
+              {accountsPagination && (
+                <Pagination
+                  page={accountsPagination.page}
+                  totalPages={accountsPagination.total_pages}
+                  totalCount={accountsPagination.total_count}
+                  onPageChange={setAccountsPage}
+                />
+              )}
             </div>
           </div>
         );
@@ -733,7 +761,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, currentTheme, onToggleT
                 <h3 className="text-sm font-bold text-zinc-800 dark:text-white mb-4">Recent Transactions</h3>
                 {isLoadingLedger ? (
                   <div className="space-y-3">
-                    {Array.from({ length: 3 }).map((_, i) => (
+                    {Array.from({ length: 10 }).map((_, i) => (
                       <div key={i} className="h-16 bg-zinc-50 dark:bg-zinc-900 rounded-lg animate-pulse"></div>
                     ))}
                   </div>
@@ -743,34 +771,46 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, currentTheme, onToggleT
                     <p className="text-xs font-mono text-zinc-400 dark:text-zinc-600">No transactions found</p>
                   </div>
                 ) : (
-                  <div className="space-y-3">
-                    {ledgerEntries.slice(0, 5).map((entry) => (
-                      <div key={entry.id} className="bg-zinc-50 dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 rounded-lg p-3">
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="text-xs font-mono font-bold text-zinc-800 dark:text-white">
-                            {entry.external_transaction_id || entry.transaction_id.slice(0, 8)}
-                          </span>
-                          <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase ${
-                            entry.entry_type === 'debit'
-                              ? 'bg-red-500/10 text-red-600 dark:text-red-500'
-                              : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-500'
-                          }`}>
-                            {entry.entry_type}
-                          </span>
+                  <>
+                    <div className="space-y-3">
+                      {ledgerEntries.map((entry) => (
+                        <div key={entry.id} className="bg-zinc-50 dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 rounded-lg p-3">
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-xs font-mono font-bold text-zinc-800 dark:text-white">
+                              {entry.external_transaction_id || entry.transaction_id.slice(0, 8)}
+                            </span>
+                            <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase ${
+                              entry.entry_type === 'debit'
+                                ? 'bg-red-500/10 text-red-600 dark:text-red-500'
+                                : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-500'
+                            }`}>
+                              {entry.entry_type}
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-mono text-zinc-500 dark:text-zinc-400">
+                              {entry.external_account_id || entry.ledger_account_id.slice(0, 8)}
+                            </span>
+                            <span className="text-xs font-mono font-bold text-zinc-800 dark:text-white">
+                              {typeof entry.amount === 'number' 
+                                ? entry.amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+                                : entry.amount} {entry.currency}
+                            </span>
+                          </div>
                         </div>
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs font-mono text-zinc-500 dark:text-zinc-400">
-                            {entry.external_account_id || entry.ledger_account_id.slice(0, 8)}
-                          </span>
-                          <span className="text-xs font-mono font-bold text-zinc-800 dark:text-white">
-                            {typeof entry.amount === 'number' 
-                              ? entry.amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-                              : entry.amount} {entry.currency}
-                          </span>
-                        </div>
+                      ))}
+                    </div>
+                    {ledgerPagination && (
+                      <div className="mt-4">
+                        <Pagination
+                          page={ledgerPagination.page}
+                          totalPages={ledgerPagination.total_pages}
+                          totalCount={ledgerPagination.total_count}
+                          onPageChange={setLedgerPage}
+                        />
                       </div>
-                    ))}
-                  </div>
+                    )}
+                  </>
                 )}
               </div>
               
@@ -780,7 +820,9 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, currentTheme, onToggleT
                   <div className="bg-zinc-50 dark:bg-zinc-900 rounded-lg p-4">
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-xs font-mono text-zinc-500 dark:text-zinc-400">Total Entries</span>
-                      <span className="text-lg font-bold text-zinc-800 dark:text-white">{ledgerEntries.length}</span>
+                      <span className="text-lg font-bold text-zinc-800 dark:text-white">
+                        {ledgerPagination?.total_count ?? ledgerEntries.length}
+                      </span>
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-mono text-zinc-500 dark:text-zinc-400">Debits</span>

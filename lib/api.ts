@@ -130,8 +130,17 @@ export interface Transaction {
 }
 
 export const accountsApi = {
-  list: (session: Session | null): Promise<Account[]> =>
-    apiRequest<Account[]>('/api/v1/accounts', { method: 'GET' }, session),
+  list: (session: Session | null, page?: number, perPage?: number): Promise<PaginatedResponse<Account>> => {
+    const params = new URLSearchParams();
+    if (page) params.append('page', String(page));
+    if (perPage) params.append('per_page', String(perPage));
+    const query = params.toString();
+    return apiRequest<PaginatedResponse<Account>>(
+      `/api/v1/accounts${query ? `?${query}` : ''}`,
+      { method: 'GET' },
+      session
+    );
+  },
 
   get: (id: string, session: Session | null): Promise<Account> =>
     apiRequest<Account>(`/api/v1/accounts/${id}`, { method: 'GET' }, session),
@@ -153,9 +162,30 @@ export interface User {
 }
 
 // Users Service API
+export interface PaginationMeta {
+  page: number;
+  per_page: number;
+  total_count: number;
+  total_pages: number;
+}
+
+export interface PaginatedResponse<T> {
+  data: T[];
+  pagination: PaginationMeta;
+}
+
 export const usersApi = {
-  list: (session: Session | null): Promise<{ users: User[] }> =>
-    apiRequest<{ users: User[] }>('/api/v1/users', { method: 'GET' }, session),
+  list: (session: Session | null, page?: number, perPage?: number): Promise<PaginatedResponse<User>> => {
+    const params = new URLSearchParams();
+    if (page) params.append('page', String(page));
+    if (perPage) params.append('per_page', String(perPage));
+    const query = params.toString();
+    return apiRequest<PaginatedResponse<User>>(
+      `/api/v1/users${query ? `?${query}` : ''}`,
+      { method: 'GET' },
+      session
+    );
+  },
   
   get: (id: string, session: Session | null): Promise<User> =>
     apiRequest<User>(`/api/v1/users/${id}`, { method: 'GET' }, session),
@@ -189,13 +219,15 @@ export interface LedgerTransaction {
 
 // Ledger Service API - REST endpoints now available
 export const ledgerApi = {
-  listEntries: (session: Session | null, filters?: { account_id?: string }): Promise<{ entries: LedgerEntry[] }> => {
+  listEntries: (session: Session | null, filters?: { account_id?: string }, page?: number, perPage?: number): Promise<PaginatedResponse<LedgerEntry>> => {
     const params = new URLSearchParams();
     if (filters?.account_id) {
       params.append('account_id', filters.account_id);
     }
+    if (page) params.append('page', String(page));
+    if (perPage) params.append('per_page', String(perPage));
     const query = params.toString();
-    return apiRequest<{ entries: LedgerEntry[] }>(
+    return apiRequest<PaginatedResponse<LedgerEntry>>(
       `/api/v1/ledger/entries${query ? `?${query}` : ''}`,
       { method: 'GET' },
       session
