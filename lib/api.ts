@@ -3,17 +3,27 @@
 
 // Removed ApiConfig interface - we only use client-server now
 
+import type { Environment } from '../state/slices/environmentSlice';
+import { getStoreState } from '../state/store';
+
 interface ApiRequestOptions {
   method?: 'GET' | 'POST' | 'PATCH' | 'DELETE';
   headers?: Record<string, string>;
   body?: unknown;
   requiresAuth?: boolean;
   requiresEnvironment?: boolean;
+  environment?: Environment; // Optional: if not provided, will be read from Redux store
+}
+
+export interface EnvironmentInfo {
+  id: string;
+  type: string;
 }
 
 interface Session {
   access_token: string;
   environment_id: string;
+  environments?: EnvironmentInfo[]; // All available environments for the business
 }
 
 // Get client-server base URL from environment
@@ -33,7 +43,7 @@ export async function apiRequest<T>(
   options: ApiRequestOptions = {},
   session?: Session | null
 ): Promise<T> {
-  const { method = 'GET', headers = {}, body, requiresAuth = true, requiresEnvironment = true } = options;
+  const { method = 'GET', headers = {}, body, requiresAuth = true, requiresEnvironment = true, environment } = options;
   const baseUrl = getClientServerUrl();
 
   const requestHeaders: Record<string, string> = {
@@ -47,9 +57,27 @@ export async function apiRequest<T>(
     requestHeaders.Authorization = `Bearer ${session.access_token}`;
   }
 
-  // Add environment ID if required
-  if (requiresEnvironment && session?.environment_id) {
-    requestHeaders['X-Environment-Id'] = session.environment_id;
+  // Add X-Environment header (sandbox/production) - REQUIRED for all services
+  // Priority: explicit parameter > Redux store > default to sandbox (safety)
+  const currentEnvironment: Environment = environment || getStoreState().environment.current || 'sandbox';
+  requestHeaders['X-Environment'] = currentEnvironment;
+
+  // Add environment ID if required (for Users/Accounts services)
+  // Use environment_id from session that matches the current environment type
+  if (requiresEnvironment && session) {
+    if (session.environments && session.environments.length > 0) {
+      // Find environment_id that matches the current environment type
+      const matchingEnv = session.environments.find(e => e.type === currentEnvironment);
+      if (matchingEnv) {
+        requestHeaders['X-Environment-Id'] = matchingEnv.id;
+      } else {
+        // Fallback to session.environment_id if no match found
+        requestHeaders['X-Environment-Id'] = session.environment_id;
+      }
+    } else {
+      // Fallback if environments array is not available
+      requestHeaders['X-Environment-Id'] = session.environment_id;
+    }
   }
 
   // Add correlation ID for request tracking

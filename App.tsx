@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { useAppDispatch, useAppSelector } from './state/hooks';
+import { resetToSandbox, setEnvironment } from './state/slices/environmentSlice';
 import Navbar from './components/Navbar';
 import Hero from './components/Hero';
 import Features from './components/Features';
@@ -8,12 +10,18 @@ import Dashboard from './components/Dashboard';
 import RegisterPage from './components/RegisterPage';
 import LoginPage from './components/LoginPage';
 
+interface EnvironmentInfo {
+  id: string;
+  type: string;
+}
+
 interface Session {
   access_token: string;
   refresh_token: string;
   expires_in: number;
   timestamp: number;
   environment_id: string; // IMPORTANT: required for X-Environment-Id
+  environments: EnvironmentInfo[]; // All available environments for the business
 }
 
 interface UserProfile {
@@ -76,24 +84,27 @@ const DashboardSkeleton = () => (
 );
 
 function App() {
+  const dispatch = useAppDispatch();
+  const environment = useAppSelector((state) => state.environment.current);
+  
   const [view, setView] = useState<'landing' | 'dashboard' | 'register' | 'login'>('landing');
   const [theme, setTheme] = useState<'light' | 'dark'>('dark');
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isLandingLoading, setIsLandingLoading] = useState(true);
   const [isProfileLoading, setIsProfileLoading] = useState(false);
-  const [isProduction, setIsProduction] = useState(false);
 
   const CLIENT_SERVER_URL =
     (import.meta.env.VITE_CLIENT_SERVER as string | undefined) || '';
 
   const toggleTheme = () => setTheme(prev => (prev === 'dark' ? 'light' : 'dark'));
-  const toggleEnvironment = () => setIsProduction(prev => !prev);
 
   const handleLogout = () => {
     setSession(null);
     setProfile(null);
     localStorage.removeItem('rails_session');
+    // Reset environment to sandbox on logout (safety requirement)
+    dispatch(resetToSandbox());
     setView('landing');
   };
 
@@ -165,6 +176,13 @@ function App() {
 
         // ✅ require env id for a restored session
         if (now < expiryTime && parsedSession.environment_id) {
+          // Determine environment type from stored session
+          if (parsedSession.environments && parsedSession.environments.length > 0) {
+            const selectedEnv = parsedSession.environments.find(e => e.id === parsedSession.environment_id);
+            const environmentType = selectedEnv?.type || 'sandbox';
+            dispatch(setEnvironment(environmentType as 'sandbox' | 'production'));
+          }
+          
           setSession(parsedSession);
           fetchProfile(parsedSession.access_token, parsedSession.environment_id);
           setView('dashboard');
@@ -199,7 +217,7 @@ function App() {
   }, [session]);
 
   const handleAuthSuccess = (data: any) => {
-    // ✅ users-service login returns selected_environment_id
+    // ✅ users-service login returns selected_environment_id and environments array
     const envId =
       data.selected_environment_id ||
       data.environment?.id ||
@@ -211,12 +229,23 @@ function App() {
       return;
     }
 
+    // Store all available environments (sandbox + production)
+    const environments: EnvironmentInfo[] = data.environments || [];
+    
+    // Determine current environment type from selected_environment_id
+    const selectedEnv = environments.find(e => e.id === envId);
+    const environmentType = selectedEnv?.type || 'sandbox';
+    
+    // Update Redux store with environment type
+    dispatch(setEnvironment(environmentType as 'sandbox' | 'production'));
+
     const sessionData: Session = {
       access_token: data.access_token,
       refresh_token: data.refresh_token,
       expires_in: data.expires_in,
       timestamp: Date.now(),
       environment_id: envId,
+      environments: environments,
     };
 
     setSession(sessionData);
@@ -237,8 +266,6 @@ function App() {
         onToggleTheme={toggleTheme}
         session={session}
         profile={profile}
-        isProduction={isProduction}
-        onToggleEnvironment={toggleEnvironment}
       />
     );
   }
