@@ -453,7 +453,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, currentTheme, onToggleT
         <div className="flex items-center gap-4">
           <button 
             onClick={() => setSelectedTransactionId(null)}
-            className="p-2 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors text-zinc-500 hover:text-zinc-800 dark:hover:text-white"
+            className="p-2 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors text-zinc-500 hover:text-zinc-800 dark:hover:text-white flex items-center justify-center"
           >
             <span className="material-symbols-sharp">arrow_back</span>
           </button>
@@ -975,7 +975,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, currentTheme, onToggleT
                 <div className="flex items-center gap-4">
                   <button 
                     onClick={() => setSelectedTransactionId(null)}
-                    className="p-2 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors text-zinc-500 hover:text-zinc-800 dark:hover:text-white"
+                    className="p-2 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors text-zinc-500 hover:text-zinc-800 dark:hover:text-white"
                   >
                     <span className="material-symbols-sharp">arrow_back</span>
                   </button>
@@ -1000,7 +1000,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, currentTheme, onToggleT
                 <div className="flex items-center gap-4">
                   <button 
                     onClick={() => setSelectedTransactionId(null)}
-                    className="p-2 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors text-zinc-500 hover:text-zinc-800 dark:hover:text-white"
+                    className="p-2 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors text-zinc-500 hover:text-zinc-800 dark:hover:text-white"
                   >
                     <span className="material-symbols-sharp">arrow_back</span>
                   </button>
