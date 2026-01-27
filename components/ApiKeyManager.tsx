@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useAppSelector } from '../state/hooks';
 
 type ApiKeyStatus = 'active' | 'revoked' | 'none';
 
@@ -27,6 +28,7 @@ interface ApiKeyManagerProps {
 }
 
 const ApiKeyManager: React.FC<ApiKeyManagerProps> = ({ session }) => {
+  const environment = useAppSelector((state) => state.environment.current);
   const [isCreating, setIsCreating] = useState(false);
   const [isRevoking, setIsRevoking] = useState(false);
   const [isLoadingKeys, setIsLoadingKeys] = useState(false);
@@ -74,6 +76,7 @@ const ApiKeyManager: React.FC<ApiKeyManagerProps> = ({ session }) => {
         headers: {
           authorization: `Bearer ${accessToken}`,
           'x-environment-id': environmentId as string,
+          'x-environment': environment, // ✅ REQUIRED: Always include environment (defaults to sandbox)
         },
       });
 
@@ -103,7 +106,7 @@ const ApiKeyManager: React.FC<ApiKeyManagerProps> = ({ session }) => {
     if (!canCallApi) return;
     fetchKeys();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [accessToken, environmentId]);
+  }, [accessToken, environmentId, environment]); // ✅ Refetch when environment changes
 
   const handleCreate = async () => {
     if (!canCallApi) {
@@ -121,6 +124,7 @@ const ApiKeyManager: React.FC<ApiKeyManagerProps> = ({ session }) => {
           'content-type': 'application/json',
           authorization: `Bearer ${accessToken}`,
           'x-environment-id': environmentId as string,
+          'x-environment': environment, // ✅ REQUIRED: Always include environment (defaults to sandbox)
         },
         body: JSON.stringify({ environment_id: environmentId }),
       });
@@ -174,6 +178,7 @@ const ApiKeyManager: React.FC<ApiKeyManagerProps> = ({ session }) => {
           'content-type': 'application/json',
           authorization: `Bearer ${accessToken}`,
           'x-environment-id': environmentId as string,
+          'x-environment': environment, // ✅ REQUIRED: Always include environment (defaults to sandbox)
         },
         body: JSON.stringify({}),
       });
