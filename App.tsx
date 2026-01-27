@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAppDispatch, useAppSelector } from './state/hooks';
 import { resetToSandbox, setEnvironment } from './state/slices/environmentSlice';
+import { getStoreState } from './state/store';
 import Navbar from './components/Navbar';
 import Hero from './components/Hero';
 import Features from './components/Features';
@@ -87,8 +88,16 @@ function App() {
   const dispatch = useAppDispatch();
   const environment = useAppSelector((state) => state.environment.current);
   
+  // ✅ CRITICAL: Initialize theme from localStorage synchronously to avoid flash
+  // This prevents the default 'dark' theme from being applied before useEffect runs
+  const getInitialTheme = (): 'light' | 'dark' => {
+    if (typeof window === 'undefined') return 'dark';
+    const savedTheme = localStorage.getItem('theme') as 'light' | 'dark' | null;
+    return savedTheme || 'dark';
+  };
+  
   const [view, setView] = useState<'landing' | 'dashboard' | 'register' | 'login'>('landing');
-  const [theme, setTheme] = useState<'light' | 'dark'>('dark');
+  const [theme, setTheme] = useState<'light' | 'dark'>(getInitialTheme());
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isLandingLoading, setIsLandingLoading] = useState(true);
@@ -164,8 +173,15 @@ function App() {
   };
 
   useEffect(() => {
-    const savedTheme = localStorage.getItem('theme') as 'light' | 'dark' | null;
-    if (savedTheme) setTheme(savedTheme);
+    // ✅ CRITICAL: redux-persist handles rehydration via PersistGate
+    // The environment slice's REHYDRATE handler ensures sandbox default if no persisted state
+    // We don't need to check here because PersistGate waits for rehydration before rendering App
+    // The initialState in environmentSlice already defaults to 'sandbox'
+    // The REHYDRATE handler validates and defaults to sandbox if persisted state is invalid
+    
+    // ✅ Theme is already initialized from localStorage in useState initializer
+    // This useEffect only needs to sync theme changes to localStorage (handled by separate useEffect)
+    // No need to read theme here again as it's already set correctly on mount
 
     const savedSession = localStorage.getItem('rails_session');
     if (savedSession) {
@@ -176,31 +192,42 @@ function App() {
 
         // ✅ require env id for a restored session
         if (now < expiryTime && parsedSession.environment_id) {
-          // Determine environment type from stored session
-          if (parsedSession.environments && parsedSession.environments.length > 0) {
-            const selectedEnv = parsedSession.environments.find(e => e.id === parsedSession.environment_id);
-            const environmentType = selectedEnv?.type || 'sandbox';
-            dispatch(setEnvironment(environmentType as 'sandbox' | 'production'));
-          }
+          // ✅ CRITICAL: Redux persisted state is the source of truth for environment
+          // Do NOT override the persisted environment state from session
+          // The persisted state (via redux-persist) already contains the user's selected environment
+          // The session's environment_id is just used for API calls, not for environment selection
           
           setSession(parsedSession);
-          fetchProfile(parsedSession.access_token, parsedSession.environment_id);
+          // Use the current environment from Redux (persisted state) to find matching environment_id
+          const currentEnv = getStoreState().environment.current;
+          const matchingEnv = parsedSession.environments?.find(e => e.type === currentEnv);
+          const envIdToUse = matchingEnv?.id || parsedSession.environment_id;
+          fetchProfile(parsedSession.access_token, envIdToUse);
           setView('dashboard');
         } else {
           localStorage.removeItem('rails_session');
+          // Session expired - environment state remains in Redux (persisted)
         }
       } catch {
         localStorage.removeItem('rails_session');
+        // Session corrupted - environment state remains in Redux (persisted)
       }
     }
+    // ✅ No session - environment state is already set by redux-persist rehydration
+    // No need to reset here, as the slice's initialState and REHYDRATE handler ensure sandbox default
 
     const timer = setTimeout(() => setIsLandingLoading(false), 1200);
     return () => clearTimeout(timer);
   }, []);
 
+  // ✅ Apply theme class to DOM and sync to localStorage
+  // This runs on mount (with initial theme from localStorage) and whenever theme changes
   useEffect(() => {
-    if (theme === 'dark') document.documentElement.classList.add('dark');
-    else document.documentElement.classList.remove('dark');
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
     localStorage.setItem('theme', theme);
   }, [theme]);
 
@@ -232,12 +259,14 @@ function App() {
     // Store all available environments (sandbox + production)
     const environments: EnvironmentInfo[] = data.environments || [];
     
-    // Determine current environment type from selected_environment_id
+    // ✅ CRITICAL: On login, set environment based on selected_environment_id
+    // This is the ONLY place where we set environment from session data
+    // After this, the persisted Redux state becomes the source of truth
     const selectedEnv = environments.find(e => e.id === envId);
-    const environmentType = selectedEnv?.type || 'sandbox';
+    const environmentType = (selectedEnv?.type || 'sandbox') as 'sandbox' | 'production';
     
-    // Update Redux store with environment type
-    dispatch(setEnvironment(environmentType as 'sandbox' | 'production'));
+    // Update Redux store with environment type (will be persisted by redux-persist)
+    dispatch(setEnvironment(environmentType));
 
     const sessionData: Session = {
       access_token: data.access_token,

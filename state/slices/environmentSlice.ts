@@ -37,11 +37,23 @@ const environmentSlice = createSlice({
   // Handle rehydration from redux-persist - validate persisted state
   extraReducers: (builder) => {
     builder.addCase(REHYDRATE, (state, action: any) => {
-      // When rehydrating, validate the persisted environment value
-      if (action.payload?.environment?.current) {
-        state.current = validateEnvironment(action.payload.environment.current);
+      // ✅ CRITICAL: redux-persist REHYDRATE payload structure
+      // When using slice-specific persist config (key: 'environment'), the payload
+      // contains the persisted state DIRECTLY, not nested under 'environment'
+      // The payload structure is: { current: Environment, _persist: {...} }
+      // If no persisted state exists, payload will be undefined
+      // If persisted state is corrupted, we validate and default to sandbox
+      
+      const persistedState = action.payload;
+      
+      // Check if we have persisted environment state
+      // For slice-specific persist, the state is directly in payload, not nested
+      if (persistedState?.current) {
+        // Validate the persisted value - this ensures corrupted data defaults to sandbox
+        state.current = validateEnvironment(persistedState.current);
       } else {
-        // If no persisted value or corrupted, default to sandbox
+        // No persisted value exists (first load, cleared storage, etc.)
+        // Default to sandbox (non-negotiable safety requirement)
         state.current = 'sandbox';
       }
     });
