@@ -10,6 +10,8 @@ import Footer from './components/Footer';
 import Dashboard from './components/Dashboard';
 import RegisterPage from './components/RegisterPage';
 import LoginPage from './components/LoginPage';
+import ForgotPasswordPage from './components/ForgotPasswordPage';
+import ResetPasswordPage from './components/ResetPasswordPage';
 
 interface EnvironmentInfo {
   id: string;
@@ -96,7 +98,7 @@ function App() {
     return savedTheme || 'dark';
   };
   
-  const [view, setView] = useState<'landing' | 'dashboard' | 'register' | 'login'>('landing');
+  const [view, setView] = useState<'landing' | 'dashboard' | 'register' | 'login' | 'forgotPassword' | 'resetPassword'>('landing');
   const [theme, setTheme] = useState<'light' | 'dark'>(getInitialTheme());
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -175,6 +177,17 @@ function App() {
       setTimeout(() => setIsProfileLoading(false), 800);
     }
   };
+
+  // Check for password reset token in URL on mount
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const resetToken = urlParams.get('token');
+    if (resetToken) {
+      setView('resetPassword');
+      // Clean up URL
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, []);
 
   useEffect(() => {
     // ✅ CRITICAL: redux-persist handles rehydration via PersistGate
@@ -331,7 +344,37 @@ function App() {
     return (
       <div className="min-h-screen bg-white dark:bg-black text-zinc-800 dark:text-white transition-colors duration-300">
         <Navbar onLogin={() => setView('login')} onRegister={() => setView('register')} />
-        <LoginPage onBack={() => setView('landing')} onSuccess={handleAuthSuccess} />
+        <LoginPage 
+          onBack={() => setView('landing')} 
+          onSuccess={handleAuthSuccess}
+          onForgotPassword={() => setView('forgotPassword')}
+        />
+        <Footer onToggleTheme={toggleTheme} currentTheme={theme} />
+      </div>
+    );
+  }
+
+  if (view === 'forgotPassword') {
+    return (
+      <div className="min-h-screen bg-white dark:bg-black text-zinc-800 dark:text-white transition-colors duration-300">
+        <Navbar onLogin={() => setView('login')} onRegister={() => setView('register')} />
+        <ForgotPasswordPage 
+          onBack={() => setView('login')} 
+          onSuccess={() => setView('login')}
+        />
+        <Footer onToggleTheme={toggleTheme} currentTheme={theme} />
+      </div>
+    );
+  }
+
+  if (view === 'resetPassword') {
+    return (
+      <div className="min-h-screen bg-white dark:bg-black text-zinc-800 dark:text-white transition-colors duration-300">
+        <Navbar onLogin={() => setView('login')} onRegister={() => setView('register')} />
+        <ResetPasswordPage 
+          onBack={() => setView('login')} 
+          onSuccess={() => setView('login')}
+        />
         <Footer onToggleTheme={toggleTheme} currentTheme={theme} />
       </div>
     );
