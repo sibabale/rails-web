@@ -4,9 +4,10 @@ import React, { useState } from 'react';
 interface LoginPageProps {
   onBack: () => void;
   onSuccess: (sessionData: any) => void;
+  onForgotPassword: () => void;
 }
 
-const LoginPage: React.FC<LoginPageProps> = ({ onBack, onSuccess }) => {
+const LoginPage: React.FC<LoginPageProps> = ({ onBack, onSuccess, onForgotPassword }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
@@ -153,9 +154,13 @@ const LoginPage: React.FC<LoginPageProps> = ({ onBack, onSuccess }) => {
           </div>
 
           <div className="text-center space-y-4">
-            <a href="#" className="text-[10px] font-mono uppercase tracking-widest text-zinc-400 hover:text-zinc-800 dark:hover:text-white transition-colors">
+            <button
+              type="button"
+              onClick={onForgotPassword}
+              className="text-[10px] font-mono uppercase tracking-widest text-zinc-400 hover:text-zinc-800 dark:hover:text-white transition-colors"
+            >
               Forgot security credentials?
-            </a>
+            </button>
             <p className="text-[10px] uppercase tracking-widest text-zinc-400 dark:text-zinc-600 font-mono">
               SECURE SESSION • TLS 1.3 ENFORCED
             </p>

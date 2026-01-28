@@ -241,6 +241,43 @@ export const usersApi = {
     apiRequest<User>(`/api/v1/users/${id}`, { method: 'GET' }, session),
 };
 
+// Password Reset API
+export interface RequestPasswordResetResponse {
+  message: string;
+}
+
+export interface ResetPasswordResponse {
+  message: string;
+}
+
+export const passwordResetApi = {
+  request: (email: string): Promise<RequestPasswordResetResponse> => {
+    return apiRequest<RequestPasswordResetResponse>(
+      '/api/v1/auth/password-reset/request',
+      {
+        method: 'POST',
+        body: { email },
+        requiresAuth: false,
+        requiresEnvironment: false,
+      },
+      null
+    );
+  },
+
+  reset: (token: string, newPassword: string): Promise<ResetPasswordResponse> => {
+    return apiRequest<ResetPasswordResponse>(
+      '/api/v1/auth/password-reset/reset',
+      {
+        method: 'POST',
+        body: { token, new_password: newPassword },
+        requiresAuth: false,
+        requiresEnvironment: false,
+      },
+      null
+    );
+  },
+};
+
 // Ledger Service API
 export interface LedgerEntry {
   id: string;
