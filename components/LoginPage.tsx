@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 
 interface LoginPageProps {
   onBack: () => void;
@@ -14,6 +14,45 @@ const LoginPage: React.FC<LoginPageProps> = ({ onBack, onSuccess, onForgotPasswo
     email: '',
     password: ''
   });
+  const passwordInputRef = useRef<HTMLInputElement>(null);
+  const passwordTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Clear password field when component unmounts (security measure)
+  useEffect(() => {
+    return () => {
+      if (passwordInputRef.current) {
+        passwordInputRef.current.value = '';
+      }
+      if (passwordTimeoutRef.current) {
+        clearTimeout(passwordTimeoutRef.current);
+      }
+      setFormData(prev => ({ ...prev, password: '' }));
+    };
+  }, []);
+
+  // Clear password after 5 minutes of inactivity (security measure)
+  useEffect(() => {
+    if (formData.password) {
+      // Clear any existing timeout
+      if (passwordTimeoutRef.current) {
+        clearTimeout(passwordTimeoutRef.current);
+      }
+      
+      // Set new timeout to clear password after 5 minutes
+      passwordTimeoutRef.current = setTimeout(() => {
+        setFormData(prev => ({ ...prev, password: '' }));
+        if (passwordInputRef.current) {
+          passwordInputRef.current.value = '';
+        }
+      }, 5 * 60 * 1000); // 5 minutes
+    }
+
+    return () => {
+      if (passwordTimeoutRef.current) {
+        clearTimeout(passwordTimeoutRef.current);
+      }
+    };
+  }, [formData.password]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -62,6 +101,14 @@ const LoginPage: React.FC<LoginPageProps> = ({ onBack, onSuccess, onForgotPasswo
       }
 
       const data = await response.json();
+      
+      // SECURITY: Clear password immediately after successful login
+      // This prevents password from remaining in DOM after authentication
+      setFormData(prev => ({ ...prev, password: '' }));
+      if (passwordInputRef.current) {
+        passwordInputRef.current.value = '';
+      }
+      
       onSuccess(data);
     } catch (err: any) {
       console.error('Login Error:', err);
@@ -70,6 +117,11 @@ const LoginPage: React.FC<LoginPageProps> = ({ onBack, onSuccess, onForgotPasswo
       } else {
         // Use the error message from the API (should be user-friendly now)
         setError(err.message || 'Authentication failed. Please try again.');
+      }
+      // Clear password on error as well for security
+      setFormData(prev => ({ ...prev, password: '' }));
+      if (passwordInputRef.current) {
+        passwordInputRef.current.value = '';
       }
     } finally {
       setLoading(false);
@@ -102,6 +154,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onBack, onSuccess, onForgotPasswo
             <input 
               type="email" 
               name="email"
+              autoComplete="email"
               required
               placeholder="admin@example.com"
               value={formData.email}
@@ -113,8 +166,10 @@ const LoginPage: React.FC<LoginPageProps> = ({ onBack, onSuccess, onForgotPasswo
           <div className="space-y-2">
             <label className="text-[10px] font-mono font-bold uppercase tracking-widest text-zinc-400 dark:text-zinc-500 ml-1">Password</label>
             <input 
+              ref={passwordInputRef}
               type="password" 
               name="password"
+              autoComplete="current-password"
               required
               placeholder="••••••••••••"
               value={formData.password}

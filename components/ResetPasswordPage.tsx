@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { passwordResetApi } from '../lib/api';
 
 interface ResetPasswordPageProps {
@@ -15,6 +15,8 @@ const ResetPasswordPage: React.FC<ResetPasswordPageProps> = ({ onBack, onSuccess
     confirmPassword: '',
   });
   const [token, setToken] = useState<string | null>(null);
+  const passwordInputRef = useRef<HTMLInputElement>(null);
+  const confirmPasswordInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
@@ -24,6 +26,19 @@ const ResetPasswordPage: React.FC<ResetPasswordPageProps> = ({ onBack, onSuccess
     } else {
       setToken(tokenParam);
     }
+  }, []);
+
+  // Clear password fields when component unmounts (security measure)
+  useEffect(() => {
+    return () => {
+      if (passwordInputRef.current) {
+        passwordInputRef.current.value = '';
+      }
+      if (confirmPasswordInputRef.current) {
+        confirmPasswordInputRef.current.value = '';
+      }
+      setFormData({ password: '', confirmPassword: '' });
+    };
   }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -56,6 +71,16 @@ const ResetPasswordPage: React.FC<ResetPasswordPageProps> = ({ onBack, onSuccess
 
     try {
       await passwordResetApi.reset(token, formData.password);
+      
+      // SECURITY: Clear password fields immediately after successful reset
+      setFormData({ password: '', confirmPassword: '' });
+      if (passwordInputRef.current) {
+        passwordInputRef.current.value = '';
+      }
+      if (confirmPasswordInputRef.current) {
+        confirmPasswordInputRef.current.value = '';
+      }
+      
       setSuccess(true);
       // Redirect to login after 3 seconds
       setTimeout(() => {
@@ -64,6 +89,14 @@ const ResetPasswordPage: React.FC<ResetPasswordPageProps> = ({ onBack, onSuccess
     } catch (err: any) {
       console.error('Password reset error:', err);
       setError(err.message || 'Failed to reset password. The link may have expired. Please request a new one.');
+      // Clear password on error as well for security
+      setFormData({ password: '', confirmPassword: '' });
+      if (passwordInputRef.current) {
+        passwordInputRef.current.value = '';
+      }
+      if (confirmPasswordInputRef.current) {
+        confirmPasswordInputRef.current.value = '';
+      }
     } finally {
       setLoading(false);
     }
@@ -109,8 +142,10 @@ const ResetPasswordPage: React.FC<ResetPasswordPageProps> = ({ onBack, onSuccess
           <div className="space-y-2">
             <label className="text-[10px] font-mono font-bold uppercase tracking-widest text-zinc-400 dark:text-zinc-500 ml-1">New Password</label>
             <input 
+              ref={passwordInputRef}
               type="password" 
               name="password"
+              autoComplete="new-password"
               required
               minLength={8}
               placeholder="••••••••••••"
@@ -126,8 +161,10 @@ const ResetPasswordPage: React.FC<ResetPasswordPageProps> = ({ onBack, onSuccess
           <div className="space-y-2">
             <label className="text-[10px] font-mono font-bold uppercase tracking-widest text-zinc-400 dark:text-zinc-500 ml-1">Confirm Password</label>
             <input 
+              ref={confirmPasswordInputRef}
               type="password" 
               name="confirmPassword"
+              autoComplete="new-password"
               required
               minLength={8}
               placeholder="••••••••••••"
