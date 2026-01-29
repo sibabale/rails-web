@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 
 interface RegisterPageProps {
   onBack: () => void;
@@ -10,6 +10,7 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onBack, onSuccess }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const passwordInputRef = useRef<HTMLInputElement>(null);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -20,6 +21,16 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onBack, onSuccess }) => {
     admin_password: ''
   });
 
+  // Clear password field when component unmounts (security measure)
+  useEffect(() => {
+    return () => {
+      if (passwordInputRef.current) {
+        passwordInputRef.current.value = '';
+      }
+      setFormData(prev => ({ ...prev, admin_password: '' }));
+    };
+  }, []);
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
@@ -29,9 +40,16 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onBack, onSuccess }) => {
     setLoading(true);
     setError(null);
 
-    const API_BASE_URL =
-      (import.meta.env.VITE_USERS_SERVICE as string | undefined) || '';
-    const endpoint = `${API_BASE_URL.replace(/\/$/, '')}/api/v1/business/register`;
+    const CLIENT_SERVER_URL =
+      (import.meta.env.VITE_CLIENT_SERVER as string | undefined) || '';
+    
+    if (!CLIENT_SERVER_URL) {
+      setError('VITE_CLIENT_SERVER is not configured. All API calls must go through rails-client-server.');
+      setLoading(false);
+      return;
+    }
+    
+    const endpoint = `${CLIENT_SERVER_URL.replace(/\/$/, '')}/api/v1/business/register`;
 
     try {
       const response = await fetch(endpoint, {
@@ -44,15 +62,25 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onBack, onSuccess }) => {
       });
 
       if (!response.ok) {
-        let errorMessage = `Error ${response.status}: ${response.statusText}`;
+        let errorMessage = 'Registration failed. Please try again.';
         try {
           const errorData = await response.json();
-          errorMessage = errorData.message || errorMessage;
-        } catch (jsonErr) {}
+          errorMessage = errorData.message || errorData.error || errorMessage;
+        } catch (jsonErr) {
+          // Log the actual error for debugging
+          console.error('Registration error response (not shown to user):', await response.text());
+        }
         throw new Error(errorMessage);
       }
 
       const data = await response.json();
+      
+      // SECURITY: Clear password immediately after successful registration
+      setFormData(prev => ({ ...prev, admin_password: '' }));
+      if (passwordInputRef.current) {
+        passwordInputRef.current.value = '';
+      }
+      
       setSuccess(true);
       setTimeout(() => {
         onSuccess(data);
@@ -60,9 +88,15 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onBack, onSuccess }) => {
     } catch (err: any) {
       console.error('Registration Error:', err);
       if (err.name === 'TypeError' && err.message === 'Failed to fetch') {
-        setError(`Unable to connect to the Rails node at ${endpoint}. Check network or CORS configuration for the production host.`);
+        setError('Unable to connect to the service. Please check your connection and try again.');
       } else {
-        setError(err.message || 'An unexpected error occurred during registration.');
+        // Use the error message from the API (should be user-friendly now)
+        setError(err.message || 'An error occurred during registration. Please try again.');
+      }
+      // Clear password on error as well for security
+      setFormData(prev => ({ ...prev, admin_password: '' }));
+      if (passwordInputRef.current) {
+        passwordInputRef.current.value = '';
       }
     } finally {
       setLoading(false);
@@ -160,6 +194,7 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onBack, onSuccess }) => {
               <input 
                 type="email" 
                 name="admin_email"
+                autoComplete="email"
                 required
                 placeholder="admin@acme.com"
                 value={formData.admin_email}
@@ -171,8 +206,10 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onBack, onSuccess }) => {
             <div className="space-y-2">
               <label className="text-xs font-mono font-bold uppercase tracking-widest text-zinc-400 dark:text-zinc-500">Password</label>
               <input 
+                ref={passwordInputRef}
                 type="password" 
                 name="admin_password"
+                autoComplete="new-password"
                 required
                 placeholder="••••••••••••"
                 value={formData.admin_password}

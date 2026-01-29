@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useAppSelector } from '../state/hooks';
 
 type ApiKeyStatus = 'active' | 'revoked' | 'none';
 
@@ -27,6 +28,7 @@ interface ApiKeyManagerProps {
 }
 
 const ApiKeyManager: React.FC<ApiKeyManagerProps> = ({ session }) => {
+  const environment = useAppSelector((state) => state.environment.current);
   const [isCreating, setIsCreating] = useState(false);
   const [isRevoking, setIsRevoking] = useState(false);
   const [isLoadingKeys, setIsLoadingKeys] = useState(false);
@@ -38,11 +40,11 @@ const ApiKeyManager: React.FC<ApiKeyManagerProps> = ({ session }) => {
   const [plaintextKey, setPlaintextKey] = useState<string | null>(null);
   const [copyFeedback, setCopyFeedback] = useState<'idle' | 'copied' | 'failed'>('idle');
 
-  const API_BASE_URL = (import.meta.env.VITE_USERS_SERVICE as string | undefined) || '';
+  const CLIENT_SERVER_URL = (import.meta.env.VITE_CLIENT_SERVER as string | undefined) || '';
   const environmentId = session?.environment_id;
   const accessToken = session?.access_token;
 
-  const canCallApi = Boolean(accessToken && environmentId);
+  const canCallApi = Boolean(accessToken && environmentId && CLIENT_SERVER_URL);
 
   const currentKey = useMemo(() => {
     const envKeys = keys.filter(k => (k.environment_id || '') === (environmentId || ''));
@@ -69,17 +71,26 @@ const ApiKeyManager: React.FC<ApiKeyManagerProps> = ({ session }) => {
     setError(null);
     setIsLoadingKeys(true);
     try {
-      const response = await fetch(`${API_BASE_URL.replace(/\/$/, '')}/api/v1/api-keys`, {
+      const response = await fetch(`${CLIENT_SERVER_URL.replace(/\/$/, '')}/api/v1/api-keys`, {
         method: 'GET',
         headers: {
           authorization: `Bearer ${accessToken}`,
           'x-environment-id': environmentId as string,
+          'x-environment': environment, // ✅ REQUIRED: Always include environment (defaults to sandbox)
         },
       });
 
       if (!response.ok) {
-        const text = await response.text();
-        throw new Error(text || `Failed to load API keys (${response.status})`);
+        let errorMessage = 'Failed to load API keys. Please try again.';
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.message || errorData.error || errorMessage;
+        } catch {
+          // Log the actual error for debugging
+          const text = await response.text();
+          console.error('API key fetch error (not shown to user):', text);
+        }
+        throw new Error(errorMessage);
       }
 
       const data = (await response.json()) as ApiKeyInfo[];
@@ -95,7 +106,7 @@ const ApiKeyManager: React.FC<ApiKeyManagerProps> = ({ session }) => {
     if (!canCallApi) return;
     fetchKeys();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [accessToken, environmentId]);
+  }, [accessToken, environmentId, environment]); // ✅ Refetch when environment changes
 
   const handleCreate = async () => {
     if (!canCallApi) {
@@ -107,19 +118,28 @@ const ApiKeyManager: React.FC<ApiKeyManagerProps> = ({ session }) => {
     setIsCreating(true);
 
     try {
-      const response = await fetch(`${API_BASE_URL.replace(/\/$/, '')}/api/v1/api-keys`, {
+      const response = await fetch(`${CLIENT_SERVER_URL.replace(/\/$/, '')}/api/v1/api-keys`, {
         method: 'POST',
         headers: {
           'content-type': 'application/json',
           authorization: `Bearer ${accessToken}`,
           'x-environment-id': environmentId as string,
+          'x-environment': environment, // ✅ REQUIRED: Always include environment (defaults to sandbox)
         },
         body: JSON.stringify({ environment_id: environmentId }),
       });
 
       if (!response.ok) {
-        const text = await response.text();
-        throw new Error(text || `Failed to create API key (${response.status})`);
+        let errorMessage = 'Failed to create API key. Please try again.';
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.message || errorData.error || errorMessage;
+        } catch {
+          // Log the actual error for debugging
+          const text = await response.text();
+          console.error('API key creation error (not shown to user):', text);
+        }
+        throw new Error(errorMessage);
       }
 
       const data = (await response.json()) as ApiKeyResponse;
@@ -152,19 +172,28 @@ const ApiKeyManager: React.FC<ApiKeyManagerProps> = ({ session }) => {
     setIsRevoking(true);
 
     try {
-      const response = await fetch(`${API_BASE_URL.replace(/\/$/, '')}/api/v1/api-keys/${apiKeyId}/revoke`, {
+      const response = await fetch(`${CLIENT_SERVER_URL.replace(/\/$/, '')}/api/v1/api-keys/${apiKeyId}/revoke`, {
         method: 'POST',
         headers: {
           'content-type': 'application/json',
           authorization: `Bearer ${accessToken}`,
           'x-environment-id': environmentId as string,
+          'x-environment': environment, // ✅ REQUIRED: Always include environment (defaults to sandbox)
         },
         body: JSON.stringify({}),
       });
 
       if (!response.ok) {
-        const text = await response.text();
-        throw new Error(text || `Failed to revoke API key (${response.status})`);
+        let errorMessage = 'Failed to revoke API key. Please try again.';
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.message || errorData.error || errorMessage;
+        } catch {
+          // Log the actual error for debugging
+          const text = await response.text();
+          console.error('API key revocation error (not shown to user):', text);
+        }
+        throw new Error(errorMessage);
       }
 
       await fetchKeys();
