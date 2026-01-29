@@ -4,7 +4,9 @@ import { useAppDispatch, useAppSelector } from '../state/hooks';
 import { setEnvironment } from '../state/slices/environmentSlice';
 import ApiKeyManager from './ApiKeyManager';
 import Pagination from './Pagination';
-import { accountsApi, usersApi, transactionsApi, ledgerApi, type Account as ApiAccount, type Transaction, type User, type LedgerEntry, type LedgerTransaction, type PaginationMeta } from '../lib/api';
+import SettledVolumeChart from './SettledVolumeChart';
+import DashboardOverviewV2 from './DashboardOverviewV2';
+import { accountsApi, usersApi, transactionsApi, ledgerApi, type Account as ApiAccount, type Transaction, type User, type LedgerEntry, type PaginationMeta } from '../lib/api';
 
 interface DashboardProps {
   onLogout: () => void;
@@ -55,6 +57,21 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, currentTheme, onToggleT
   const [ledgerEntries, setLedgerEntries] = useState<LedgerEntry[]>([]);
   const [isLoadingLedger, setIsLoadingLedger] = useState(false);
   const [ledgerError, setLedgerError] = useState<string | null>(null);
+  const [settledVolumeAllTime, setSettledVolumeAllTime] = useState<number | null>(null);
+  const [settledVolume24h, setSettledVolume24h] = useState<number | null>(null);
+  const [settledVolume1h, setSettledVolume1h] = useState<number | null>(null);
+  const [settledVolumeCurrency, setSettledVolumeCurrency] = useState('USD');
+  const [isLoadingSettledVolume, setIsLoadingSettledVolume] = useState(false);
+  const [settledVolumeRange, setSettledVolumeRange] = useState<'ALL' | '1D' | '1H'>('ALL');
+  const [overviewStats, setOverviewStats] = useState({
+    activeUsers: 0,
+    activeAccounts: 0,
+    postedEntries: 0,
+    settledVolume: 0,
+  });
+  const [overviewCurrency, setOverviewCurrency] = useState('USD');
+  const [isLoadingOverviewStats, setIsLoadingOverviewStats] = useState(false);
+  const [overviewStatsError, setOverviewStatsError] = useState<string | null>(null);
   const [isLoadingTransactionsList, setIsLoadingTransactionsList] = useState(false);
   const [transactionsListError, setTransactionsListError] = useState<string | null>(null);
   
@@ -265,30 +282,199 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, currentTheme, onToggleT
     }
   }, [activeTab, session, ledgerPage, environment]);
 
+  const fetchAllUsers = async () => {
+    const perPage = 100;
+    let page = 1;
+    let allUsers: User[] = [];
+    let totalPages = 1;
+
+    while (page <= totalPages) {
+      const response = await usersApi.list(session, page, perPage);
+      allUsers = allUsers.concat(response.data || []);
+      totalPages = response.pagination?.total_pages ?? page;
+      page += 1;
+    }
+
+    return allUsers;
+  };
+
+  const fetchAllAccounts = async () => {
+    const perPage = 100;
+    let page = 1;
+    let allAccounts: ApiAccount[] = [];
+    let totalPages = 1;
+
+    while (page <= totalPages) {
+      const response = await accountsApi.list(session, page, perPage);
+      allAccounts = allAccounts.concat(response.data || []);
+      totalPages = response.pagination?.total_pages ?? page;
+      page += 1;
+    }
+
+    return allAccounts;
+  };
+
+  const fetchAllTransactions = async () => {
+    const perPage = 100;
+    let page = 1;
+    let allTransactions: Transaction[] = [];
+    let totalPages = 1;
+
+    while (page <= totalPages) {
+      const response = await transactionsApi.list(session, page, perPage);
+      allTransactions = allTransactions.concat(response.data || []);
+      totalPages = response.pagination?.total_pages ?? page;
+      page += 1;
+    }
+
+    return allTransactions;
+  };
+
+  // Fetch overview stats when Overview tab is active or environment changes
+  useEffect(() => {
+    if (activeTab === 'Overview' && session) {
+      let isActive = true;
+      setIsLoadingOverviewStats(true);
+      setOverviewStatsError(null);
+
+      const loadOverviewStats = async () => {
+        const allUsers = await fetchAllUsers();
+        const adminUserIds = new Set(
+          allUsers
+            .filter((user) => user.role?.toLowerCase() === 'admin')
+            .map((user) => user.id)
+        );
+        const activeUsersCount = allUsers.filter(
+          (user) => user.status?.toLowerCase() === 'active' && !adminUserIds.has(user.id)
+        ).length;
+
+        const allAccounts = await fetchAllAccounts();
+        const activeAccountsCount = allAccounts.filter((account) => {
+          const isActive = account.status?.toLowerCase() === 'active';
+          const userId = account.user_id || '';
+          return isActive && (userId === '' || !adminUserIds.has(userId));
+        }).length;
+
+        const allTransactions = await fetchAllTransactions();
+        const postedTransactions = allTransactions.filter((tx) => tx.status?.toLowerCase() === 'posted');
+        const postedTransactionsCount = postedTransactions.length;
+
+        return {
+          activeUsersCount,
+          activeAccountsCount,
+          postedEntriesCount: postedTransactionsCount,
+          settledVolumeTotal: 0,
+          currency: 'USD',
+        };
+      };
+
+      loadOverviewStats()
+        .then((stats) => {
+          if (!isActive) return;
+          setOverviewStats({
+            activeUsers: stats.activeUsersCount,
+            activeAccounts: stats.activeAccountsCount,
+            postedEntries: stats.postedEntriesCount,
+            settledVolume: stats.settledVolumeTotal,
+          });
+          setOverviewCurrency(stats.currency);
+        })
+        .catch((err) => {
+          if (!isActive) return;
+          console.error('Failed to fetch overview stats:', err);
+          setOverviewStatsError(err.message || 'Failed to load overview stats');
+          setOverviewStats({ activeUsers: 0, activeAccounts: 0, postedEntries: 0, settledVolume: 0 });
+          setSettledVolumeAllTime(0);
+          setSettledVolumeBucketsAll([]);
+        })
+        .finally(() => {
+          if (isActive) {
+            setIsLoadingOverviewStats(false);
+          }
+        });
+
+      return () => {
+        isActive = false;
+      };
+    }
+  }, [activeTab, session, environment]);
+
+  const formatCurrency = (amount: number, currency: string) => {
+    try {
+      return new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(amount);
+    } catch {
+      return `$${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    }
+  };
+
+  const formatCount = (value: number) => value.toLocaleString('en-US');
+
+  const settledVolumeDisplay = (() => {
+    if (isLoadingSettledVolume) return '—';
+    const amount = settledVolumeRange === 'ALL'
+      ? settledVolumeAllTime ?? 0
+      : settledVolumeRange === '1H'
+      ? settledVolume1h ?? 0
+      : settledVolume24h ?? 0;
+    return formatCurrency(amount, settledVolumeCurrency);
+  })();
+
+  const handleSettledVolumeStats = (stats: { totalAmount: number; currency: string }) => {
+    setSettledVolumeCurrency(stats.currency);
+    if (settledVolumeRange === 'ALL') {
+      setSettledVolumeAllTime(stats.totalAmount);
+    } else if (settledVolumeRange === '1H') {
+      setSettledVolume1h(stats.totalAmount);
+    } else {
+      setSettledVolume24h(stats.totalAmount);
+    }
+  };
+
+  useEffect(() => {
+    if (session && activeTab === 'Overview') {
+      setIsLoadingSettledVolume(true);
+    }
+  }, [session, settledVolumeRange, activeTab]);
+
+  const overviewTiles = [
+    {
+      label: 'Active Users',
+      value: isLoadingOverviewStats ? '—' : formatCount(overviewStats.activeUsers),
+      sublabel: 'users',
+    },
+    {
+      label: 'Active Accounts',
+      value: isLoadingOverviewStats ? '—' : formatCount(overviewStats.activeAccounts),
+      sublabel: 'accounts',
+    },
+    {
+      label: 'Posted Transactions',
+      value: isLoadingOverviewStats ? '—' : formatCount(overviewStats.postedEntries),
+      sublabel: 'transactions',
+    },
+    {
+      label: 'Settled Volume',
+      value: isLoadingSettledVolume
+        ? '—'
+        : formatCurrency(settledVolumeAllTime ?? 0, settledVolumeCurrency),
+      sublabel: 'ledger',
+    },
+  ];
+
   // Removed handleDecommission - admin users have read-only access, no destructive actions
+
+  const useOverviewV2 = true;
 
   const navItems = [
     { name: 'Overview', icon: 'dashboard' },
     { name: 'Users', icon: 'people' },
     { name: 'Accounts', icon: 'account_balance' },
     { name: 'Transactions', icon: 'swap_horiz' },
-    { name: 'Settlements', icon: 'account_tree' },
-    { name: 'Payments', icon: 'payments' },
+    // { name: 'Settlements', icon: 'account_tree' },
+    // { name: 'Payments', icon: 'payments' },
     { name: 'Ledger', icon: 'book' },
-    { name: 'Infrastructure', icon: 'dns' },
+    // { name: 'Infrastructure', icon: 'dns' },
   ];
-
-  const VolumeChart = () => (
-    <div className="h-24 w-full flex items-end gap-1 px-1">
-      {[40, 70, 45, 90, 65, 80, 55, 30, 85, 95, 40, 50, 70, 40, 80, 90, 100, 60, 45, 75, 85, 95, 40, 30].map((h, i) => (
-        <div 
-          key={i} 
-          className="flex-1 bg-zinc-200 dark:bg-white/20 hover:bg-zinc-400 dark:hover:bg-white transition-all rounded-t-sm"
-          style={{ height: `${h}%` }}
-        />
-      ))}
-    </div>
-  );
 
   const renderAccountDetails = (account: Account) => (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -1015,45 +1201,86 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, currentTheme, onToggleT
         }
         return renderTransactionsView();
       case 'Overview':
+        if (useOverviewV2) {
+          return <DashboardOverviewV2 onGetStarted={() => setActiveTab('Accounts')} />;
+        }
         return (
           <div className="space-y-8 animate-in fade-in duration-500">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              {[
-                { label: 'ACH Rail', status: 'Nominal', p99: '1.2s', health: 100 },
-                { label: 'FedWire', status: 'Nominal', p99: '42ms', health: 100 },
-                { label: 'Rails Internal', status: 'Nominal', p99: '4ms', health: 100 },
-                { label: 'SEPA Bridge', status: 'Degraded', p99: '4.8s', health: 84 },
-              ].map((rail) => (
-                <div key={rail.label} className="bg-white dark:bg-black border border-zinc-100 dark:border-zinc-800/50 p-4 rounded-xl flex flex-col justify-between shadow-sm">
+              {overviewTiles.map((tile) => (
+                <div key={tile.label} className="bg-white dark:bg-black border border-zinc-100 dark:border-zinc-800/50 p-4 rounded-xl flex flex-col justify-between shadow-sm">
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-[9px] font-mono font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest">{rail.label}</span>
-                    <span className={`w-1.5 h-1.5 rounded-full ${rail.health === 100 ? 'bg-emerald-500' : 'bg-amber-500 animate-pulse'}`}></span>
+                    <span className="text-[9px] font-mono font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest">{tile.label}</span>
+                    <span className={`w-1.5 h-1.5 rounded-full ${overviewStatsError ? 'bg-amber-500 animate-pulse' : 'bg-emerald-500'}`}></span>
                   </div>
                   <div className="flex items-baseline justify-between">
-                    <span className="text-lg font-bold tracking-tight text-zinc-800 dark:text-white">{rail.status}</span>
-                    <span className="text-[10px] font-mono text-zinc-400 dark:text-zinc-600">p99: {rail.p99}</span>
+                    <span className={`text-lg font-bold tracking-tight text-zinc-800 dark:text-white ${isLoadingOverviewStats ? 'animate-pulse' : ''}`}>
+                      {tile.value}
+                    </span>
+                    <span className="text-[10px] font-mono text-zinc-400 dark:text-zinc-600">{tile.sublabel}</span>
                   </div>
                 </div>
               ))}
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <div className="lg:col-span-2 bg-white dark:bg-black border border-zinc-100 dark:border-zinc-800/50 p-6 rounded-2xl relative overflow-hidden group transition-colors shadow-sm">
+              <div className="lg:col-span-3 bg-white dark:bg-black border border-zinc-100 dark:border-zinc-800/50 p-6 rounded-2xl relative overflow-hidden group transition-colors shadow-sm">
                 <div className="relative z-10">
                   <div className="flex items-center justify-between mb-6">
                     <div>
-                      <p className="text-xs font-mono text-zinc-400 dark:text-zinc-500 uppercase tracking-widest mb-1 font-bold">Settled Volume (24h)</p>
-                      <h2 className="text-3xl font-bold tracking-tighter text-zinc-800 dark:text-white">$1,242,910.00</h2>
+                      <p className="text-xs font-mono text-zinc-400 dark:text-zinc-500 uppercase tracking-widest mb-1 font-bold">
+                        Settled Volume ({settledVolumeRange === 'ALL' ? 'All Time' : settledVolumeRange === '1H' ? '1h' : '24h'})
+                      </p>
+                      <h2 className="text-3xl font-bold tracking-tighter text-zinc-800 dark:text-white">{settledVolumeDisplay}</h2>
                     </div>
                     <div className="flex gap-2">
-                      <span className="text-[10px] font-mono bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 px-2 py-1 rounded text-zinc-400">1D</span>
-                      <span className="text-[10px] font-mono bg-zinc-800 dark:bg-white text-white dark:text-black px-2 py-1 rounded">1H</span>
+                      <button
+                        type="button"
+                        onClick={() => setSettledVolumeRange('ALL')}
+                        className={`text-[10px] font-mono border px-2 py-1 rounded ${
+                          settledVolumeRange === 'ALL'
+                            ? 'bg-zinc-800 dark:bg-white text-white dark:text-black border-zinc-800 dark:border-white'
+                            : 'bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-400'
+                        }`}
+                        aria-pressed={settledVolumeRange === 'ALL'}
+                      >
+                        All Time
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setSettledVolumeRange('1D')}
+                        className={`text-[10px] font-mono border px-2 py-1 rounded ${
+                          settledVolumeRange === '1D'
+                            ? 'bg-zinc-800 dark:bg-white text-white dark:text-black border-zinc-800 dark:border-white'
+                            : 'bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-400'
+                        }`}
+                        aria-pressed={settledVolumeRange === '1D'}
+                      >
+                        1D
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setSettledVolumeRange('1H')}
+                        className={`text-[10px] font-mono border px-2 py-1 rounded ${
+                          settledVolumeRange === '1H'
+                            ? 'bg-zinc-800 dark:bg-white text-white dark:text-black border-zinc-800 dark:border-white'
+                            : 'bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-400'
+                        }`}
+                        aria-pressed={settledVolumeRange === '1H'}
+                      >
+                        1H
+                      </button>
                     </div>
                   </div>
-                  <VolumeChart />
+                  <SettledVolumeChart
+                    session={session}
+                    range={settledVolumeRange}
+                    onStatsChange={handleSettledVolumeStats}
+                    onLoadingChange={setIsLoadingSettledVolume}
+                  />
                 </div>
               </div>
-
+              {/*
               <div className="bg-white dark:bg-black border border-zinc-100 dark:border-zinc-800/50 p-6 rounded-2xl flex flex-col justify-between transition-colors shadow-sm">
                 <div>
                   <div className="flex items-center gap-2 mb-2 text-zinc-400 dark:text-zinc-500">
@@ -1063,6 +1290,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, currentTheme, onToggleT
                   <h2 className="text-3xl font-bold tracking-tighter text-zinc-800 dark:text-white">R{(reserve.available / 1000000).toFixed(1)}M</h2>
                 </div>
               </div>
+              */}
             </div>
           </div>
         );
@@ -1150,6 +1378,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, currentTheme, onToggleT
             </div>
           </div>
         );
+      /*
       case 'Settlements':
         return (
           <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-500">
@@ -1164,6 +1393,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, currentTheme, onToggleT
             <div className="p-12 text-center text-zinc-400 dark:text-zinc-600 font-mono uppercase tracking-[0.2em] animate-pulse">Payment Engine Initializing...</div>
           </div>
         );
+      */
       case 'Ledger':
         return (
           <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-500">
@@ -1269,6 +1499,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, currentTheme, onToggleT
             </div>
           </div>
         );
+      /*
       case 'Infrastructure':
         return (
           <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-500">
@@ -1276,6 +1507,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, currentTheme, onToggleT
             <div className="p-12 text-center text-zinc-400 dark:text-zinc-600 font-mono uppercase tracking-[0.2em] animate-pulse">Scanning Global Nodes...</div>
           </div>
         );
+      */
       default:
         return null;
     }
