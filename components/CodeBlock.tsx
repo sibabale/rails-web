@@ -11,51 +11,67 @@ const CodeBlock: React.FC<CodeBlockProps> = ({ snippets }) => {
   const languages = [
     { id: 'ts', label: 'TypeScript' },
     { id: 'go', label: 'Go' },
-    { id: 'rust', label: 'Rust' },
+    { id: 'python', label: 'Python' },
     { id: 'java', label: 'Java' },
+    { id: 'kotlin', label: 'Kotlin' },
   ] as const;
 
   const highlight = (line: string) => {
-    // Regex for basic syntax highlighting
-    const tokens = line.split(/(".*?"|'.*?'|\/\/.*|\b(?:const|let|var|await|async|import|from|return|func|package|type|struct|pub|fn|mut|impl|use|public|class|new|static|void|interface|enum|if|else|err|for|range|vec|List|of)\b|\.\s*([a-zA-Z_]\w*)\s*(?=\()|\b([A-Z][a-zA-Z0-9_]*)\b|\b\d+\b|\b(?:true|false|null)\b)/g);
+    const tokenRegex =
+      /(".*?"|'.*?'|\/\/.*|\b(?:const|let|var|await|async|import|from|return|func|package|type|struct|pub|fn|mut|impl|use|public|class|new|static|void|interface|enum|if|else|err|for|range|vec|List|of|def|print|try|except|lambda|with|as|in|is|not|and|or|pass|break|continue|yield|raise)\b|\.\s*[a-zA-Z_]\w*(?=\()|\b[a-zA-Z_]\w*(?=:)|\b[A-Z][a-zA-Z0-9_]*\b|\b\d+\b|\b(?:true|false|null|True|False|None)\b|[.:(){}[\]])/g;
+    const parts: React.ReactNode[] = [];
+    let lastIndex = 0;
+    let match: RegExpExecArray | null;
 
-    return tokens.map((token, i) => {
-      if (!token) return null;
+    const pushSpan = (text: string, className: string, key: string) => {
+      if (!text) return;
+      parts.push(
+        <span key={key} className={className}>
+          {text}
+        </span>
+      );
+    };
+
+    while ((match = tokenRegex.exec(line)) !== null) {
+      if (match.index > lastIndex) {
+        pushSpan(line.slice(lastIndex, match.index), 'text-zinc-400', `text-${lastIndex}`);
+      }
+
+      const token = match[0];
 
       if (/^(".*?"|'.*?')$/.test(token)) {
-        return <span key={i} className="text-emerald-400">{token}</span>;
-      }
-      if (/^\/\/.*$/.test(token)) {
-        return <span key={i} className="text-zinc-600 italic">{token}</span>;
-      }
-      if (/^(const|let|var|await|async|import|from|return|func|package|type|struct|pub|fn|mut|impl|use|public|class|new|static|void|interface|enum|if|else|err|for|range|vec|List|of)$/.test(token)) {
-        return <span key={i} className="text-sky-400 font-medium">{token}</span>;
-      }
-      // Method calls
-      if (line.includes(`.${token}(`) || line.includes(`${token}(`)) {
-          if (!/^[A-Z]/.test(token)) {
-            return <span key={i} className="text-amber-200">{token}</span>;
-          }
-      }
-      // Types / Classes
-      if (/^([A-Z][a-zA-Z0-9_]*)$/.test(token)) {
-        return <span key={i} className="text-white font-semibold">{token}</span>;
-      }
-      // Numbers
-      if (/^\d+$/.test(token)) {
-        return <span key={i} className="text-orange-400">{token}</span>;
-      }
-      // Booleans / Null
-      if (/^(true|false|null)$/.test(token)) {
-        return <span key={i} className="text-orange-300">{token}</span>;
-      }
-      // Operators / Braces
-      if (/^[.:(){}[\]]$/.test(token)) {
-          return <span key={i} className="text-zinc-600">{token}</span>;
+        pushSpan(token, 'text-emerald-400', `str-${match.index}`);
+      } else if (/^\/\/.*$/.test(token)) {
+        pushSpan(token, 'text-zinc-600 italic', `com-${match.index}`);
+      } else if (/^(const|let|var|await|async|import|from|return|func|package|type|struct|pub|fn|mut|impl|use|public|class|new|static|void|interface|enum|if|else|err|for|range|vec|List|of|def|print|try|except|lambda|with|as|in|is|not|and|or|pass|break|continue|yield|raise)$/.test(token)) {
+        pushSpan(token, 'text-sky-400 font-medium', `kw-${match.index}`);
+      } else if (/^[a-zA-Z_]\w*$/.test(token) && line.includes(`${token}:`)) {
+        pushSpan(token, 'text-violet-300', `key-${match.index}`);
+      } else if (/^\.\s*[a-zA-Z_]\w*$/.test(token)) {
+        const methodName = token.replace(/^\.\s*/, '');
+        const prefix = token.slice(0, token.length - methodName.length);
+        pushSpan(prefix, 'text-zinc-600', `dot-${match.index}`);
+        pushSpan(methodName, 'text-amber-200', `meth-${match.index}`);
+      } else if (/^[A-Z][a-zA-Z0-9_]*$/.test(token)) {
+        pushSpan(token, 'text-white font-semibold', `type-${match.index}`);
+      } else if (/^\d+$/.test(token)) {
+        pushSpan(token, 'text-orange-400', `num-${match.index}`);
+      } else if (/^(true|false|null|True|False|None)$/.test(token)) {
+        pushSpan(token, 'text-orange-300', `bool-${match.index}`);
+      } else if (/^[.:(){}[\]]$/.test(token)) {
+        pushSpan(token, 'text-zinc-600', `op-${match.index}`);
+      } else {
+        pushSpan(token, 'text-zinc-400', `tok-${match.index}`);
       }
 
-      return <span key={i} className="text-zinc-400">{token}</span>;
-    });
+      lastIndex = tokenRegex.lastIndex;
+    }
+
+    if (lastIndex < line.length) {
+      pushSpan(line.slice(lastIndex), 'text-zinc-400', `text-${lastIndex}`);
+    }
+
+    return parts;
   };
 
   return (
