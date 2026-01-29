@@ -216,9 +216,6 @@ const LoginPage: React.FC<LoginPageProps> = ({ onBack, onSuccess, onForgotPasswo
             >
               Forgot security credentials?
             </button>
-            <p className="text-[10px] uppercase tracking-widest text-zinc-400 dark:text-zinc-600 font-mono">
-              SECURE SESSION • TLS 1.3 ENFORCED
-            </p>
           </div>
         </form>
       </div>

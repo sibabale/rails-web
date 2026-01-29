@@ -86,19 +86,6 @@ const Features: React.FC = () => {
                 <CodeBlock snippets={activeFeature.snippets} />
               </div>
 
-              <div className="mt-4 flex items-center justify-between px-2">
-                <div className="text-[10px] font-mono text-zinc-400 dark:text-zinc-600 uppercase flex gap-4">
-                  <span className="flex items-center gap-1.5">
-                    <span className="material-symbols-sharp !text-[14px]">lock</span>
-                    TLS 1.3
-                  </span>
-                  <span className="flex items-center gap-1.5">
-                    <span className="material-symbols-sharp !text-[14px]">verified</span>
-                    SOC2 Compliant
-                  </span>
-                </div>
-                <span className="text-[10px] font-mono text-zinc-300 dark:text-zinc-700">v2.4.0-STABLE</span>
-              </div>
             </div>
           </div>
         </div>
