@@ -4,8 +4,8 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
+    "dev": "NODE_ENV=development node scripts/generate-seo.js && vite",
+    "build": "NODE_ENV=production node scripts/generate-seo.js && vite build",
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest"
