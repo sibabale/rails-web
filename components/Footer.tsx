@@ -17,14 +17,6 @@ const Footer: React.FC<FooterProps> = ({ onToggleTheme, currentTheme }) => {
           </div>
           
           <div className="flex items-center gap-8 text-sm">
-            <div className="flex gap-8 text-zinc-500">
-              <a href="#beta" className="text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white transition-colors font-medium">Request Access</a>
-              <a href="#" className="hover:text-zinc-900 dark:hover:text-white transition-colors">Privacy</a>
-              <a href="#" className="hover:text-zinc-900 dark:hover:text-white transition-colors">Twitter</a>
-            </div>
-
-            <div className="h-4 w-px bg-zinc-200 dark:bg-zinc-800 hidden md:block"></div>
-
             <button 
               onClick={onToggleTheme}
               className="flex items-center gap-2 px-3 py-1.5 rounded-full border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-all group"
