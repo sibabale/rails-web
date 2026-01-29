@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 
 interface RegisterPageProps {
   onBack: () => void;
@@ -10,6 +10,7 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onBack, onSuccess }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const passwordInputRef = useRef<HTMLInputElement>(null);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -19,6 +20,16 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onBack, onSuccess }) => {
     admin_email: '',
     admin_password: ''
   });
+
+  // Clear password field when component unmounts (security measure)
+  useEffect(() => {
+    return () => {
+      if (passwordInputRef.current) {
+        passwordInputRef.current.value = '';
+      }
+      setFormData(prev => ({ ...prev, admin_password: '' }));
+    };
+  }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -63,6 +74,13 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onBack, onSuccess }) => {
       }
 
       const data = await response.json();
+      
+      // SECURITY: Clear password immediately after successful registration
+      setFormData(prev => ({ ...prev, admin_password: '' }));
+      if (passwordInputRef.current) {
+        passwordInputRef.current.value = '';
+      }
+      
       setSuccess(true);
       setTimeout(() => {
         onSuccess(data);
@@ -74,6 +92,11 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onBack, onSuccess }) => {
       } else {
         // Use the error message from the API (should be user-friendly now)
         setError(err.message || 'An error occurred during registration. Please try again.');
+      }
+      // Clear password on error as well for security
+      setFormData(prev => ({ ...prev, admin_password: '' }));
+      if (passwordInputRef.current) {
+        passwordInputRef.current.value = '';
       }
     } finally {
       setLoading(false);
@@ -171,6 +194,7 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onBack, onSuccess }) => {
               <input 
                 type="email" 
                 name="admin_email"
+                autoComplete="email"
                 required
                 placeholder="admin@acme.com"
                 value={formData.admin_email}
@@ -182,8 +206,10 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onBack, onSuccess }) => {
             <div className="space-y-2">
               <label className="text-xs font-mono font-bold uppercase tracking-widest text-zinc-400 dark:text-zinc-500">Password</label>
               <input 
+                ref={passwordInputRef}
                 type="password" 
                 name="admin_password"
+                autoComplete="new-password"
                 required
                 placeholder="••••••••••••"
                 value={formData.admin_password}

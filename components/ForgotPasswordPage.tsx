@@ -86,6 +86,7 @@ const ForgotPasswordPage: React.FC<ForgotPasswordPageProps> = ({ onBack, onSucce
             <label className="text-[10px] font-mono font-bold uppercase tracking-widest text-zinc-400 dark:text-zinc-500 ml-1">Email Address</label>
             <input 
               type="email" 
+              autoComplete="email"
               required
               placeholder="admin@example.com"
               value={email}

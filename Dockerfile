@@ -20,14 +20,20 @@ RUN npm run build
 # Production stage - use nginx to serve static files
 FROM nginx:alpine
 
-# Copy custom nginx config
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+# Remove default nginx config
+RUN rm -f /etc/nginx/conf.d/default.conf
+
+# Create templates directory and copy nginx config as template
+RUN mkdir -p /etc/nginx/templates
+COPY nginx.conf /etc/nginx/templates/default.conf.template
+
+# Copy entrypoint script
+COPY docker-entrypoint.sh /docker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh
 
 # Copy built files from builder stage
 COPY --from=builder /app/dist /usr/share/nginx/html
 
-# Expose port 80
-EXPOSE 80
-
-# Start nginx
-CMD ["nginx", "-g", "daemon off;"]
+# Use entrypoint script to substitute PORT at runtime
+# PORT will be provided by Railway at runtime
+ENTRYPOINT ["/docker-entrypoint.sh"]
