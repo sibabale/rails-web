@@ -1,4 +1,7 @@
 import React, { useState, useEffect } from 'react';
+import { useAppDispatch, useAppSelector } from './state/hooks';
+import { resetToSandbox, setEnvironment } from './state/slices/environmentSlice';
+import { getStoreState } from './state/store';
 import Navbar from './components/Navbar';
 import Hero from './components/Hero';
 import Features from './components/Features';
@@ -7,9 +10,13 @@ import Footer from './components/Footer';
 import Dashboard from './components/Dashboard';
 import RegisterPage from './components/RegisterPage';
 import LoginPage from './components/LoginPage';
-import { useAppDispatch, useAppSelector } from './state/hooks';
-import { selectIsProduction } from './state/selectors';
-import { setEnvironmentIdForMode, setProduction, setSandbox } from './state/environmentSlice';
+import ForgotPasswordPage from './components/ForgotPasswordPage';
+import ResetPasswordPage from './components/ResetPasswordPage';
+
+interface EnvironmentInfo {
+  id: string;
+  type: string;
+}
 
 interface Session {
   access_token: string;
@@ -17,6 +24,7 @@ interface Session {
   expires_in: number;
   timestamp: number;
   environment_id: string; // IMPORTANT: required for X-Environment-Id
+  environments: EnvironmentInfo[]; // All available environments for the business
 }
 
 interface UserProfile {
@@ -79,25 +87,35 @@ const DashboardSkeleton = () => (
 );
 
 function App() {
-  const [view, setView] = useState<'landing' | 'dashboard' | 'register' | 'login'>('landing');
-  const [theme, setTheme] = useState<'light' | 'dark'>('dark');
+  const dispatch = useAppDispatch();
+  const environment = useAppSelector((state) => state.environment.current);
+  
+  // ✅ CRITICAL: Initialize theme from localStorage synchronously to avoid flash
+  // This prevents the default 'dark' theme from being applied before useEffect runs
+  const getInitialTheme = (): 'light' | 'dark' => {
+    if (typeof window === 'undefined') return 'dark';
+    const savedTheme = localStorage.getItem('theme') as 'light' | 'dark' | null;
+    return savedTheme || 'dark';
+  };
+  
+  const [view, setView] = useState<'landing' | 'dashboard' | 'register' | 'login' | 'forgotPassword' | 'resetPassword'>('landing');
+  const [theme, setTheme] = useState<'light' | 'dark'>(getInitialTheme());
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isLandingLoading, setIsLandingLoading] = useState(true);
   const [isProfileLoading, setIsProfileLoading] = useState(false);
-  const dispatch = useAppDispatch();
-  const isProduction = useAppSelector(selectIsProduction);
 
-  const API_BASE_URL =
-    (import.meta.env.VITE_USERS_SERVICE as string | undefined) || '';
+  const CLIENT_SERVER_URL =
+    (import.meta.env.VITE_CLIENT_SERVER as string | undefined) || '';
 
   const toggleTheme = () => setTheme(prev => (prev === 'dark' ? 'light' : 'dark'));
-  const toggleEnvironment = () => dispatch(isProduction ? setSandbox() : setProduction());
 
   const handleLogout = () => {
     setSession(null);
     setProfile(null);
     localStorage.removeItem('rails_session');
+    // Reset environment to sandbox on logout (safety requirement)
+    dispatch(resetToSandbox());
     setView('landing');
   };
 
@@ -110,13 +128,23 @@ function App() {
       return;
     }
 
+    if (!CLIENT_SERVER_URL) {
+      console.error('VITE_CLIENT_SERVER is not configured. All API calls must go through rails-client-server.');
+      setIsProfileLoading(false);
+      return;
+    }
+
+    // Get current environment from Redux store to send X-Environment header
+    const currentEnv = getStoreState().environment.current || 'sandbox';
+
     try {
-      const response = await fetch(`${API_BASE_URL.replace(/\/$/, '')}/api/v1/me`, {
+      const response = await fetch(`${CLIENT_SERVER_URL.replace(/\/$/, '')}/api/v1/me`, {
         method: 'GET',
         headers: {
           Authorization: `Bearer ${token}`,
           Accept: 'application/json',
           'X-Environment-Id': environmentId, // ✅ REQUIRED by users-service AuthContext
+          'X-Environment': currentEnv, // ✅ REQUIRED for environment-aware routing
         },
       });
 
@@ -150,9 +178,27 @@ function App() {
     }
   };
 
+  // Check for password reset token in URL on mount
   useEffect(() => {
-    const savedTheme = localStorage.getItem('theme') as 'light' | 'dark' | null;
-    if (savedTheme) setTheme(savedTheme);
+    const urlParams = new URLSearchParams(window.location.search);
+    const resetToken = urlParams.get('token');
+    if (resetToken) {
+      setView('resetPassword');
+      // Clean up URL
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, []);
+
+  useEffect(() => {
+    // ✅ CRITICAL: redux-persist handles rehydration via PersistGate
+    // The environment slice's REHYDRATE handler ensures sandbox default if no persisted state
+    // We don't need to check here because PersistGate waits for rehydration before rendering App
+    // The initialState in environmentSlice already defaults to 'sandbox'
+    // The REHYDRATE handler validates and defaults to sandbox if persisted state is invalid
+    
+    // ✅ Theme is already initialized from localStorage in useState initializer
+    // This useEffect only needs to sync theme changes to localStorage (handled by separate useEffect)
+    // No need to read theme here again as it's already set correctly on mount
 
     const savedSession = localStorage.getItem('rails_session');
     if (savedSession) {
@@ -163,25 +209,42 @@ function App() {
 
         // ✅ require env id for a restored session
         if (now < expiryTime && parsedSession.environment_id) {
+          // ✅ CRITICAL: Redux persisted state is the source of truth for environment
+          // Do NOT override the persisted environment state from session
+          // The persisted state (via redux-persist) already contains the user's selected environment
+          // The session's environment_id is just used for API calls, not for environment selection
+          
           setSession(parsedSession);
-          dispatch(setEnvironmentIdForMode({ mode: 'sandbox', environmentId: parsedSession.environment_id }));
-          fetchProfile(parsedSession.access_token, parsedSession.environment_id);
+          // Use the current environment from Redux (persisted state) to find matching environment_id
+          const currentEnv = getStoreState().environment.current;
+          const matchingEnv = parsedSession.environments?.find(e => e.type === currentEnv);
+          const envIdToUse = matchingEnv?.id || parsedSession.environment_id;
+          fetchProfile(parsedSession.access_token, envIdToUse);
           setView('dashboard');
         } else {
           localStorage.removeItem('rails_session');
+          // Session expired - environment state remains in Redux (persisted)
         }
       } catch {
         localStorage.removeItem('rails_session');
+        // Session corrupted - environment state remains in Redux (persisted)
       }
     }
+    // ✅ No session - environment state is already set by redux-persist rehydration
+    // No need to reset here, as the slice's initialState and REHYDRATE handler ensure sandbox default
 
     const timer = setTimeout(() => setIsLandingLoading(false), 1200);
     return () => clearTimeout(timer);
   }, []);
 
+  // ✅ Apply theme class to DOM and sync to localStorage
+  // This runs on mount (with initial theme from localStorage) and whenever theme changes
   useEffect(() => {
-    if (theme === 'dark') document.documentElement.classList.add('dark');
-    else document.documentElement.classList.remove('dark');
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
     localStorage.setItem('theme', theme);
   }, [theme]);
 
@@ -197,8 +260,22 @@ function App() {
     return () => clearTimeout(timer);
   }, [session]);
 
+  // ✅ Refetch profile when environment changes (e.g., switching from sandbox to production)
+  useEffect(() => {
+    if (!session || !session.access_token) return;
+    
+    // Find environment_id that matches the current environment type
+    const matchingEnv = session.environments?.find(e => e.type === environment);
+    const envIdToUse = matchingEnv?.id || session.environment_id;
+    
+    if (envIdToUse) {
+      fetchProfile(session.access_token, envIdToUse);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [environment]);
+
   const handleAuthSuccess = (data: any) => {
-    // ✅ users-service login returns selected_environment_id
+    // ✅ users-service login returns selected_environment_id and environments array
     const envId =
       data.selected_environment_id ||
       data.environment?.id ||
@@ -210,17 +287,29 @@ function App() {
       return;
     }
 
+    // Store all available environments (sandbox + production)
+    const environments: EnvironmentInfo[] = data.environments || [];
+    
+    // ✅ CRITICAL: On login, set environment based on selected_environment_id
+    // This is the ONLY place where we set environment from session data
+    // After this, the persisted Redux state becomes the source of truth
+    const selectedEnv = environments.find(e => e.id === envId);
+    const environmentType = (selectedEnv?.type || 'sandbox') as 'sandbox' | 'production';
+    
+    // Update Redux store with environment type (will be persisted by redux-persist)
+    dispatch(setEnvironment(environmentType));
+
     const sessionData: Session = {
       access_token: data.access_token,
       refresh_token: data.refresh_token,
       expires_in: data.expires_in,
       timestamp: Date.now(),
       environment_id: envId,
+      environments: environments,
     };
 
     setSession(sessionData);
     localStorage.setItem('rails_session', JSON.stringify(sessionData));
-    dispatch(setEnvironmentIdForMode({ mode: 'sandbox', environmentId: sessionData.environment_id }));
     fetchProfile(sessionData.access_token, sessionData.environment_id);
     setView('dashboard');
   };
@@ -237,8 +326,6 @@ function App() {
         onToggleTheme={toggleTheme}
         session={session}
         profile={profile}
-        isProduction={isProduction}
-        onToggleEnvironment={toggleEnvironment}
       />
     );
   }
@@ -257,7 +344,37 @@ function App() {
     return (
       <div className="min-h-screen bg-white dark:bg-black text-zinc-800 dark:text-white transition-colors duration-300">
         <Navbar onLogin={() => setView('login')} onRegister={() => setView('register')} />
-        <LoginPage onBack={() => setView('landing')} onSuccess={handleAuthSuccess} />
+        <LoginPage 
+          onBack={() => setView('landing')} 
+          onSuccess={handleAuthSuccess}
+          onForgotPassword={() => setView('forgotPassword')}
+        />
+        <Footer onToggleTheme={toggleTheme} currentTheme={theme} />
+      </div>
+    );
+  }
+
+  if (view === 'forgotPassword') {
+    return (
+      <div className="min-h-screen bg-white dark:bg-black text-zinc-800 dark:text-white transition-colors duration-300">
+        <Navbar onLogin={() => setView('login')} onRegister={() => setView('register')} />
+        <ForgotPasswordPage 
+          onBack={() => setView('login')} 
+          onSuccess={() => setView('login')}
+        />
+        <Footer onToggleTheme={toggleTheme} currentTheme={theme} />
+      </div>
+    );
+  }
+
+  if (view === 'resetPassword') {
+    return (
+      <div className="min-h-screen bg-white dark:bg-black text-zinc-800 dark:text-white transition-colors duration-300">
+        <Navbar onLogin={() => setView('login')} onRegister={() => setView('register')} />
+        <ResetPasswordPage 
+          onBack={() => setView('login')} 
+          onSuccess={() => setView('login')}
+        />
         <Footer onToggleTheme={toggleTheme} currentTheme={theme} />
       </div>
     );

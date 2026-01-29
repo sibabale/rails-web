@@ -3,25 +3,12 @@ import type { RootState } from './store';
 
 const selectEnvironmentState = (state: RootState) => state.environment;
 
-export const selectEnvironmentMode = createSelector(
+export const selectEnvironmentCurrent = createSelector(
   [selectEnvironmentState],
-  (env) => env.mode,
+  (env) => env.current,
 );
 
 export const selectIsProduction = createSelector(
-  [selectEnvironmentMode],
-  (mode) => mode === 'production',
-);
-
-export const selectEnvironmentIds = createSelector(
-  [selectEnvironmentState],
-  (env) => env.environmentIds,
-);
-
-export const selectEnvironmentIdForMode = (mode: 'sandbox' | 'production') =>
-  createSelector([selectEnvironmentIds], (ids) => ids[mode] ?? null);
-
-export const selectActiveEnvironmentId = createSelector(
-  [selectEnvironmentMode, selectEnvironmentIds],
-  (mode, ids) => ids[mode] ?? null,
+  [selectEnvironmentCurrent],
+  (current) => current === 'production',
 );

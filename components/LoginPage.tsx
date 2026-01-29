@@ -1,18 +1,58 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 
 interface LoginPageProps {
   onBack: () => void;
   onSuccess: (sessionData: any) => void;
+  onForgotPassword: () => void;
 }
 
-const LoginPage: React.FC<LoginPageProps> = ({ onBack, onSuccess }) => {
+const LoginPage: React.FC<LoginPageProps> = ({ onBack, onSuccess, onForgotPassword }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     email: '',
     password: ''
   });
+  const passwordInputRef = useRef<HTMLInputElement>(null);
+  const passwordTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Clear password field when component unmounts (security measure)
+  useEffect(() => {
+    return () => {
+      if (passwordInputRef.current) {
+        passwordInputRef.current.value = '';
+      }
+      if (passwordTimeoutRef.current) {
+        clearTimeout(passwordTimeoutRef.current);
+      }
+      setFormData(prev => ({ ...prev, password: '' }));
+    };
+  }, []);
+
+  // Clear password after 5 minutes of inactivity (security measure)
+  useEffect(() => {
+    if (formData.password) {
+      // Clear any existing timeout
+      if (passwordTimeoutRef.current) {
+        clearTimeout(passwordTimeoutRef.current);
+      }
+      
+      // Set new timeout to clear password after 5 minutes
+      passwordTimeoutRef.current = setTimeout(() => {
+        setFormData(prev => ({ ...prev, password: '' }));
+        if (passwordInputRef.current) {
+          passwordInputRef.current.value = '';
+        }
+      }, 5 * 60 * 1000); // 5 minutes
+    }
+
+    return () => {
+      if (passwordTimeoutRef.current) {
+        clearTimeout(passwordTimeoutRef.current);
+      }
+    };
+  }, [formData.password]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -23,9 +63,16 @@ const LoginPage: React.FC<LoginPageProps> = ({ onBack, onSuccess }) => {
     setLoading(true);
     setError(null);
 
-    const API_BASE_URL =
-      (import.meta.env.VITE_USERS_SERVICE as string | undefined) || '';
-    const endpoint = `${API_BASE_URL.replace(/\/$/, '')}/api/v1/auth/login`;
+    const CLIENT_SERVER_URL =
+      (import.meta.env.VITE_CLIENT_SERVER as string | undefined) || '';
+    
+    if (!CLIENT_SERVER_URL) {
+      setError('VITE_CLIENT_SERVER is not configured. All API calls must go through rails-client-server.');
+      setLoading(false);
+      return;
+    }
+    
+    const endpoint = `${CLIENT_SERVER_URL.replace(/\/$/, '')}/api/v1/auth/login`;
 
     try {
       const response = await fetch(endpoint, {
@@ -42,22 +89,39 @@ const LoginPage: React.FC<LoginPageProps> = ({ onBack, onSuccess }) => {
           throw new Error("Invalid credentials. Please verify your email and password.");
         }
         
-        let errorMessage = `Auth Error ${response.status}`;
+        let errorMessage = 'Authentication failed. Please try again.';
         try {
           const errorData = await response.json();
-          errorMessage = errorData.message || errorMessage;
-        } catch (jsonErr) {}
+          errorMessage = errorData.message || errorData.error || errorMessage;
+        } catch (jsonErr) {
+          // Log the actual error for debugging
+          console.error('Login error response (not shown to user):', await response.text());
+        }
         throw new Error(errorMessage);
       }
 
       const data = await response.json();
+      
+      // SECURITY: Clear password immediately after successful login
+      // This prevents password from remaining in DOM after authentication
+      setFormData(prev => ({ ...prev, password: '' }));
+      if (passwordInputRef.current) {
+        passwordInputRef.current.value = '';
+      }
+      
       onSuccess(data);
     } catch (err: any) {
       console.error('Login Error:', err);
       if (err.name === 'TypeError' && err.message === 'Failed to fetch') {
-        setError(`Connection failed to Rails Auth node at ${endpoint}. Check network status.`);
+        setError('Unable to connect to the service. Please check your connection and try again.');
       } else {
-        setError(err.message || 'Authentication failed.');
+        // Use the error message from the API (should be user-friendly now)
+        setError(err.message || 'Authentication failed. Please try again.');
+      }
+      // Clear password on error as well for security
+      setFormData(prev => ({ ...prev, password: '' }));
+      if (passwordInputRef.current) {
+        passwordInputRef.current.value = '';
       }
     } finally {
       setLoading(false);
@@ -90,6 +154,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onBack, onSuccess }) => {
             <input 
               type="email" 
               name="email"
+              autoComplete="email"
               required
               placeholder="admin@example.com"
               value={formData.email}
@@ -101,8 +166,10 @@ const LoginPage: React.FC<LoginPageProps> = ({ onBack, onSuccess }) => {
           <div className="space-y-2">
             <label className="text-[10px] font-mono font-bold uppercase tracking-widest text-zinc-400 dark:text-zinc-500 ml-1">Password</label>
             <input 
+              ref={passwordInputRef}
               type="password" 
               name="password"
+              autoComplete="current-password"
               required
               placeholder="••••••••••••"
               value={formData.password}
@@ -142,9 +209,13 @@ const LoginPage: React.FC<LoginPageProps> = ({ onBack, onSuccess }) => {
           </div>
 
           <div className="text-center space-y-4">
-            <a href="#" className="text-[10px] font-mono uppercase tracking-widest text-zinc-400 hover:text-zinc-800 dark:hover:text-white transition-colors">
+            <button
+              type="button"
+              onClick={onForgotPassword}
+              className="text-[10px] font-mono uppercase tracking-widest text-zinc-400 hover:text-zinc-800 dark:hover:text-white transition-colors"
+            >
               Forgot security credentials?
-            </a>
+            </button>
             <p className="text-[10px] uppercase tracking-widest text-zinc-400 dark:text-zinc-600 font-mono">
               SECURE SESSION • TLS 1.3 ENFORCED
             </p>
