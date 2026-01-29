@@ -131,7 +131,6 @@ const Hero: React.FC<HeroProps> = ({ onStart, isLoading = false }) => {
                   <div className="w-2 h-2 rounded-full bg-zinc-200 dark:bg-zinc-800"></div>
                   <div className="w-2 h-2 rounded-full bg-zinc-200 dark:bg-zinc-800"></div>
                 </div>
-                <div className="h-4 w-px bg-zinc-100 dark:bg-white/5 mx-2"></div>
                 <span className="text-[10px] font-mono text-zinc-400 dark:text-zinc-600 font-bold uppercase tracking-[0.2em]">Live Infrastructure Log</span>
               </div>
               <div className="flex items-center gap-4">
