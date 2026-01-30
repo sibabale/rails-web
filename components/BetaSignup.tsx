@@ -1,6 +1,7 @@
 
 import React, { useState } from 'react';
 import { ApplicationStatus } from '../types';
+import { betaApi } from '../lib/api';
 
 const BetaSignup: React.FC = () => {
   const [formData, setFormData] = useState({
@@ -10,17 +11,29 @@ const BetaSignup: React.FC = () => {
     useCase: ''
   });
   const [status, setStatus] = useState<ApplicationStatus>(ApplicationStatus.IDLE);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setStatus(ApplicationStatus.SUBMITTING);
-    setTimeout(() => {
+    setError(null);
+
+    try {
+      await betaApi.apply(formData);
       setStatus(ApplicationStatus.SUCCESS);
-    }, 2000);
+      setFormData({ name: '', email: '', company: '', useCase: '' });
+    } catch (err: any) {
+      console.error('Beta application error:', err);
+      setError(err.message || 'Failed to submit application. Please try again.');
+      setStatus(ApplicationStatus.ERROR);
+    }
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
+    if (error) {
+      setError(null);
+    }
   };
 
   return (
@@ -45,7 +58,10 @@ const BetaSignup: React.FC = () => {
               Thank you for your interest in Rails. Our infrastructure team will review your application and contact you via secure channel.
             </p>
             <button 
-              onClick={() => setStatus(ApplicationStatus.IDLE)}
+              onClick={() => {
+                setStatus(ApplicationStatus.IDLE);
+                setError(null);
+              }}
               className="text-sm font-medium text-zinc-400 dark:text-zinc-500 hover:text-zinc-800 dark:hover:text-white transition-colors"
             >
               Submit another application
@@ -105,6 +121,16 @@ const BetaSignup: React.FC = () => {
                 onChange={handleChange}
               />
             </div>
+
+            {error && (
+              <div className="p-4 bg-red-50 dark:bg-red-950/20 border border-red-100 dark:border-red-900/50 rounded-xl flex items-start gap-3 text-red-600 dark:text-red-400 text-xs animate-in shake duration-300">
+                <span className="material-symbols-sharp !text-[18px] mt-0.5">error</span>
+                <div className="flex-1">
+                  <p className="font-bold mb-0.5 uppercase tracking-tighter">Error</p>
+                  <p className="leading-relaxed opacity-80">{error}</p>
+                </div>
+              </div>
+            )}
 
             <div className="pt-4">
               <button

@@ -241,6 +241,31 @@ export const usersApi = {
     apiRequest<User>(`/api/v1/users/${id}`, { method: 'GET' }, session),
 };
 
+// Private Beta Application API
+export interface BetaApplicationResponse {
+  message: string;
+}
+
+export const betaApi = {
+  apply: (payload: { name: string; email: string; company: string; useCase: string }): Promise<BetaApplicationResponse> => {
+    return apiRequest<BetaApplicationResponse>(
+      '/api/v1/beta/apply',
+      {
+        method: 'POST',
+        body: {
+          name: payload.name,
+          email: payload.email,
+          company: payload.company,
+          use_case: payload.useCase,
+        },
+        requiresAuth: false,
+        requiresEnvironment: false,
+      },
+      null
+    );
+  },
+};
+
 // Password Reset API
 export interface RequestPasswordResetResponse {
   message: string;
