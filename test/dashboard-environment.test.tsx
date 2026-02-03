@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { render, screen, within } from '@testing-library/react';
+import { render, screen, within, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
@@ -115,10 +115,14 @@ describe('Dashboard environment selector', () => {
     });
 
     const usersCard = await screen.findByText('Active Users');
-    expect(within(usersCard.closest('div') as HTMLElement).getByText('1')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(within(usersCard.closest('div') as HTMLElement).getByText('1')).toBeInTheDocument();
+    });
 
     const accountsCard = screen.getByText('Active Accounts');
-    expect(within(accountsCard.closest('div') as HTMLElement).getByText('1')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(within(accountsCard.closest('div') as HTMLElement).getByText('1')).toBeInTheDocument();
+    });
   });
 
   it('counts posted transactions for the overview tile', async () => {
@@ -161,6 +165,8 @@ describe('Dashboard environment selector', () => {
     });
 
     const postedCard = await screen.findByText('Posted Transactions');
-    expect(within(postedCard.closest('div') as HTMLElement).getByText('1')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(within(postedCard.closest('div') as HTMLElement).getByText('1')).toBeInTheDocument();
+    });
   });
 });
