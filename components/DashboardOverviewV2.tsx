@@ -1,5 +1,4 @@
-import React, { useState } from 'react';
-import SettledVolumeChart from './SettledVolumeChart';
+import React from 'react';
 
 interface DashboardOverviewV2Props {
   onGetStarted: () => void;
@@ -31,16 +30,6 @@ const DashboardOverviewV2: React.FC<DashboardOverviewV2Props> = ({
   overviewCurrency = 'USD',
   session,
 }) => {
-  const [settledVolumeRange, setSettledVolumeRange] = useState<'ALL' | '1D' | '1H'>('ALL');
-  const [settledVolumeDisplay, setSettledVolumeDisplay] = useState<string>('—');
-  const [settledVolumeCurrency, setSettledVolumeCurrency] = useState('USD');
-  const [isLoadingSettledVolume, setIsLoadingSettledVolume] = useState(false);
-
-  const handleSettledVolumeStats = (stats: { totalAmount: number; currency: string }) => {
-    setSettledVolumeCurrency(stats.currency);
-    const formatted = formatCurrency(stats.totalAmount, stats.currency);
-    setSettledVolumeDisplay(formatted);
-  };
   const overviewTiles = [
     {
       label: 'Active Users',
@@ -109,66 +98,6 @@ const DashboardOverviewV2: React.FC<DashboardOverviewV2Props> = ({
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-3 bg-white dark:bg-black border border-zinc-100 dark:border-zinc-800/50 p-6 rounded-2xl relative overflow-hidden group transition-colors shadow-sm">
-          <div className="relative z-10">
-            <div className="flex items-center justify-between mb-6">
-              <div>
-                <p className="text-xs font-mono text-zinc-400 dark:text-zinc-500 uppercase tracking-widest mb-1 font-bold">
-                  Settled Volume ({settledVolumeRange === 'ALL' ? 'All Time' : settledVolumeRange === '1H' ? '1h' : '24h'})
-                </p>
-                <h2 className="text-3xl font-bold tracking-tighter text-zinc-800 dark:text-white">{settledVolumeDisplay}</h2>
-              </div>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => setSettledVolumeRange('ALL')}
-                  className={`text-[10px] font-mono border px-2 py-1 rounded ${
-                    settledVolumeRange === 'ALL'
-                      ? 'bg-zinc-800 dark:bg-white text-white dark:text-black border-zinc-800 dark:border-white'
-                      : 'bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-400'
-                  }`}
-                  aria-pressed={settledVolumeRange === 'ALL'}
-                >
-                  All Time
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setSettledVolumeRange('1D')}
-                  className={`text-[10px] font-mono border px-2 py-1 rounded ${
-                    settledVolumeRange === '1D'
-                      ? 'bg-zinc-800 dark:bg-white text-white dark:text-black border-zinc-800 dark:border-white'
-                      : 'bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-400'
-                  }`}
-                  aria-pressed={settledVolumeRange === '1D'}
-                >
-                  1D
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setSettledVolumeRange('1H')}
-                  className={`text-[10px] font-mono border px-2 py-1 rounded ${
-                    settledVolumeRange === '1H'
-                      ? 'bg-zinc-800 dark:bg-white text-white dark:text-black border-zinc-800 dark:border-white'
-                      : 'bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-400'
-                  }`}
-                  aria-pressed={settledVolumeRange === '1H'}
-                >
-                  1H
-                </button>
-              </div>
-            </div>
-            {session && (
-              <SettledVolumeChart
-                session={session}
-                range={settledVolumeRange}
-                onStatsChange={handleSettledVolumeStats}
-                onLoadingChange={setIsLoadingSettledVolume}
-              />
-            )}
-          </div>
-        </div>
-      </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {[
