@@ -47,5 +47,8 @@ jobs:
         run: railway up --detach
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+          # Note: RAILWAY_TOKEN must be configured in GitHub repository secrets
+          # Go to: Settings → Secrets and variables → Actions → New repository secret
+          # Get token from: railway auth (run locally) or Railway Dashboard → Settings → Tokens
           # Build args are passed via Railway's environment variables configuration
           # VITE_CLIENT_SERVER is set in Railway Dashboard for the dev environment
