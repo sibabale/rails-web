@@ -2,11 +2,75 @@ import React from 'react';
 
 interface DashboardOverviewV2Props {
   onGetStarted: () => void;
+  overviewStats?: {
+    activeUsers: number;
+    activeAccounts: number;
+    postedEntries: number;
+    settledVolume: number;
+  };
+  isLoadingOverviewStats?: boolean;
+  overviewCurrency?: string;
+  session?: any;
 }
 
-const DashboardOverviewV2: React.FC<DashboardOverviewV2Props> = ({ onGetStarted }) => {
+const formatCount = (value: number) => value.toLocaleString('en-US');
+
+const formatCurrency = (amount: number, currency: string) => {
+  try {
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(amount);
+  } catch {
+    return `$${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  }
+};
+
+const DashboardOverviewV2: React.FC<DashboardOverviewV2Props> = ({ 
+  onGetStarted,
+  overviewStats = { activeUsers: 0, activeAccounts: 0, postedEntries: 0, settledVolume: 0 },
+  isLoadingOverviewStats = false,
+  overviewCurrency = 'USD',
+  session,
+}) => {
+  const overviewTiles = [
+    {
+      label: 'Active Users',
+      value: isLoadingOverviewStats ? '—' : formatCount(overviewStats.activeUsers),
+      sublabel: 'users',
+    },
+    {
+      label: 'Active Accounts',
+      value: isLoadingOverviewStats ? '—' : formatCount(overviewStats.activeAccounts),
+      sublabel: 'accounts',
+    },
+    {
+      label: 'Posted Transactions',
+      value: isLoadingOverviewStats ? '—' : formatCount(overviewStats.postedEntries),
+      sublabel: 'transactions',
+    },
+    {
+      label: 'Settled Volume',
+      value: isLoadingOverviewStats
+        ? '—'
+        : formatCurrency(overviewStats.settledVolume, overviewCurrency),
+      sublabel: 'ledger',
+    },
+  ];
+
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        {overviewTiles.map((tile) => (
+          <div key={tile.label} className="bg-white dark:bg-black border border-zinc-100 dark:border-zinc-800/50 p-4 rounded-xl flex flex-col justify-between shadow-sm">
+            <span className="text-[9px] font-mono font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest">{tile.label}</span>
+            <div className="flex items-baseline justify-between mt-2">
+              <span className={`text-lg font-bold tracking-tight text-zinc-800 dark:text-white ${isLoadingOverviewStats ? 'animate-pulse' : ''}`}>
+                {tile.value}
+              </span>
+              <span className="text-[10px] font-mono text-zinc-400 dark:text-zinc-600">{tile.sublabel}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+
       <div className="bg-white dark:bg-black border border-zinc-100 dark:border-zinc-800/50 rounded-2xl p-8">
         <p className="text-[10px] font-mono uppercase tracking-[0.3em] text-zinc-400">Rails Platform</p>
         <h2 className="mt-3 text-3xl font-bold tracking-tight text-zinc-900 dark:text-white">
@@ -33,6 +97,7 @@ const DashboardOverviewV2: React.FC<DashboardOverviewV2Props> = ({ onGetStarted 
           </a>
         </div>
       </div>
+
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {[

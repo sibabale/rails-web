@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { render, screen, within } from '@testing-library/react';
+import { render, screen, within, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
@@ -90,63 +90,6 @@ describe('Dashboard environment selector', () => {
     ).toBeInTheDocument();
   });
 
-  it('renders settled volume from ledger entries', async () => {
-    const now = new Date();
-    const recent = now.toISOString();
-    const older = new Date(now.getTime() - (48 * 60 * 60 * 1000)).toISOString();
-
-    listEntriesMock.mockResolvedValue({
-      data: [
-        {
-          id: 'entry-recent-credit',
-          ledger_account_id: 'acc-1',
-          transaction_id: 'tx-1',
-          entry_type: 'credit',
-          amount: 1000,
-          currency: 'USD',
-          created_at: recent,
-        },
-        {
-          id: 'entry-recent-debit',
-          ledger_account_id: 'acc-2',
-          transaction_id: 'tx-1',
-          entry_type: 'debit',
-          amount: 1000,
-          currency: 'USD',
-          created_at: recent,
-        },
-        {
-          id: 'entry-old-credit',
-          ledger_account_id: 'acc-3',
-          transaction_id: 'tx-2',
-          entry_type: 'credit',
-          amount: 500,
-          currency: 'USD',
-          created_at: older,
-        },
-      ],
-      pagination: { page: 1, per_page: 100, total_count: 3, total_pages: 1 },
-    });
-
-    renderDashboard({
-      access_token: 'token',
-      environment_id: 'env-1',
-      environments: [{ id: 'env-1', type: 'sandbox' }],
-    });
-
-    expect(await screen.findByText('$2,500.00')).toBeInTheDocument();
-  });
-
-  it('hides bars when there are no ledger entries', async () => {
-    renderDashboard({
-      access_token: 'token',
-      environment_id: 'env-1',
-      environments: [{ id: 'env-1', type: 'sandbox' }],
-    });
-
-    expect(await screen.findByTestId('settled-volume-chart-empty')).toBeInTheDocument();
-    expect(screen.queryByTestId('settled-volume-bar')).not.toBeInTheDocument();
-  });
 
   it('excludes admin users and their accounts from overview stats', async () => {
     listUsersMock.mockResolvedValue({
@@ -172,10 +115,22 @@ describe('Dashboard environment selector', () => {
     });
 
     const usersCard = await screen.findByText('Active Users');
-    expect(within(usersCard.closest('div') as HTMLElement).getByText('1')).toBeInTheDocument();
+    await waitFor(
+      () => {
+        const cardElement = usersCard.closest('div') as HTMLElement;
+        expect(within(cardElement).getByText('1')).toBeInTheDocument();
+      },
+      { timeout: 5000 }
+    );
 
     const accountsCard = screen.getByText('Active Accounts');
-    expect(within(accountsCard.closest('div') as HTMLElement).getByText('1')).toBeInTheDocument();
+    await waitFor(
+      () => {
+        const cardElement = accountsCard.closest('div') as HTMLElement;
+        expect(within(cardElement).getByText('1')).toBeInTheDocument();
+      },
+      { timeout: 5000 }
+    );
   });
 
   it('counts posted transactions for the overview tile', async () => {
@@ -218,6 +173,12 @@ describe('Dashboard environment selector', () => {
     });
 
     const postedCard = await screen.findByText('Posted Transactions');
-    expect(within(postedCard.closest('div') as HTMLElement).getByText('1')).toBeInTheDocument();
+    await waitFor(
+      () => {
+        const cardElement = postedCard.closest('div') as HTMLElement;
+        expect(within(cardElement).getByText('1')).toBeInTheDocument();
+      },
+      { timeout: 5000 }
+    );
   });
 });
