@@ -1,4 +1,7 @@
 .env
+.env.dev
+.env.staging
+.env.prod
 node_modules
 dist
 .DS_Store
