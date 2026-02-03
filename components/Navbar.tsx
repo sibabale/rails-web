@@ -6,6 +6,9 @@ interface NavbarProps {
   onRegister?: () => void;
 }
 
+// Show auth buttons only when explicitly enabled (development only)
+const showAuthButtons = import.meta.env.VITE_SHOW_AUTH_BUTTONS === 'true';
+
 const Navbar: React.FC<NavbarProps> = ({ onLogin, onRegister }) => {
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 border-b border-zinc-100 dark:border-zinc-800/50 bg-white/80 dark:bg-black/80 backdrop-blur-md transition-colors duration-300">
@@ -16,20 +19,22 @@ const Navbar: React.FC<NavbarProps> = ({ onLogin, onRegister }) => {
             <span className="font-heading font-bold text-xl tracking-tight text-zinc-800 dark:text-white">Rails</span>
           </a>
         </div>
-        <div className="flex items-center gap-4">
-          <button 
-            onClick={onLogin}
-            className="text-sm font-medium text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-white transition-colors"
-          >
-            Login
-          </button>
-          <button
-            onClick={onRegister}
-            className="text-sm font-medium bg-zinc-800 text-white dark:bg-white dark:text-black px-5 py-2 rounded-full hover:bg-zinc-700 dark:hover:bg-zinc-200 transition-colors shadow-sm"
-          >
-            Get Started
-          </button>
-        </div>
+        {showAuthButtons && (
+          <div className="flex items-center gap-4">
+            <button 
+              onClick={onLogin}
+              className="text-sm font-medium text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-white transition-colors"
+            >
+              Login
+            </button>
+            <button
+              onClick={onRegister}
+              className="text-sm font-medium bg-zinc-800 text-white dark:bg-white dark:text-black px-5 py-2 rounded-full hover:bg-zinc-700 dark:hover:bg-zinc-200 transition-colors shadow-sm"
+            >
+              Get Started
+            </button>
+          </div>
+        )}
       </div>
     </nav>
   );
