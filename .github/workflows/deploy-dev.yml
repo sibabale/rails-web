@@ -43,12 +43,25 @@ jobs:
       - name: Install Railway CLI
         run: npm install -g @railway/cli
 
+      - name: Check Railway Token
+        id: check_token
+        run: |
+          if [ -z "${{ secrets.RAILWAY_TOKEN }}" ]; then
+            echo "token_configured=false" >> $GITHUB_OUTPUT
+            echo "⚠️  RAILWAY_TOKEN secret is not configured"
+            echo "Skipping deployment. To enable:"
+            echo "1. Go to Railway Dashboard → Settings → Tokens"
+            echo "2. Create a new token"
+            echo "3. Add to GitHub: Settings → Secrets and variables → Actions → New repository secret"
+            echo "   Name: RAILWAY_TOKEN"
+          else
+            echo "token_configured=true" >> $GITHUB_OUTPUT
+          fi
+
       - name: Deploy to Railway Dev
+        if: steps.check_token.outputs.token_configured == 'true'
         run: railway up --detach
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-          # Note: RAILWAY_TOKEN must be configured in GitHub repository secrets
-          # Go to: Settings → Secrets and variables → Actions → New repository secret
-          # Get token from: railway auth (run locally) or Railway Dashboard → Settings → Tokens
           # Build args are passed via Railway's environment variables configuration
           # VITE_CLIENT_SERVER is set in Railway Dashboard for the dev environment
