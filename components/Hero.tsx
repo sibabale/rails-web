@@ -2,11 +2,10 @@
 import React, { useState, useEffect } from 'react';
 
 interface HeroProps {
-  onStart?: () => void;
   isLoading?: boolean;
 }
 
-const Hero: React.FC<HeroProps> = ({ onStart, isLoading = false }) => {
+const Hero: React.FC<HeroProps> = ({ isLoading = false }) => {
   const [terminalLines, setTerminalLines] = useState<string[]>([]);
   const [phase, setPhase] = useState<'install' | 'login' | 'logs'>('install');
 
@@ -106,12 +105,12 @@ const Hero: React.FC<HeroProps> = ({ onStart, isLoading = false }) => {
         </p>
         
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-          <button
-            onClick={onStart}
-            className="w-full sm:w-auto px-8 py-3.5 bg-zinc-800 text-white dark:bg-white dark:text-black font-semibold rounded-full hover:bg-zinc-700 dark:hover:bg-zinc-200 transition-all transform hover:scale-[1.02] shadow-lg shadow-zinc-200 dark:shadow-none"
+          <a
+            href="#beta"
+            className="w-full sm:w-auto px-8 py-3.5 bg-zinc-800 text-white dark:bg-white dark:text-black font-semibold rounded-full hover:bg-zinc-700 dark:hover:bg-zinc-200 transition-all transform hover:scale-[1.02] shadow-lg shadow-zinc-200 dark:shadow-none text-center inline-block"
           >
             Join the Waitlist
-          </button>
+          </a>
           <a
             href="#infrastructure"
             className="w-full sm:w-auto px-8 py-3.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-300 font-semibold rounded-full hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-all"
