@@ -39,18 +39,28 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
       - name: Install Railway CLI
         run: npm install -g @railway/cli
 
+      - name: Link Railway project
+        run: |
+          if [ -f railway.toml ]; then
+            echo "railway.toml found, Railway will auto-detect project"
+          else
+            echo "⚠️  railway.toml not found"
+          fi
+        working-directory: mvp/rails-web
+
       - name: Deploy to Railway Dev
-        if: ${{ secrets.RAILWAY_TOKEN != '' }}
+        working-directory: mvp/rails-web
         run: railway up --detach
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+          # Note: RAILWAY_TOKEN must be configured in GitHub repository secrets
+          # Go to: Settings → Secrets and variables → Actions → New repository secret
+          # Get token from Railway Dashboard → Settings → Tokens
           # Build args are passed via Railway's environment variables configuration
           # VITE_CLIENT_SERVER is set in Railway Dashboard for the dev environment
-      
-      - name: Skip deployment
-        if: ${{ secrets.RAILWAY_TOKEN == '' }}
-        run: echo "Skipping deployment: RAILWAY_TOKEN not configured"
