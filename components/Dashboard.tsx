@@ -385,7 +385,6 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, currentTheme, onToggleT
           setOverviewStatsError(err.message || 'Failed to load overview stats');
           setOverviewStats({ activeUsers: 0, activeAccounts: 0, postedEntries: 0, settledVolume: 0 });
           setSettledVolumeAllTime(0);
-          setSettledVolumeBucketsAll([]);
         })
         .finally(() => {
           if (isActive) {
@@ -1202,7 +1201,15 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, currentTheme, onToggleT
         return renderTransactionsView();
       case 'Overview':
         if (useOverviewV2) {
-          return <DashboardOverviewV2 onGetStarted={() => setActiveTab('Accounts')} />;
+          return (
+            <DashboardOverviewV2 
+              onGetStarted={() => setActiveTab('Accounts')}
+              overviewStats={overviewStats}
+              isLoadingOverviewStats={isLoadingOverviewStats}
+              overviewCurrency={overviewCurrency}
+              session={session}
+            />
+          );
         }
         return (
           <div className="space-y-8 animate-in fade-in duration-500">
