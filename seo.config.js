@@ -1,6 +1,6 @@
 const seoConfig = {
   siteName: 'Rails',
-  defaultTitle: 'Rails | Banking Infrastructure for Developers',
+  defaultTitle: 'Rails',
   titleTemplate: '%s | Rails',
   defaultDescription:
     'Banking infrastructure for developers with programmable accounts, payments, and a modern ledger.',
