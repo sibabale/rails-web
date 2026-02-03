@@ -4,7 +4,6 @@ import { useAppDispatch, useAppSelector } from '../state/hooks';
 import { setEnvironment } from '../state/slices/environmentSlice';
 import ApiKeyManager from './ApiKeyManager';
 import Pagination from './Pagination';
-import SettledVolumeChart from './SettledVolumeChart';
 import DashboardOverviewV2 from './DashboardOverviewV2';
 import { accountsApi, usersApi, transactionsApi, ledgerApi, type Account as ApiAccount, type Transaction, type User, type LedgerEntry, type PaginationMeta } from '../lib/api';
 
@@ -57,12 +56,6 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, currentTheme, onToggleT
   const [ledgerEntries, setLedgerEntries] = useState<LedgerEntry[]>([]);
   const [isLoadingLedger, setIsLoadingLedger] = useState(false);
   const [ledgerError, setLedgerError] = useState<string | null>(null);
-  const [settledVolumeAllTime, setSettledVolumeAllTime] = useState<number | null>(null);
-  const [settledVolume24h, setSettledVolume24h] = useState<number | null>(null);
-  const [settledVolume1h, setSettledVolume1h] = useState<number | null>(null);
-  const [settledVolumeCurrency, setSettledVolumeCurrency] = useState('USD');
-  const [isLoadingSettledVolume, setIsLoadingSettledVolume] = useState(false);
-  const [settledVolumeRange, setSettledVolumeRange] = useState<'ALL' | '1D' | '1H'>('ALL');
   const [overviewStats, setOverviewStats] = useState({
     activeUsers: 0,
     activeAccounts: 0,
@@ -384,7 +377,6 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, currentTheme, onToggleT
           console.error('Failed to fetch overview stats:', err);
           setOverviewStatsError(err.message || 'Failed to load overview stats');
           setOverviewStats({ activeUsers: 0, activeAccounts: 0, postedEntries: 0, settledVolume: 0 });
-          setSettledVolumeAllTime(0);
         })
         .finally(() => {
           if (isActive) {
@@ -408,32 +400,6 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, currentTheme, onToggleT
 
   const formatCount = (value: number) => value.toLocaleString('en-US');
 
-  const settledVolumeDisplay = (() => {
-    if (isLoadingSettledVolume) return '—';
-    const amount = settledVolumeRange === 'ALL'
-      ? settledVolumeAllTime ?? 0
-      : settledVolumeRange === '1H'
-      ? settledVolume1h ?? 0
-      : settledVolume24h ?? 0;
-    return formatCurrency(amount, settledVolumeCurrency);
-  })();
-
-  const handleSettledVolumeStats = (stats: { totalAmount: number; currency: string }) => {
-    setSettledVolumeCurrency(stats.currency);
-    if (settledVolumeRange === 'ALL') {
-      setSettledVolumeAllTime(stats.totalAmount);
-    } else if (settledVolumeRange === '1H') {
-      setSettledVolume1h(stats.totalAmount);
-    } else {
-      setSettledVolume24h(stats.totalAmount);
-    }
-  };
-
-  useEffect(() => {
-    if (session && activeTab === 'Overview') {
-      setIsLoadingSettledVolume(true);
-    }
-  }, [session, settledVolumeRange, activeTab]);
 
   const overviewTiles = [
     {
@@ -453,9 +419,9 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, currentTheme, onToggleT
     },
     {
       label: 'Settled Volume',
-      value: isLoadingSettledVolume
+      value: isLoadingOverviewStats
         ? '—'
-        : formatCurrency(settledVolumeAllTime ?? 0, settledVolumeCurrency),
+        : formatCurrency(overviewStats.settledVolume, overviewCurrency),
       sublabel: 'ledger',
     },
   ];
@@ -1228,76 +1194,6 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, currentTheme, onToggleT
                   </div>
                 </div>
               ))}
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <div className="lg:col-span-3 bg-white dark:bg-black border border-zinc-100 dark:border-zinc-800/50 p-6 rounded-2xl relative overflow-hidden group transition-colors shadow-sm">
-                <div className="relative z-10">
-                  <div className="flex items-center justify-between mb-6">
-                    <div>
-                      <p className="text-xs font-mono text-zinc-400 dark:text-zinc-500 uppercase tracking-widest mb-1 font-bold">
-                        Settled Volume ({settledVolumeRange === 'ALL' ? 'All Time' : settledVolumeRange === '1H' ? '1h' : '24h'})
-                      </p>
-                      <h2 className="text-3xl font-bold tracking-tighter text-zinc-800 dark:text-white">{settledVolumeDisplay}</h2>
-                    </div>
-                    <div className="flex gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setSettledVolumeRange('ALL')}
-                        className={`text-[10px] font-mono border px-2 py-1 rounded ${
-                          settledVolumeRange === 'ALL'
-                            ? 'bg-zinc-800 dark:bg-white text-white dark:text-black border-zinc-800 dark:border-white'
-                            : 'bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-400'
-                        }`}
-                        aria-pressed={settledVolumeRange === 'ALL'}
-                      >
-                        All Time
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setSettledVolumeRange('1D')}
-                        className={`text-[10px] font-mono border px-2 py-1 rounded ${
-                          settledVolumeRange === '1D'
-                            ? 'bg-zinc-800 dark:bg-white text-white dark:text-black border-zinc-800 dark:border-white'
-                            : 'bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-400'
-                        }`}
-                        aria-pressed={settledVolumeRange === '1D'}
-                      >
-                        1D
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setSettledVolumeRange('1H')}
-                        className={`text-[10px] font-mono border px-2 py-1 rounded ${
-                          settledVolumeRange === '1H'
-                            ? 'bg-zinc-800 dark:bg-white text-white dark:text-black border-zinc-800 dark:border-white'
-                            : 'bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-400'
-                        }`}
-                        aria-pressed={settledVolumeRange === '1H'}
-                      >
-                        1H
-                      </button>
-                    </div>
-                  </div>
-                  <SettledVolumeChart
-                    session={session}
-                    range={settledVolumeRange}
-                    onStatsChange={handleSettledVolumeStats}
-                    onLoadingChange={setIsLoadingSettledVolume}
-                  />
-                </div>
-              </div>
-              {/*
-              <div className="bg-white dark:bg-black border border-zinc-100 dark:border-zinc-800/50 p-6 rounded-2xl flex flex-col justify-between transition-colors shadow-sm">
-                <div>
-                  <div className="flex items-center gap-2 mb-2 text-zinc-400 dark:text-zinc-500">
-                    <span className="material-symbols-sharp !text-[16px]">account_balance_wallet</span>
-                    <p className="text-xs font-mono uppercase tracking-widest font-bold">Surety Pool Health</p>
-                  </div>
-                  <h2 className="text-3xl font-bold tracking-tighter text-zinc-800 dark:text-white">R{(reserve.available / 1000000).toFixed(1)}M</h2>
-                </div>
-              </div>
-              */}
             </div>
           </div>
         );
