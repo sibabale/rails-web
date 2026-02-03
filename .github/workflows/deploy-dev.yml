@@ -33,6 +33,7 @@ jobs:
     name: Deploy to Railway Dev
     runs-on: ubuntu-latest
     needs: test
+    if: success() # Only deploy if tests pass
     environment: development
     
     steps:
