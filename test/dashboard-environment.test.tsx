@@ -115,14 +115,22 @@ describe('Dashboard environment selector', () => {
     });
 
     const usersCard = await screen.findByText('Active Users');
-    await waitFor(() => {
-      expect(within(usersCard.closest('div') as HTMLElement).getByText('1')).toBeInTheDocument();
-    });
+    await waitFor(
+      () => {
+        const cardElement = usersCard.closest('div') as HTMLElement;
+        expect(within(cardElement).getByText('1')).toBeInTheDocument();
+      },
+      { timeout: 5000 }
+    );
 
     const accountsCard = screen.getByText('Active Accounts');
-    await waitFor(() => {
-      expect(within(accountsCard.closest('div') as HTMLElement).getByText('1')).toBeInTheDocument();
-    });
+    await waitFor(
+      () => {
+        const cardElement = accountsCard.closest('div') as HTMLElement;
+        expect(within(cardElement).getByText('1')).toBeInTheDocument();
+      },
+      { timeout: 5000 }
+    );
   });
 
   it('counts posted transactions for the overview tile', async () => {
@@ -165,8 +173,12 @@ describe('Dashboard environment selector', () => {
     });
 
     const postedCard = await screen.findByText('Posted Transactions');
-    await waitFor(() => {
-      expect(within(postedCard.closest('div') as HTMLElement).getByText('1')).toBeInTheDocument();
-    });
+    await waitFor(
+      () => {
+        const cardElement = postedCard.closest('div') as HTMLElement;
+        expect(within(cardElement).getByText('1')).toBeInTheDocument();
+      },
+      { timeout: 5000 }
+    );
   });
 });

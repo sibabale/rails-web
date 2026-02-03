@@ -384,7 +384,7 @@ function App() {
     <div className="min-h-screen bg-white dark:bg-black text-zinc-800 dark:text-white selection:bg-zinc-100 dark:selection:bg-white selection:text-zinc-900 dark:selection:text-black transition-colors duration-300">
       <Navbar onLogin={() => setView('login')} onRegister={() => setView('register')} />
       <main>
-        <Hero onStart={() => setView('register')} isLoading={isLandingLoading} />
+        <Hero isLoading={isLandingLoading} />
         {!isLandingLoading && (
           <>
             <div className="max-w-7xl mx-auto px-6">
