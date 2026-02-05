@@ -278,6 +278,32 @@ export const passwordResetApi = {
   },
 };
 
+// Beta application API (unauthenticated)
+export interface BetaApplicationPayload {
+  name: string;
+  email: string;
+  company: string;
+  use_case: string;
+}
+
+export interface BetaApplicationResponse {
+  message: string;
+}
+
+export const betaApplyApi = {
+  apply: (payload: BetaApplicationPayload): Promise<BetaApplicationResponse> =>
+    apiRequest<BetaApplicationResponse>(
+      '/api/v1/beta/apply',
+      {
+        method: 'POST',
+        body: payload,
+        requiresAuth: false,
+        requiresEnvironment: false,
+      },
+      null
+    ),
+};
+
 // Ledger Service API
 export interface LedgerEntry {
   id: string;
