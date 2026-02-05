@@ -4,11 +4,15 @@ import { Provider } from 'react-redux';
 import { PersistGate } from 'redux-persist/integration/react';
 import App from './App';
 import { persistor, store } from './state/store';
+import { initializeAnalytics, startLandingTracking } from './lib/analytics';
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {
   throw new Error("Could not find root element to mount to");
 }
+
+initializeAnalytics();
+startLandingTracking();
 
 const root = ReactDOM.createRoot(rootElement);
 root.render(
