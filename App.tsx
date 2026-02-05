@@ -89,6 +89,7 @@ const DashboardSkeleton = () => (
 function App() {
   const dispatch = useAppDispatch();
   const environment = useAppSelector((state) => state.environment.current);
+  const allowAuthViews = import.meta.env.VITE_ENABLE_AUTH_VIEWS === 'true';
   
   // ✅ CRITICAL: Initialize theme from localStorage synchronously to avoid flash
   // This prevents the default 'dark' theme from being applied before useEffect runs
@@ -220,7 +221,7 @@ function App() {
           const matchingEnv = parsedSession.environments?.find(e => e.type === currentEnv);
           const envIdToUse = matchingEnv?.id || parsedSession.environment_id;
           fetchProfile(parsedSession.access_token, envIdToUse);
-          setView('dashboard');
+          setView(allowAuthViews ? 'dashboard' : 'landing');
         } else {
           localStorage.removeItem('rails_session');
           // Session expired - environment state remains in Redux (persisted)
@@ -311,14 +312,14 @@ function App() {
     setSession(sessionData);
     localStorage.setItem('rails_session', JSON.stringify(sessionData));
     fetchProfile(sessionData.access_token, sessionData.environment_id);
-    setView('dashboard');
+    setView(allowAuthViews ? 'dashboard' : 'landing');
   };
 
   if (isProfileLoading) {
     return <DashboardSkeleton />;
   }
 
-  if (view === 'dashboard') {
+  if (view === 'dashboard' && allowAuthViews) {
     return (
       <Dashboard
         onLogout={handleLogout}
@@ -330,7 +331,7 @@ function App() {
     );
   }
 
-  if (view === 'register') {
+  if (view === 'register' && allowAuthViews) {
     return (
       <div className="min-h-screen bg-white dark:bg-black text-zinc-800 dark:text-white transition-colors duration-300">
         <Navbar onLogin={() => setView('login')} onRegister={() => setView('register')} />
@@ -340,7 +341,7 @@ function App() {
     );
   }
 
-  if (view === 'login') {
+  if (view === 'login' && allowAuthViews) {
     return (
       <div className="min-h-screen bg-white dark:bg-black text-zinc-800 dark:text-white transition-colors duration-300">
         <Navbar onLogin={() => setView('login')} onRegister={() => setView('register')} />
@@ -354,7 +355,7 @@ function App() {
     );
   }
 
-  if (view === 'forgotPassword') {
+  if (view === 'forgotPassword' && allowAuthViews) {
     return (
       <div className="min-h-screen bg-white dark:bg-black text-zinc-800 dark:text-white transition-colors duration-300">
         <Navbar onLogin={() => setView('login')} onRegister={() => setView('register')} />
@@ -367,7 +368,7 @@ function App() {
     );
   }
 
-  if (view === 'resetPassword') {
+  if (view === 'resetPassword' && allowAuthViews) {
     return (
       <div className="min-h-screen bg-white dark:bg-black text-zinc-800 dark:text-white transition-colors duration-300">
         <Navbar onLogin={() => setView('login')} onRegister={() => setView('register')} />

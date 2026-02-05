@@ -3,6 +3,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import BetaSignup from '../components/BetaSignup';
 import { betaApplyApi } from '../lib/api';
+import { trackEvent } from '../lib/analytics';
 
 vi.mock('../lib/api', async () => {
   const actual = await vi.importActual<typeof import('../lib/api')>('../lib/api');
@@ -14,11 +15,17 @@ vi.mock('../lib/api', async () => {
   };
 });
 
+vi.mock('../lib/analytics', () => ({
+  trackEvent: vi.fn(),
+}));
+
 describe('BetaSignup', () => {
   const applyMock = vi.mocked(betaApplyApi.apply);
+  const trackEventMock = vi.mocked(trackEvent);
 
   beforeEach(() => {
     applyMock.mockReset();
+    trackEventMock.mockReset();
   });
 
   const getFormFields = () => ({
@@ -61,6 +68,18 @@ describe('BetaSignup', () => {
         use_case: 'Payments',
       });
     });
+    const submitAttempt = trackEventMock.mock.calls.find(
+      ([eventName]) => eventName === 'waitlist_submit_attempt'
+    );
+    expect(submitAttempt).toBeTruthy();
+    expect(submitAttempt?.[1]).toEqual(
+      expect.objectContaining({
+        name_length: 8,
+        email_length: 13,
+        company_length: 8,
+        use_case_length: 8,
+      })
+    );
   });
 
   it('shows success view after successful submit', async () => {
@@ -79,6 +98,12 @@ describe('BetaSignup', () => {
       expect(screen.getByRole('heading', { name: /Application Encrypted & Sent/i })).toBeInTheDocument();
     });
     expect(screen.getByText(/Submit another application/i)).toBeInTheDocument();
+    expect(trackEventMock).toHaveBeenCalledWith(
+      'waitlist_submit_success',
+      expect.objectContaining({
+        latency_ms: expect.any(Number),
+      })
+    );
   });
 
   it('shows error message and keeps form visible on API failure', async () => {
