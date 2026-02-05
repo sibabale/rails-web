@@ -11,7 +11,7 @@ const Footer: React.FC<FooterProps> = ({ onToggleTheme, currentTheme }) => {
       <div className="max-w-7xl mx-auto px-6">
         <div className="flex flex-col md:flex-row justify-between items-center gap-8">
           <div className="flex items-center gap-2">
-            <div className="w-5 h-5 bg-zinc-900 dark:bg-white rounded-sm transition-colors"></div>
+            <img src={currentTheme === 'dark' ? '/logo-white.svg' : '/logo.svg'} alt="Rails" className="w-5 h-5 object-contain" />
             <span className="font-heading font-bold tracking-tight text-lg text-zinc-900 dark:text-white">Rails</span>
             <span className="text-zinc-400 dark:text-zinc-600 ml-4 text-sm font-mono">© 2024 RAILS INFRA INC.</span>
           </div>

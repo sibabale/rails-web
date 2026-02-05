@@ -15,7 +15,8 @@ const Navbar: React.FC<NavbarProps> = ({ onLogin, onRegister }) => {
       <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
         <div className="flex items-center gap-8">
           <a href="/" onClick={(e) => { e.preventDefault(); window.location.href = '/'; }} className="flex items-center gap-2 group">
-            <div className="w-6 h-6 bg-zinc-800 dark:bg-white rounded-sm group-hover:scale-110 transition-transform duration-300"></div>
+            <img src="/logo.svg" alt="Rails" className="w-6 h-6 object-contain group-hover:scale-110 transition-transform duration-300 dark:hidden" />
+            <img src="/logo-white.svg" alt="Rails" className="w-6 h-6 object-contain group-hover:scale-110 transition-transform duration-300 hidden dark:block" />
             <span className="font-heading font-bold text-xl tracking-tight text-zinc-800 dark:text-white">Rails</span>
           </a>
         </div>

@@ -1,0 +1,9 @@
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+<rect width="24" height="24" rx="2" fill="black"/>
+<line x1="6.24463" y1="4" x2="6.24463" y2="20" stroke="white"/>
+<line x1="18.229" y1="9.83325" x2="6.4157" y2="9.83325" stroke="white"/>
+<line x1="18.229" y1="5.56665" x2="6.4157" y2="5.56665" stroke="white"/>
+<line x1="18.229" y1="14.1001" x2="6.4157" y2="14.1001" stroke="white"/>
+<line x1="18.229" y1="18.3667" x2="6.4157" y2="18.3667" stroke="white"/>
+<path d="M18.2554 4L18.2554 20" stroke="white"/>
+</svg>
