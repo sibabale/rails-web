@@ -1,5 +1,5 @@
-
 import React, { useState } from 'react';
+import { betaApplyApi } from '../lib/api';
 import { ApplicationStatus } from '../types';
 
 const BetaSignup: React.FC = () => {
@@ -10,17 +10,35 @@ const BetaSignup: React.FC = () => {
     useCase: ''
   });
   const [status, setStatus] = useState<ApplicationStatus>(ApplicationStatus.IDLE);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
     setStatus(ApplicationStatus.SUBMITTING);
-    setTimeout(() => {
+    try {
+      await betaApplyApi.apply({
+        name: formData.name.trim(),
+        email: formData.email.trim(),
+        company: formData.company.trim(),
+        use_case: formData.useCase.trim()
+      });
       setStatus(ApplicationStatus.SUCCESS);
-    }, 2000);
+    } catch (err) {
+      setStatus(ApplicationStatus.ERROR);
+      const message = err instanceof Error ? err.message : '';
+      const isNetworkError = message === 'Failed to fetch';
+      setError(
+        isNetworkError
+          ? 'Unable to reach the server. Please check your connection and try again.'
+          : message || 'Something went wrong. Please try again.'
+      );
+    }
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
+    if (error) setError(null);
   };
 
   return (
@@ -53,6 +71,11 @@ const BetaSignup: React.FC = () => {
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="max-w-xl mx-auto space-y-6">
+            {error && (
+              <div className="p-4 rounded-xl bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900 text-red-700 dark:text-red-300 text-sm" role="alert">
+                {error}
+              </div>
+            )}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
               <div className="space-y-2">
                 <label className="text-xs font-mono uppercase tracking-widest text-zinc-400 dark:text-zinc-500 ml-1">Full Name</label>
