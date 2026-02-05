@@ -13,6 +13,7 @@
   "dependencies": {
     "@google/genai": "^1.37.0",
     "@reduxjs/toolkit": "^2.11.2",
+    "posthog-js": "^1.341.0",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
     "react-redux": "^9.2.0",
