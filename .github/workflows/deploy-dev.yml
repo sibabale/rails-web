@@ -48,7 +48,7 @@ jobs:
       # #region agent log — diagnostic: token presence and whoami (H2, H4)
       - name: Diagnose Railway auth (debug)
         run: |
-          echo "RAILWAY_TOKEN_set=${#RAILWAY_TOKEN:+1}"
+          echo "RAILWAY_TOKEN_set=$([ -n "${RAILWAY_TOKEN:-}" ] && echo 1 || echo 0)"
           railway whoami 2>&1; whoami_exit=$?
           echo "railway_whoami_exit=$whoami_exit"
         env:
