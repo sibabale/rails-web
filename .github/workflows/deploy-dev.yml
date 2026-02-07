@@ -49,7 +49,6 @@ jobs:
       # Required secrets: RAILWAY_PROJECT_ID, RAILWAY_ENVIRONMENT_ID, RAILWAY_SERVICE_ID (name "rails-client-server" or UUID), RAILWAY_TOKEN.
       # If link fails with token errors, add RAILWAY_API_TOKEN (account token from railway.com/account/tokens) for the link step.
       - name: Link Railway project
-        working-directory: mvp/rails-web
         run: |
           railway link \
             --project ${{ secrets.RAILWAY_PROJECT_ID }} \
@@ -59,7 +58,6 @@ jobs:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
 
       - name: Deploy to Railway Dev
-        working-directory: mvp/rails-web
         run: railway up --detach
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
