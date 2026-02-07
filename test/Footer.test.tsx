@@ -10,4 +10,10 @@ describe('Footer', () => {
     expect(screen.queryByText('Privacy')).not.toBeInTheDocument();
     expect(screen.queryByText('Twitter')).not.toBeInTheDocument();
   });
+
+  it('displays the current year in the copyright', () => {
+    render(<Footer />);
+    const year = new Date().getFullYear();
+    expect(screen.getByText(new RegExp(`© ${year} RAILS INFRA INC\\.`))).toBeInTheDocument();
+  });
 });
