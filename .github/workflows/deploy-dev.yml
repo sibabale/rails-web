@@ -45,9 +45,17 @@ jobs:
       - name: Install Railway CLI
         run: npm install -g @railway/cli
 
-      # Non-interactive link: project + environment + service (avoids "choose service" / "select dev" prompts).
-      # Required secrets: RAILWAY_PROJECT, RAILWAY_ENVIRONMENT, RAILWAY_SERVICE (name "rails-client-server" or UUID), RAILWAY_TOKEN.
-      # If link fails with token errors, add RAILWAY_API_TOKEN (account token from railway.com/account/tokens) for the link step.
+      # #region agent log — diagnostic: token presence and whoami (H2, H4)
+      - name: Diagnose Railway auth (debug)
+        run: |
+          echo "RAILWAY_TOKEN_set=${#RAILWAY_TOKEN:+1}"
+          railway whoami 2>&1; whoami_exit=$?
+          echo "railway_whoami_exit=$whoami_exit"
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+      # #endregion agent log
+
+      # Railway project tokens are environment-scoped. RAILWAY_TOKEN must be created in this project for the "dev" environment (Settings → Tokens, Environment: dev).
       - name: Link Railway project
         run: |
           railway link \
