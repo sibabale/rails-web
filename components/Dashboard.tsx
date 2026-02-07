@@ -1421,7 +1421,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, currentTheme, onToggleT
       <aside className="w-64 border-r border-zinc-100 dark:border-zinc-800/50 flex flex-col bg-zinc-50 dark:bg-black relative z-20">
         <div className="p-6">
           <div className="flex items-center gap-2 mb-8">
-            <div className="w-5 h-5 bg-zinc-800 dark:bg-white rounded-sm"></div>
+            <img src={currentTheme === 'dark' ? '/logo-white.svg' : '/logo.svg'} alt="Rails" className="w-5 h-5 object-contain" />
             <span className="font-heading font-bold text-lg tracking-tight text-zinc-800 dark:text-white">Rails</span>
             <div className="flex flex-col ml-auto">
               <span className={`text-[9px] font-mono px-1.5 py-0.5 rounded uppercase font-bold text-center ${isProduction ? 'bg-amber-950 text-amber-500 shadow-lg shadow-amber-900/20' : 'bg-zinc-200 dark:bg-zinc-900 text-zinc-500 dark:text-zinc-500'}`}>
