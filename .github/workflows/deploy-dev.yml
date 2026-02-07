@@ -51,9 +51,9 @@ jobs:
       - name: Link Railway project
         run: |
           railway link \
-            --project ${{ secrets.RAILWAY_PROJECT }} \
-            --environment ${{ secrets.RAILWAY_ENVIRONMENT }} \
-            --service ${{ secrets.RAILWAY_SERVICE }}
+            --project rails-client-server \
+            --environment dev \
+            --service rails-web
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
 
