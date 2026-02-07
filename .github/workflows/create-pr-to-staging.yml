@@ -1,5 +1,7 @@
 # When a PR is merged into develop, open a PR from develop → staging with the same title and body.
-# Requires: Settings → Actions → General → "Allow GitHub Actions to create and approve pull requests" (and org must allow it if applicable).
+# Uses GH_PAT (Personal Access Token) because GITHUB_TOKEN is often blocked from creating PRs
+# even when "Allow GitHub Actions to create and approve pull requests" is enabled.
+# Add secret: Settings → Secrets and variables → Actions → GH_PAT (PAT with repo scope).
 name: Create PR to Staging
 
 on:
@@ -15,16 +17,24 @@ jobs:
       contents: read
       pull-requests: write
     steps:
+      - name: Require GH_PAT
+        run: |
+          if [ -z "${{ secrets.GH_PAT }}" ]; then
+            echo "::error::Add repo secret GH_PAT. Settings → Secrets and variables → Actions → New repository secret. Create a PAT at GitHub → Settings → Developer settings → Personal access tokens (scope: repo)."
+            exit 1
+          fi
       - name: Create PR from develop to staging
         uses: actions/github-script@v7
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          github-token: ${{ secrets.GH_PAT }}
           script: |
+            const title = context.payload.pull_request.title;
+            const body = context.payload.pull_request.body || title || '';
             const { data } = await github.rest.pulls.create({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              title: context.payload.pull_request.title,
-              body: context.payload.pull_request.body,
+              title,
+              body,
               head: 'develop',
               base: 'staging'
             });
