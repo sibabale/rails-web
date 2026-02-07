@@ -29,9 +29,9 @@ jobs:
       - name: Run tests
         run: npm test
 
-  # Tokens per https://docs.railway.com/integrations/api :
-  # - Account token (RAILWAY_ACCOUNT_API_TOKEN): railway.com/account/tokens. Used for link + whoami (CLI reads RAILWAY_API_TOKEN).
-  # - Project token (RAILWAY_TOKEN): Project → Settings → Tokens, scoped to one environment. Used for railway up (deploy).
+  # Deploy uses only the project token (RAILWAY_TOKEN). No account token or railway link needed.
+  # Get RAILWAY_TOKEN: Railway project (e.g. rails-client-server) → Settings → Tokens → create token for the "dev" environment.
+  # Project tokens are scoped to one project+environment; the CLI deploys to that target. Use --service when the project has multiple services.
   deploy:
     name: Deploy to Railway Dev
     runs-on: ubuntu-latest
@@ -48,32 +48,12 @@ jobs:
       - name: Install Railway CLI
         run: npm install -g @railway/cli
 
-      # #region agent log — diagnostic: whoami uses account token (H2)
-      - name: Diagnose Railway auth (debug)
-        run: |
-          echo "RAILWAY_ACCOUNT_API_TOKEN_set=$([ -n "${RAILWAY_API_TOKEN:-}" ] && echo 1 || echo 0)"
-          railway whoami 2>&1; whoami_exit=$?
-          echo "railway_whoami_exit=$whoami_exit"
-        env:
-          RAILWAY_API_TOKEN: ${{ secrets.RAILWAY_ACCOUNT_API_TOKEN }}
-      # #endregion agent log
-
-      # Link uses account token (secret RAILWAY_ACCOUNT_API_TOKEN). Deploy uses project token (RAILWAY_TOKEN). See docs.railway.com/integrations/api#account-tokens-and-workspace-tokens and #project-token.
-      - name: Link Railway project
-        run: |
-          railway link \
-            --project rails-client-server \
-            --environment dev \
-            --service rails-web
-        env:
-          RAILWAY_API_TOKEN: ${{ secrets.RAILWAY_ACCOUNT_API_TOKEN }}
-
       - name: Deploy to Railway Dev
-        run: railway up --detach
+        run: |
+          if [ -z "$RAILWAY_TOKEN" ]; then
+            echo "::error::RAILWAY_TOKEN secret is not set. Add it in repo Settings → Secrets and variables → Actions. Create token in Railway project → Settings → Tokens (dev environment)."
+            exit 1
+          fi
+          railway up --service rails-web --detach
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-          # Note: RAILWAY_TOKEN must be configured in GitHub repository secrets
-          # Go to: Settings → Secrets and variables → Actions → New repository secret
-          # Get token from Railway Dashboard → Settings → Tokens
-          # Build args are passed via Railway's environment variables configuration
-          # VITE_CLIENT_SERVER is set in Railway Dashboard for the dev environment
