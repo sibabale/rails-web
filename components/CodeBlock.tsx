@@ -11,13 +11,14 @@ const CodeBlock: React.FC<CodeBlockProps> = ({ snippets }) => {
   const languages = [
     { id: 'ts', label: 'TypeScript' },
     { id: 'go', label: 'Go' },
-    { id: 'rust', label: 'Rust' },
     { id: 'java', label: 'Java' },
+    { id: 'kotlin', label: 'Kotlin' },
+    { id: 'csharp', label: 'C#' },
   ] as const;
 
   const highlight = (line: string) => {
     // Regex for basic syntax highlighting
-    const tokens = line.split(/(".*?"|'.*?'|\/\/.*|\b(?:const|let|var|await|async|import|from|return|func|package|type|struct|pub|fn|mut|impl|use|public|class|new|static|void|interface|enum|if|else|err|for|range|vec|List|of)\b|\.\s*([a-zA-Z_]\w*)\s*(?=\()|\b([A-Z][a-zA-Z0-9_]*)\b|\b\d+\b|\b(?:true|false|null)\b)/g);
+    const tokens = line.split(/(".*?"|'.*?'|\/\/.*|\b(?:const|let|var|val|await|async|import|from|return|func|package|type|struct|pub|fn|mut|impl|use|public|class|new|static|void|interface|enum|if|else|err|for|range|vec|List|listOf|of|Dictionary)\b|\.\s*([a-zA-Z_]\w*)\s*(?=\()|\b([A-Z][a-zA-Z0-9_]*)\b|\b\d+\b|\b(?:true|false|null)\b)/g);
 
     return tokens.map((token, i) => {
       if (!token) return null;
@@ -28,7 +29,7 @@ const CodeBlock: React.FC<CodeBlockProps> = ({ snippets }) => {
       if (/^\/\/.*$/.test(token)) {
         return <span key={i} className="text-zinc-600 italic">{token}</span>;
       }
-      if (/^(const|let|var|await|async|import|from|return|func|package|type|struct|pub|fn|mut|impl|use|public|class|new|static|void|interface|enum|if|else|err|for|range|vec|List|of)$/.test(token)) {
+      if (/^(const|let|var|val|await|async|import|from|return|func|package|type|struct|pub|fn|mut|impl|use|public|class|new|static|void|interface|enum|if|else|err|for|range|vec|List|listOf|of|Dictionary)$/.test(token)) {
         return <span key={i} className="text-sky-400 font-medium">{token}</span>;
       }
       // Method calls

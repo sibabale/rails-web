@@ -7,8 +7,9 @@ export interface NavItem {
 export interface CodeSnippets {
   ts: string;
   go: string;
-  rust: string;
   java: string;
+  kotlin: string;
+  csharp: string;
 }
 
 export interface Feature {

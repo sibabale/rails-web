@@ -34,17 +34,26 @@ export const FEATURES: Feature[] = [
         "owner_id": "user_9921",
     },
 })`,
-      rust: `let account = rails.accounts().create(AccountConfig {
-    account_type: AccountType::Business,
-    currency: Currency::USD,
-    metadata: [("owner_id", "user_9921")].into(),
-}).await?;`,
       java: `Account account = rails.accounts().create(
     AccountCreateOptions.builder()
         .setType(AccountType.BUSINESS)
         .setCurrency("USD")
         .putMetadata("owner_id", "user_9921")
         .build()
+);`,
+      kotlin: `val account = rails.accounts().create(
+    AccountCreateOptions.builder()
+        .setType(AccountType.BUSINESS)
+        .setCurrency("USD")
+        .putMetadata("owner_id", "user_9921")
+        .build()
+)`,
+      csharp: `var account = rails.Accounts.Create(
+    new AccountCreateOptions {
+        Type = AccountType.Business,
+        Currency = "USD",
+        Metadata = new Dictionary<string, string> { ["owner_id"] = "user_9921" }
+    }
 );`
     }
   },
@@ -75,18 +84,26 @@ export const FEATURES: Feature[] = [
     },
     Method: rails.PaymentMethodFedWire,
 })`,
-      rust: `let payment = rails.payments().initiate(PaymentRequest {
-    amount: 500000,
-    source: "acc_01H2...".to_string(),
-    method: PaymentMethod::FedWire,
-    ..Default::default()
-}).await?;`,
       java: `Payment payment = rails.payments().initiate(
     PaymentInitiateOptions.builder()
         .setAmount(500000L)
         .setSource("acc_01H2...")
         .setMethod(PaymentMethod.FEDWIRE)
         .build()
+);`,
+      kotlin: `val payment = rails.payments().initiate(
+    PaymentInitiateOptions.builder()
+        .setAmount(500000L)
+        .setSource("acc_01H2...")
+        .setMethod(PaymentMethod.FEDWIRE)
+        .build()
+)`,
+      csharp: `var payment = rails.Payments.Initiate(
+    new PaymentInitiateOptions {
+        Amount = 500000,
+        Source = "acc_01H2...",
+        Method = PaymentMethod.FedWire
+    }
 );`
     }
   },
@@ -111,15 +128,25 @@ export const FEATURES: Feature[] = [
     {AccountID: "acc_A", Debit: 100},
     {AccountID: "acc_B", Credit: 100},
 }, "Internal platform fee")`,
-      rust: `let tx = rails.ledger().record(vec![
-    Entry::debit("acc_A", 100),
-    Entry::credit("acc_B", 100),
-], "Internal platform fee").await?;`,
       java: `Transaction tx = rails.ledger().record(
     List.of(
         new Entry("acc_A", 100, EntryType.DEBIT),
         new Entry("acc_B", 100, EntryType.CREDIT)
     ),
+    "Internal platform fee"
+);`,
+      kotlin: `val tx = rails.ledger().record(
+    listOf(
+        Entry("acc_A", 100, EntryType.DEBIT),
+        Entry("acc_B", 100, EntryType.CREDIT)
+    ),
+    "Internal platform fee"
+)`,
+      csharp: `var tx = rails.Ledger.Record(
+    new[] {
+        new Entry("acc_A", 100, EntryType.Debit),
+        new Entry("acc_B", 100, EntryType.Credit)
+    },
     "Internal platform fee"
 );`
     }
