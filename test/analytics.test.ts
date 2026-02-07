@@ -21,14 +21,33 @@ describe('analytics', () => {
     vi.unstubAllEnvs();
   });
 
-  it('initializes PostHog once when enabled', async () => {
-    const posthog = (await import('posthog-js')).default as { init: ReturnType<typeof vi.fn> };
-    const { initializeAnalytics } = await import('../lib/analytics');
+  it('returns PostHog options for provider', async () => {
+    const { getPostHogOptions } = await import('../lib/analytics');
+    const options = getPostHogOptions();
 
-    initializeAnalytics();
-    initializeAnalytics();
+    expect(options).toMatchObject({
+      api_host: 'https://example.com',
+      person_profiles: 'identified_only',
+      capture_pageview: false,
+      capture_pageleave: true,
+      autocapture: false,
+    });
+  });
 
-    expect(posthog.init).toHaveBeenCalledTimes(1);
+  it('isAnalyticsEnabled returns true when key is set and not disabled', async () => {
+    vi.stubEnv('VITE_POSTHOG_KEY', 'test_key');
+    vi.stubEnv('VITE_ENABLE_ANALYTICS', 'true');
+    vi.resetModules();
+    const { isAnalyticsEnabled } = await import('../lib/analytics');
+    expect(isAnalyticsEnabled()).toBe(true);
+  });
+
+  it('isAnalyticsEnabled returns false when VITE_ENABLE_ANALYTICS is false', async () => {
+    vi.stubEnv('VITE_POSTHOG_KEY', 'test_key');
+    vi.stubEnv('VITE_ENABLE_ANALYTICS', 'false');
+    vi.resetModules();
+    const { isAnalyticsEnabled } = await import('../lib/analytics');
+    expect(isAnalyticsEnabled()).toBe(false);
   });
 
   it('captures events with landing metadata', async () => {

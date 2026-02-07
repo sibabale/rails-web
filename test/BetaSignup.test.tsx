@@ -3,7 +3,8 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import BetaSignup from '../components/BetaSignup';
 import { betaApplyApi } from '../lib/api';
-import { trackEvent } from '../lib/analytics';
+
+const captureMock = vi.fn();
 
 vi.mock('../lib/api', async () => {
   const actual = await vi.importActual<typeof import('../lib/api')>('../lib/api');
@@ -15,17 +16,16 @@ vi.mock('../lib/api', async () => {
   };
 });
 
-vi.mock('../lib/analytics', () => ({
-  trackEvent: vi.fn(),
+vi.mock('posthog-js/react', () => ({
+  usePostHog: () => ({ capture: captureMock }),
 }));
 
 describe('BetaSignup', () => {
   const applyMock = vi.mocked(betaApplyApi.apply);
-  const trackEventMock = vi.mocked(trackEvent);
 
   beforeEach(() => {
     applyMock.mockReset();
-    trackEventMock.mockReset();
+    captureMock.mockReset();
   });
 
   const getFormFields = () => ({
@@ -68,7 +68,7 @@ describe('BetaSignup', () => {
         use_case: 'Payments',
       });
     });
-    const submitAttempt = trackEventMock.mock.calls.find(
+    const submitAttempt = captureMock.mock.calls.find(
       ([eventName]) => eventName === 'waitlist_submit_attempt'
     );
     expect(submitAttempt).toBeTruthy();
@@ -98,7 +98,7 @@ describe('BetaSignup', () => {
       expect(screen.getByRole('heading', { name: /Application Encrypted & Sent/i })).toBeInTheDocument();
     });
     expect(screen.getByText(/Submit another application/i)).toBeInTheDocument();
-    expect(trackEventMock).toHaveBeenCalledWith(
+    expect(captureMock).toHaveBeenCalledWith(
       'waitlist_submit_success',
       expect.objectContaining({
         latency_ms: expect.any(Number),

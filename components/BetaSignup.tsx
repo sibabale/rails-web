@@ -1,9 +1,11 @@
 import React, { useRef, useState } from 'react';
+import { usePostHog } from 'posthog-js/react';
 import { betaApplyApi } from '../lib/api';
-import { trackEvent } from '../lib/analytics';
 import { ApplicationStatus } from '../types';
 
 const BetaSignup: React.FC = () => {
+
+  const posthog = usePostHog();
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -20,7 +22,7 @@ const BetaSignup: React.FC = () => {
     setError(null);
     setStatus(ApplicationStatus.SUBMITTING);
     submitStartedAt.current = Date.now();
-    trackEvent('waitlist_submit_attempt', {
+    posthog?.capture('waitlist_submit_attempt', {
       name_length: formData.name.trim().length,
       email_length: formData.email.trim().length,
       company_length: formData.company.trim().length,
@@ -34,14 +36,14 @@ const BetaSignup: React.FC = () => {
         use_case: formData.useCase.trim()
       });
       setStatus(ApplicationStatus.SUCCESS);
-      trackEvent('waitlist_submit_success', {
+      posthog?.capture('waitlist_submit_success', {
         latency_ms: submitStartedAt.current ? Date.now() - submitStartedAt.current : null,
       });
     } catch (err) {
       setStatus(ApplicationStatus.ERROR);
       const message = err instanceof Error ? err.message : '';
       const isNetworkError = message === 'Failed to fetch';
-      trackEvent('waitlist_submit_error', {
+      posthog?.capture('waitlist_submit_error', {
         error_type: isNetworkError ? 'network' : 'api',
         has_message: Boolean(message),
         latency_ms: submitStartedAt.current ? Date.now() - submitStartedAt.current : null,
@@ -58,7 +60,7 @@ const BetaSignup: React.FC = () => {
     setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
     if (!formStarted.current) {
       formStarted.current = true;
-      trackEvent('waitlist_form_started', {
+      posthog?.capture('waitlist_form_started', {
         first_field: e.target.name,
       });
     }
@@ -66,7 +68,7 @@ const BetaSignup: React.FC = () => {
   };
 
   const handleFieldFocus = (fieldName: string) => {
-    trackEvent('waitlist_field_focus', {
+    posthog?.capture('waitlist_field_focus', {
       field: fieldName,
     });
   };
@@ -94,7 +96,7 @@ const BetaSignup: React.FC = () => {
             </p>
             <button 
               onClick={() => {
-                trackEvent('waitlist_form_reset');
+                posthog?.capture('waitlist_form_reset');
                 setStatus(ApplicationStatus.IDLE);
               }}
               className="text-sm font-medium text-zinc-400 dark:text-zinc-500 hover:text-zinc-800 dark:hover:text-white transition-colors"

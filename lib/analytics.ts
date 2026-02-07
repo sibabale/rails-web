@@ -2,34 +2,42 @@ import posthog from 'posthog-js';
 
 const DEFAULT_POSTHOG_HOST = 'https://eu.i.posthog.com';
 
-const POSTHOG_KEY = import.meta.env.VITE_POSTHOG_KEY;
-const POSTHOG_HOST = import.meta.env.VITE_POSTHOG_HOST || DEFAULT_POSTHOG_HOST;
+// Support both VITE_PUBLIC_* (PostHog’s recommended for Vite) and VITE_*
+const POSTHOG_KEY =
+  (import.meta.env.VITE_PUBLIC_POSTHOG_KEY as string | undefined) ||
+  (import.meta.env.VITE_POSTHOG_KEY as string | undefined);
+const POSTHOG_HOST =
+  (import.meta.env.VITE_PUBLIC_POSTHOG_HOST as string | undefined) ||
+  (import.meta.env.VITE_POSTHOG_HOST as string | undefined) ||
+  DEFAULT_POSTHOG_HOST;
 
-let analyticsInitialized = false;
 let landingTrackingInitialized = false;
 
-const isAnalyticsEnabled = () => {
-  const enabledInEnv = import.meta.env.VITE_ENABLE_ANALYTICS === 'true';
-  const isDev = import.meta.env.DEV;
-  return enabledInEnv || isDev;
+/**
+ * Analytics is enabled when a PostHog key is set, unless VITE_ENABLE_ANALYTICS=false.
+ * Key/host are read at build time (Vite inlines import.meta.env). Set them where you run `vite build`.
+ */
+export const isAnalyticsEnabled = () => {
+  if (!POSTHOG_KEY) return false;
+  if (import.meta.env.VITE_ENABLE_ANALYTICS === 'false') return false;
+  return true;
 };
 
-export const initializeAnalytics = () => {
-  if (analyticsInitialized || typeof window === 'undefined') return;
-  if (!isAnalyticsEnabled() || !POSTHOG_KEY) return;
+export const getPostHogKey = () => POSTHOG_KEY;
 
-  posthog.init(POSTHOG_KEY, {
-    api_host: POSTHOG_HOST,
-    person_profiles: 'identified_only',
-    capture_pageview: false,
-    capture_pageleave: true,
-    cross_subdomain_cookie: false,
-    persistence: 'localStorage',
-    autocapture: false,
-  });
-
-  analyticsInitialized = true;
-};
+/**
+ * Options for posthog.init(). Passed when initializing before render (index) so capture is safe from first frame.
+ */
+export const getPostHogOptions = () => ({
+  api_host: POSTHOG_HOST,
+  person_profiles: 'identified_only' as const,
+  capture_pageview: false,
+  capture_pageleave: true,
+  cross_subdomain_cookie: false,
+  persistence: 'localStorage' as const,
+  autocapture: false,
+  ...(import.meta.env.DEV && { debug: true }),
+});
 
 export const trackEvent = (eventName: string, properties: Record<string, unknown> = {}) => {
   if (!isAnalyticsEnabled() || typeof window === 'undefined') return;
@@ -50,7 +58,8 @@ export const trackPageView = (page: string, title?: string) => {
     title: title || document.title,
   });
 
-  posthog.capture('$pageview');
+  // Manual $pageview per PostHog docs; include $current_url for dashboard/URL breakdown
+  posthog.capture('$pageview', { $current_url: window.location.href });
 };
 
 const trackScrollDepth = (depth: number) => {
