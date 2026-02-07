@@ -29,6 +29,9 @@ jobs:
       - name: Run tests
         run: npm test
 
+  # Tokens per https://docs.railway.com/integrations/api :
+  # - Account token (RAILWAY_ACCOUNT_API_TOKEN): railway.com/account/tokens. Used for link + whoami (CLI reads RAILWAY_API_TOKEN).
+  # - Project token (RAILWAY_TOKEN): Project → Settings → Tokens, scoped to one environment. Used for railway up (deploy).
   deploy:
     name: Deploy to Railway Dev
     runs-on: ubuntu-latest
@@ -45,17 +48,17 @@ jobs:
       - name: Install Railway CLI
         run: npm install -g @railway/cli
 
-      # #region agent log — diagnostic: token presence and whoami (H2, H4)
+      # #region agent log — diagnostic: whoami uses account token (H2)
       - name: Diagnose Railway auth (debug)
         run: |
-          echo "RAILWAY_TOKEN_set=$([ -n "${RAILWAY_TOKEN:-}" ] && echo 1 || echo 0)"
+          echo "RAILWAY_ACCOUNT_API_TOKEN_set=$([ -n "${RAILWAY_API_TOKEN:-}" ] && echo 1 || echo 0)"
           railway whoami 2>&1; whoami_exit=$?
           echo "railway_whoami_exit=$whoami_exit"
         env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+          RAILWAY_API_TOKEN: ${{ secrets.RAILWAY_ACCOUNT_API_TOKEN }}
       # #endregion agent log
 
-      # Railway project tokens are environment-scoped. RAILWAY_TOKEN must be created in this project for the "dev" environment (Settings → Tokens, Environment: dev).
+      # Link uses account token (secret RAILWAY_ACCOUNT_API_TOKEN). Deploy uses project token (RAILWAY_TOKEN). See docs.railway.com/integrations/api#account-tokens-and-workspace-tokens and #project-token.
       - name: Link Railway project
         run: |
           railway link \
@@ -63,7 +66,7 @@ jobs:
             --environment dev \
             --service rails-web
         env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+          RAILWAY_API_TOKEN: ${{ secrets.RAILWAY_ACCOUNT_API_TOKEN }}
 
       - name: Deploy to Railway Dev
         run: railway up --detach
