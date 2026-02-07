@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAppDispatch, useAppSelector } from './state/hooks';
 import { resetToSandbox, setEnvironment } from './state/slices/environmentSlice';
 import { getStoreState } from './state/store';
+import { startLandingTracking } from './lib/analytics';
 import Navbar from './components/Navbar';
 import Hero from './components/Hero';
 import Features from './components/Features';
@@ -237,6 +238,13 @@ function App() {
     const timer = setTimeout(() => setIsLandingLoading(false), 1200);
     return () => clearTimeout(timer);
   }, []);
+
+  // Start landing scroll/click tracking when on landing view (PostHog provider must be mounted first)
+  useEffect(() => {
+    if (view === 'landing') {
+      startLandingTracking();
+    }
+  }, [view]);
 
   // ✅ Apply theme class to DOM and sync to localStorage
   // This runs on mount (with initial theme from localStorage) and whenever theme changes

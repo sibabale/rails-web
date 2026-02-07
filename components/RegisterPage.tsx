@@ -9,6 +9,7 @@ interface RegisterPageProps {
 const RegisterPage: React.FC<RegisterPageProps> = ({ onBack, onSuccess }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [errorTitle, setErrorTitle] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const passwordInputRef = useRef<HTMLInputElement>(null);
 
@@ -39,6 +40,7 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onBack, onSuccess }) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
+    setErrorTitle(null);
 
     const CLIENT_SERVER_URL =
       (import.meta.env.VITE_CLIENT_SERVER as string | undefined) || '';
@@ -63,14 +65,16 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onBack, onSuccess }) => {
 
       if (!response.ok) {
         let errorMessage = 'Registration failed. Please try again.';
+        let errorCode: string | undefined;
         try {
           const errorData = await response.json();
           errorMessage = errorData.message || errorData.error || errorMessage;
+          errorCode = errorData.code;
         } catch (jsonErr) {
           // Log the actual error for debugging
           console.error('Registration error response (not shown to user):', await response.text());
         }
-        throw new Error(errorMessage);
+        throw { message: errorMessage, code: errorCode };
       }
 
       const data = await response.json();
@@ -90,8 +94,9 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onBack, onSuccess }) => {
       if (err.name === 'TypeError' && err.message === 'Failed to fetch') {
         setError('Unable to connect to the service. Please check your connection and try again.');
       } else {
-        // Use the error message from the API (should be user-friendly now)
-        setError(err.message || 'An error occurred during registration. Please try again.');
+        const message = err?.message || 'An error occurred during registration. Please try again.';
+        setError(message);
+        setErrorTitle(err?.code === 'conflict' ? 'Email already in use' : null);
       }
       // Clear password on error as well for security
       setFormData(prev => ({ ...prev, admin_password: '' }));
@@ -222,7 +227,7 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onBack, onSuccess }) => {
               <div className="p-4 bg-red-50 dark:bg-red-950/20 border border-red-100 dark:border-red-900/50 rounded-xl flex items-start gap-3 text-red-600 dark:text-red-400 text-sm animate-in fade-in duration-300">
                 <span className="material-symbols-sharp !text-[18px] mt-0.5">error</span>
                 <div className="flex-1">
-                  <p className="font-bold mb-1">Infrastructure Error</p>
+                  <p className="font-bold mb-1">{errorTitle ?? 'Infrastructure Error'}</p>
                   <p className="leading-relaxed">{error}</p>
                 </div>
               </div>
