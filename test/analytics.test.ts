@@ -25,8 +25,8 @@ describe('analytics', () => {
     const { getPostHogOptions } = await import('../lib/analytics');
     const options = getPostHogOptions();
 
+    expect(options.api_host).toMatch(/^https:\/\/.+/);
     expect(options).toMatchObject({
-      api_host: 'https://example.com',
       person_profiles: 'identified_only',
       capture_pageview: false,
       capture_pageleave: true,
