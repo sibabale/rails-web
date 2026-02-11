@@ -3,7 +3,7 @@ import { render, screen, within, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
-import { ledgerApi, usersApi, accountsApi, transactionsApi } from '../lib/api';
+import { ledgerApi, accountsApi, transactionsApi } from '../lib/api';
 import Dashboard from '../components/Dashboard';
 import environmentReducer from '../state/slices/environmentSlice';
 
@@ -11,10 +11,6 @@ vi.mock('../lib/api', async () => {
   const actual = await vi.importActual<typeof import('../lib/api')>('../lib/api');
   return {
     ...actual,
-    usersApi: {
-      ...actual.usersApi,
-      list: vi.fn(),
-    },
     accountsApi: {
       ...actual.accountsApi,
       list: vi.fn(),
@@ -53,16 +49,11 @@ const renderDashboard = (session: any = null) => {
 };
 
 describe('Dashboard environment selector', () => {
-  const listUsersMock = vi.mocked(usersApi.list);
   const listAccountsMock = vi.mocked(accountsApi.list);
   const listTransactionsMock = vi.mocked(transactionsApi.list);
   const listEntriesMock = vi.mocked(ledgerApi.listEntries);
 
   beforeEach(() => {
-    listUsersMock.mockResolvedValue({
-      data: [],
-      pagination: { page: 1, per_page: 100, total_count: 0, total_pages: 1 },
-    });
     listAccountsMock.mockResolvedValue({
       data: [],
       pagination: { page: 1, per_page: 100, total_count: 0, total_pages: 1 },
@@ -91,19 +82,11 @@ describe('Dashboard environment selector', () => {
   });
 
 
-  it('excludes admin users and their accounts from overview stats', async () => {
-    listUsersMock.mockResolvedValue({
-      data: [
-        { id: 'admin-1', first_name: 'Admin', last_name: 'User', email: 'admin@example.com', role: 'admin', status: 'active', created_at: new Date().toISOString() },
-        { id: 'user-1', first_name: 'Jane', last_name: 'Doe', email: 'jane@example.com', role: 'member', status: 'active', created_at: new Date().toISOString() },
-      ],
-      pagination: { page: 1, per_page: 100, total_count: 2, total_pages: 1 },
-    });
-
+  it('shows active accounts count in overview', async () => {
     listAccountsMock.mockResolvedValue({
       data: [
-        { id: 'acc-admin', account_type: 'checking', user_id: 'admin-1', currency: 'USD', status: 'active', created_at: new Date().toISOString() },
-        { id: 'acc-user', account_type: 'checking', user_id: 'user-1', currency: 'USD', status: 'active', created_at: new Date().toISOString() },
+        { id: 'acc-1', account_type: 'checking', user_id: 'user-1', currency: 'USD', status: 'active', created_at: new Date().toISOString() },
+        { id: 'acc-2', account_type: 'saving', user_id: 'user-1', currency: 'USD', status: 'active', created_at: new Date().toISOString() },
       ],
       pagination: { page: 1, per_page: 100, total_count: 2, total_pages: 1 },
     });
@@ -114,20 +97,11 @@ describe('Dashboard environment selector', () => {
       environments: [{ id: 'env-1', type: 'sandbox' }],
     });
 
-    const usersCard = await screen.findByText('Active Users');
-    await waitFor(
-      () => {
-        const cardElement = usersCard.closest('div') as HTMLElement;
-        expect(within(cardElement).getByText('1')).toBeInTheDocument();
-      },
-      { timeout: 5000 }
-    );
-
-    const accountsCard = screen.getByText('Active Accounts');
+    const accountsCard = await screen.findByText('Active Accounts');
     await waitFor(
       () => {
         const cardElement = accountsCard.closest('div') as HTMLElement;
-        expect(within(cardElement).getByText('1')).toBeInTheDocument();
+        expect(within(cardElement).getByText('2')).toBeInTheDocument();
       },
       { timeout: 5000 }
     );
