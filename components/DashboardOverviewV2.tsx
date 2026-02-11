@@ -3,7 +3,6 @@ import React from 'react';
 interface DashboardOverviewV2Props {
   onGetStarted: () => void;
   overviewStats?: {
-    activeUsers: number;
     activeAccounts: number;
     postedEntries: number;
     settledVolume: number;
@@ -25,17 +24,12 @@ const formatCurrency = (amount: number, currency: string) => {
 
 const DashboardOverviewV2: React.FC<DashboardOverviewV2Props> = ({ 
   onGetStarted,
-  overviewStats = { activeUsers: 0, activeAccounts: 0, postedEntries: 0, settledVolume: 0 },
+  overviewStats = { activeAccounts: 0, postedEntries: 0, settledVolume: 0 },
   isLoadingOverviewStats = false,
   overviewCurrency = 'USD',
   session,
 }) => {
   const overviewTiles = [
-    {
-      label: 'Active Users',
-      value: isLoadingOverviewStats ? '—' : formatCount(overviewStats.activeUsers),
-      sublabel: 'users',
-    },
     {
       label: 'Active Accounts',
       value: isLoadingOverviewStats ? '—' : formatCount(overviewStats.activeAccounts),

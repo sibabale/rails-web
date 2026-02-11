@@ -94,7 +94,14 @@ const ApiKeyManager: React.FC<ApiKeyManagerProps> = ({ session }) => {
       }
 
       const data = (await response.json()) as ApiKeyInfo[];
-      setKeys(Array.isArray(data) ? data : []);
+      const fromApi = Array.isArray(data) ? data : [];
+      // Preserve any revoked keys we have in state that the API might not return
+      setKeys((prev) => {
+        const revokedOnlyInState = prev.filter(
+          (k) => (k.status || '').toLowerCase() === 'revoked' && !fromApi.some((n) => n.id === k.id)
+        );
+        return [...fromApi, ...revokedOnlyInState];
+      });
     } catch (e: any) {
       setError(e?.message || 'Failed to load API keys.');
     } finally {
@@ -196,6 +203,13 @@ const ApiKeyManager: React.FC<ApiKeyManagerProps> = ({ session }) => {
         throw new Error(errorMessage);
       }
 
+      // Optimistically mark the key as revoked so the UI shows "Revoked" immediately
+      // (in case the list API omits or delays returning revoked keys)
+      setKeys((prev) =>
+        prev.map((k) =>
+          k.id === apiKeyId ? { ...k, status: 'revoked', revoked_at: new Date().toISOString() } : k
+        )
+      );
       await fetchKeys();
     } catch (e: any) {
       setError(e?.message || 'Failed to revoke API key.');

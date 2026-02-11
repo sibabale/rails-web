@@ -5,7 +5,7 @@ import { setEnvironment } from '../state/slices/environmentSlice';
 import ApiKeyManager from './ApiKeyManager';
 import Pagination from './Pagination';
 import DashboardOverviewV2 from './DashboardOverviewV2';
-import { accountsApi, usersApi, transactionsApi, ledgerApi, type Account as ApiAccount, type Transaction, type User, type LedgerEntry, type PaginationMeta } from '../lib/api';
+import { accountsApi, transactionsApi, ledgerApi, type Account as ApiAccount, type Transaction, type LedgerEntry, type PaginationMeta } from '../lib/api';
 
 interface DashboardProps {
   onLogout: () => void;
@@ -35,10 +35,8 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, currentTheme, onToggleT
   const [activeTab, setActiveTab] = useState('Overview');
   const [timeLeft, setTimeLeft] = useState<string>('');
   const [isLoadingAccounts, setIsLoadingAccounts] = useState(false);
-  const [isLoadingUsers, setIsLoadingUsers] = useState(false);
   const [isLoadingTransactions, setIsLoadingTransactions] = useState(false);
   const [accountsError, setAccountsError] = useState<string | null>(null);
-  const [usersError, setUsersError] = useState<string | null>(null);
   const [transactionsError, setTransactionsError] = useState<string | null>(null);
   
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
@@ -50,14 +48,12 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, currentTheme, onToggleT
   
   const [reserve, setReserve] = useState({ total: 25000000, available: 18450000 });
   const [accounts, setAccounts] = useState<Account[]>([]);
-  const [users, setUsers] = useState<User[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [transactionsList, setTransactionsList] = useState<Transaction[]>([]);
   const [ledgerEntries, setLedgerEntries] = useState<LedgerEntry[]>([]);
   const [isLoadingLedger, setIsLoadingLedger] = useState(false);
   const [ledgerError, setLedgerError] = useState<string | null>(null);
   const [overviewStats, setOverviewStats] = useState({
-    activeUsers: 0,
     activeAccounts: 0,
     postedEntries: 0,
     settledVolume: 0,
@@ -69,8 +65,6 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, currentTheme, onToggleT
   const [transactionsListError, setTransactionsListError] = useState<string | null>(null);
   
   // Pagination state
-  const [usersPage, setUsersPage] = useState(1);
-  const [usersPagination, setUsersPagination] = useState<PaginationMeta | null>(null);
   const [accountsPage, setAccountsPage] = useState(1);
   const [accountsPagination, setAccountsPagination] = useState<PaginationMeta | null>(null);
   const [transactionsPage, setTransactionsPage] = useState(1);
@@ -100,9 +94,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, currentTheme, onToggleT
 
   // Reset pagination when switching tabs
   useEffect(() => {
-    if (activeTab === 'Users') {
-      setUsersPage(1);
-    } else if (activeTab === 'Accounts') {
+    if (activeTab === 'Accounts') {
       setAccountsPage(1);
     } else if (activeTab === 'Ledger') {
       setLedgerPage(1);
@@ -143,26 +135,6 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, currentTheme, onToggleT
         });
     }
   }, [activeTab, session, accountsPage, environment]);
-
-  // Fetch users when Users tab is active or environment changes
-  useEffect(() => {
-    if (activeTab === 'Users' && session) {
-      setIsLoadingUsers(true);
-      setUsersError(null);
-      usersApi.list(session, usersPage, 10)
-        .then((response) => {
-          setUsers(response.data || []);
-          setUsersPagination(response.pagination);
-        })
-        .catch((err) => {
-          console.error('Failed to fetch users:', err);
-          setUsersError(err.message || 'Failed to load users');
-        })
-        .finally(() => {
-          setIsLoadingUsers(false);
-        });
-    }
-  }, [activeTab, session, usersPage, environment]);
 
   // Reset transactions page when environment changes
   const prevEnvironmentRef = useRef(environment);
@@ -275,22 +247,6 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, currentTheme, onToggleT
     }
   }, [activeTab, session, ledgerPage, environment]);
 
-  const fetchAllUsers = async () => {
-    const perPage = 100;
-    let page = 1;
-    let allUsers: User[] = [];
-    let totalPages = 1;
-
-    while (page <= totalPages) {
-      const response = await usersApi.list(session, page, perPage);
-      allUsers = allUsers.concat(response.data || []);
-      totalPages = response.pagination?.total_pages ?? page;
-      page += 1;
-    }
-
-    return allUsers;
-  };
-
   const fetchAllAccounts = async () => {
     const perPage = 100;
     let page = 1;
@@ -331,29 +287,14 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, currentTheme, onToggleT
       setOverviewStatsError(null);
 
       const loadOverviewStats = async () => {
-        const allUsers = await fetchAllUsers();
-        const adminUserIds = new Set(
-          allUsers
-            .filter((user) => user.role?.toLowerCase() === 'admin')
-            .map((user) => user.id)
-        );
-        const activeUsersCount = allUsers.filter(
-          (user) => user.status?.toLowerCase() === 'active' && !adminUserIds.has(user.id)
-        ).length;
-
         const allAccounts = await fetchAllAccounts();
-        const activeAccountsCount = allAccounts.filter((account) => {
-          const isActive = account.status?.toLowerCase() === 'active';
-          const userId = account.user_id || '';
-          return isActive && (userId === '' || !adminUserIds.has(userId));
-        }).length;
+        const activeAccountsCount = allAccounts.filter((account) => account.status?.toLowerCase() === 'active').length;
 
         const allTransactions = await fetchAllTransactions();
         const postedTransactions = allTransactions.filter((tx) => tx.status?.toLowerCase() === 'posted');
         const postedTransactionsCount = postedTransactions.length;
 
         return {
-          activeUsersCount,
           activeAccountsCount,
           postedEntriesCount: postedTransactionsCount,
           settledVolumeTotal: 0,
@@ -365,7 +306,6 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, currentTheme, onToggleT
         .then((stats) => {
           if (!isActive) return;
           setOverviewStats({
-            activeUsers: stats.activeUsersCount,
             activeAccounts: stats.activeAccountsCount,
             postedEntries: stats.postedEntriesCount,
             settledVolume: stats.settledVolumeTotal,
@@ -376,7 +316,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, currentTheme, onToggleT
           if (!isActive) return;
           console.error('Failed to fetch overview stats:', err);
           setOverviewStatsError(err.message || 'Failed to load overview stats');
-          setOverviewStats({ activeUsers: 0, activeAccounts: 0, postedEntries: 0, settledVolume: 0 });
+          setOverviewStats({ activeAccounts: 0, postedEntries: 0, settledVolume: 0 });
         })
         .finally(() => {
           if (isActive) {
@@ -403,11 +343,6 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, currentTheme, onToggleT
 
   const overviewTiles = [
     {
-      label: 'Active Users',
-      value: isLoadingOverviewStats ? '—' : formatCount(overviewStats.activeUsers),
-      sublabel: 'users',
-    },
-    {
       label: 'Active Accounts',
       value: isLoadingOverviewStats ? '—' : formatCount(overviewStats.activeAccounts),
       sublabel: 'accounts',
@@ -432,7 +367,6 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, currentTheme, onToggleT
 
   const navItems = [
     { name: 'Overview', icon: 'dashboard' },
-    { name: 'Users', icon: 'people' },
     { name: 'Accounts', icon: 'account_balance' },
     { name: 'Transactions', icon: 'swap_horiz' },
     // { name: 'Settlements', icon: 'account_tree' },
@@ -766,16 +700,9 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, currentTheme, onToggleT
 
   const renderIdentityView = () => (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div className="flex justify-between items-start">
-        <div>
-          <h2 className="text-3xl font-bold tracking-tighter mb-2 text-zinc-800 dark:text-white">Identity & Profile</h2>
-          <p className="text-sm font-mono text-zinc-500 uppercase tracking-widest">Business Information Node Context</p>
-        </div>
-        <div className="flex gap-3">
-          <button className="px-4 py-2 bg-emerald-500 text-white dark:text-black text-xs font-bold rounded-lg hover:bg-emerald-400 transition-colors shadow-sm">
-            Renew API Key
-          </button>
-        </div>
+      <div>
+        <h2 className="text-3xl font-bold tracking-tighter mb-2 text-zinc-800 dark:text-white">Identity & Profile</h2>
+        <p className="text-sm font-mono text-zinc-500 uppercase tracking-widest">Business Information Node Context</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
@@ -875,107 +802,6 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, currentTheme, onToggleT
            </div>
         </div>
       </div>
-    </div>
-  );
-
-  const renderUsersView = () => (
-    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-500">
-      <div className="flex justify-between items-center">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight text-zinc-800 dark:text-white">Users</h2>
-          <p className="text-sm text-zinc-500">View all users in your organization. User creation is done via SDK.</p>
-        </div>
-      </div>
-
-      {usersError ? (
-        <div className="bg-amber-500/10 border border-amber-500/20 rounded-2xl p-6">
-          <div className="flex items-center gap-3 mb-2">
-            <span className="material-symbols-sharp text-amber-500 !text-[18px]">info</span>
-            <h3 className="text-sm font-bold text-amber-600 dark:text-amber-500">Unable to Load Users</h3>
-          </div>
-          <p className="text-sm text-zinc-600 dark:text-zinc-400">{usersError}</p>
-        </div>
-      ) : isLoadingUsers ? (
-        <div className="bg-white dark:bg-black border border-zinc-100 dark:border-zinc-800/50 rounded-2xl overflow-hidden shadow-sm">
-          <table className="w-full text-left">
-            <thead className="text-[10px] font-mono text-zinc-400 dark:text-zinc-600 uppercase border-b border-zinc-50 dark:border-zinc-900 bg-zinc-50 dark:bg-zinc-950">
-              <tr>
-                <th className="px-6 py-4">Name</th>
-                <th className="px-6 py-4">Email</th>
-                <th className="px-6 py-4">Role</th>
-                <th className="px-6 py-4">Status</th>
-                <th className="px-6 py-4">Created</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-zinc-50 dark:divide-zinc-900 font-mono text-xs">
-              {Array.from({ length: 10 }).map((_, i) => (
-                <tr key={i}>
-                  <td className="px-6 py-5"><div className="h-4 w-32 bg-zinc-100 dark:bg-zinc-800 animate-pulse rounded"></div></td>
-                  <td className="px-6 py-5"><div className="h-4 w-40 bg-zinc-100 dark:bg-zinc-800 animate-pulse rounded"></div></td>
-                  <td className="px-6 py-5"><div className="h-4 w-20 bg-zinc-100 dark:bg-zinc-800 animate-pulse rounded"></div></td>
-                  <td className="px-6 py-5"><div className="h-4 w-16 bg-zinc-100 dark:bg-zinc-800 animate-pulse rounded-full"></div></td>
-                  <td className="px-6 py-5"><div className="h-4 w-24 bg-zinc-100 dark:bg-zinc-800 animate-pulse rounded"></div></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      ) : users.length === 0 ? (
-        <div className="bg-white dark:bg-black border border-zinc-100 dark:border-zinc-800/50 rounded-2xl p-12 text-center">
-          <span className="material-symbols-sharp text-zinc-300 dark:text-zinc-700 !text-[48px] mb-4 block">people</span>
-          <p className="text-sm font-mono text-zinc-400 dark:text-zinc-600 uppercase tracking-widest">No Users Found</p>
-          <p className="text-xs text-zinc-500 dark:text-zinc-500 mt-2">Users are created via SDK, not through the dashboard.</p>
-        </div>
-      ) : (
-        <div className="bg-white dark:bg-black border border-zinc-100 dark:border-zinc-800/50 rounded-2xl overflow-hidden shadow-sm">
-          <table className="w-full text-left">
-            <thead className="text-[10px] font-mono text-zinc-400 dark:text-zinc-600 uppercase border-b border-zinc-50 dark:border-zinc-900 bg-zinc-50 dark:bg-zinc-950">
-              <tr>
-                <th className="px-6 py-4">Name</th>
-                <th className="px-6 py-4">Email</th>
-                <th className="px-6 py-4">Role</th>
-                <th className="px-6 py-4">Status</th>
-                <th className="px-6 py-4">Created</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-zinc-50 dark:divide-zinc-900 font-mono text-xs">
-              {users.map((user) => (
-                <tr key={user.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-900/30 transition-colors">
-                  <td className="px-6 py-5">
-                    <span className="text-zinc-700 dark:text-white font-bold">{user.first_name} {user.last_name}</span>
-                  </td>
-                  <td className="px-6 py-5">
-                    <span className="text-zinc-500 dark:text-zinc-300">{user.email}</span>
-                  </td>
-                  <td className="px-6 py-5">
-                    <span className="text-zinc-500 dark:text-zinc-300 uppercase">{user.role}</span>
-                  </td>
-                  <td className="px-6 py-5">
-                    <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase ${
-                      user.status === 'active' 
-                        ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-500' 
-                        : 'bg-zinc-500/10 text-zinc-600 dark:text-zinc-500'
-                    }`}>
-                      {user.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-5 text-zinc-500 dark:text-zinc-400">
-                    {new Date(user.created_at).toLocaleDateString()}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          {usersPagination && (
-            <Pagination
-              page={usersPagination.page}
-              totalPages={usersPagination.total_pages}
-              totalCount={usersPagination.total_count}
-              onPageChange={setUsersPage}
-            />
-          )}
-        </div>
-      )}
     </div>
   );
 
@@ -1106,8 +932,6 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, currentTheme, onToggleT
     if (activeTab === 'Identity') return renderIdentityView();
 
     switch (activeTab) {
-      case 'Users':
-        return renderUsersView();
       case 'Transactions':
         if (selectedTransactionId) {
           if (isLoadingTransactionDetails) {

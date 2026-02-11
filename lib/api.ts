@@ -199,19 +199,6 @@ export const transactionsApi = {
     apiRequest<Transaction>(`/api/v1/transactions/${id}`, { method: 'GET' }, session),
 };
 
-// Users Service API
-export interface User {
-  id: string;
-  first_name: string;
-  last_name: string;
-  email: string;
-  role: string;
-  status: string;
-  created_at: string;
-  updated_at?: string;
-}
-
-// Users Service API
 export interface PaginationMeta {
   page: number;
   per_page: number;
@@ -223,23 +210,6 @@ export interface PaginatedResponse<T> {
   data: T[];
   pagination: PaginationMeta;
 }
-
-export const usersApi = {
-  list: (session: Session | null, page?: number, perPage?: number): Promise<PaginatedResponse<User>> => {
-    const params = new URLSearchParams();
-    if (page) params.append('page', String(page));
-    if (perPage) params.append('per_page', String(perPage));
-    const query = params.toString();
-    return apiRequest<PaginatedResponse<User>>(
-      `/api/v1/users${query ? `?${query}` : ''}`,
-      { method: 'GET' },
-      session
-    );
-  },
-  
-  get: (id: string, session: Session | null): Promise<User> =>
-    apiRequest<User>(`/api/v1/users/${id}`, { method: 'GET' }, session),
-};
 
 // Password Reset API
 export interface RequestPasswordResetResponse {
