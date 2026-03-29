@@ -1,4 +1,6 @@
 .env
+.env.bak*
+.env.*.bak*
 .env.dev
 .env.staging
 .env.prod
