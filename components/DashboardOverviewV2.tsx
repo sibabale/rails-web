@@ -1,4 +1,5 @@
 import React from 'react';
+import { SDK_SAMPLE_FOLDERS, samplesFolderUrl } from '../lib/samplesRepo';
 
 interface DashboardOverviewV2Props {
   onGetStarted: () => void;
@@ -118,7 +119,10 @@ const DashboardOverviewV2: React.FC<DashboardOverviewV2Props> = ({
         ))}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+      <div
+        className="grid grid-cols-1 md:grid-cols-3 gap-8"
+        data-testid="dashboard-overview-resources"
+      >
         <div className="bg-zinc-50 dark:bg-zinc-950 border border-zinc-100 dark:border-zinc-800/50 rounded-2xl p-6 space-y-4">
           <h3 className="text-sm font-mono uppercase tracking-widest text-zinc-500">Documentation</h3>
           <p className="text-base text-zinc-700 dark:text-zinc-300">
@@ -144,6 +148,30 @@ const DashboardOverviewV2: React.FC<DashboardOverviewV2Props> = ({
               <span key={sdk} className="px-2 py-1 rounded-full border border-zinc-200 dark:border-zinc-800">
                 {sdk}
               </span>
+            ))}
+          </div>
+        </div>
+
+        <div
+          className="bg-zinc-50 dark:bg-zinc-950 border border-zinc-100 dark:border-zinc-800/50 rounded-2xl p-6 space-y-4"
+          data-testid="dashboard-samples"
+        >
+          <h3 className="text-sm font-mono uppercase tracking-widest text-zinc-500">Samples</h3>
+          <p className="text-base text-zinc-700 dark:text-zinc-300">
+            Clone a reference app for your stack: install, set base URL and API key, run locally with Swagger.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {SDK_SAMPLE_FOLDERS.map(({ id, label }) => (
+              <a
+                key={id}
+                href={samplesFolderUrl(id)}
+                target="_blank"
+                rel="noreferrer"
+                className="px-2 py-1 rounded-full border border-zinc-200 dark:border-zinc-800 text-xs font-mono font-semibold text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors"
+                data-testid={`dashboard-sample-link-${id}`}
+              >
+                {label}
+              </a>
             ))}
           </div>
         </div>
