@@ -1,37 +1,54 @@
-const readFirstDefined = (...keys: string[]): string | undefined => {
-  for (const key of keys) {
-    const value = process.env[key];
-    if (typeof value === 'string' && value.length > 0) return value;
-  }
+/**
+ * Read public env vars with **static** `process.env.KEY` access only.
+ * Next/Webpack/Turbopack inlines `NEXT_PUBLIC_*` at compile time; dynamic
+ * `process.env[variable]` is never replaced and is always undefined in the browser.
+ */
+const nonEmpty = (value: string | undefined): value is string =>
+  typeof value === 'string' && value.length > 0;
+
+export const getClientServerUrl = (): string | undefined => {
+  if (nonEmpty(process.env.NEXT_PUBLIC_CLIENT_SERVER)) return process.env.NEXT_PUBLIC_CLIENT_SERVER;
+  if (nonEmpty(process.env.VITE_CLIENT_SERVER)) return process.env.VITE_CLIENT_SERVER;
   return undefined;
 };
 
-export const getClientServerUrl = (): string | undefined =>
-  readFirstDefined('NEXT_PUBLIC_CLIENT_SERVER', 'VITE_CLIENT_SERVER');
+export const isAuthViewsEnabled = (): boolean => {
+  if (nonEmpty(process.env.NEXT_PUBLIC_ENABLE_AUTH_VIEWS))
+    return process.env.NEXT_PUBLIC_ENABLE_AUTH_VIEWS === 'true';
+  if (nonEmpty(process.env.VITE_ENABLE_AUTH_VIEWS)) return process.env.VITE_ENABLE_AUTH_VIEWS === 'true';
+  return false;
+};
 
-export const isAuthViewsEnabled = (): boolean =>
-  readFirstDefined('NEXT_PUBLIC_ENABLE_AUTH_VIEWS', 'VITE_ENABLE_AUTH_VIEWS') === 'true';
+export const isAuthButtonsEnabled = (): boolean => {
+  if (nonEmpty(process.env.NEXT_PUBLIC_SHOW_AUTH_BUTTONS))
+    return process.env.NEXT_PUBLIC_SHOW_AUTH_BUTTONS === 'true';
+  if (nonEmpty(process.env.VITE_SHOW_AUTH_BUTTONS)) return process.env.VITE_SHOW_AUTH_BUTTONS === 'true';
+  return false;
+};
 
-export const isAuthButtonsEnabled = (): boolean =>
-  readFirstDefined('NEXT_PUBLIC_SHOW_AUTH_BUTTONS', 'VITE_SHOW_AUTH_BUTTONS') === 'true';
+export const isAnalyticsExplicitlyDisabled = (): boolean => {
+  if (nonEmpty(process.env.NEXT_PUBLIC_ENABLE_ANALYTICS))
+    return process.env.NEXT_PUBLIC_ENABLE_ANALYTICS === 'false';
+  if (nonEmpty(process.env.VITE_ENABLE_ANALYTICS)) return process.env.VITE_ENABLE_ANALYTICS === 'false';
+  return false;
+};
 
-export const isAnalyticsExplicitlyDisabled = (): boolean =>
-  readFirstDefined('NEXT_PUBLIC_ENABLE_ANALYTICS', 'VITE_ENABLE_ANALYTICS') === 'false';
+export const getPostHogKeyEnv = (): string | undefined => {
+  if (nonEmpty(process.env.NEXT_PUBLIC_POSTHOG_KEY)) return process.env.NEXT_PUBLIC_POSTHOG_KEY;
+  if (nonEmpty(process.env.NEXT_PUBLIC_VITE_PUBLIC_POSTHOG_KEY))
+    return process.env.NEXT_PUBLIC_VITE_PUBLIC_POSTHOG_KEY;
+  if (nonEmpty(process.env.NEXT_PUBLIC_VITE_POSTHOG_KEY)) return process.env.NEXT_PUBLIC_VITE_POSTHOG_KEY;
+  if (nonEmpty(process.env.VITE_PUBLIC_POSTHOG_KEY)) return process.env.VITE_PUBLIC_POSTHOG_KEY;
+  if (nonEmpty(process.env.VITE_POSTHOG_KEY)) return process.env.VITE_POSTHOG_KEY;
+  return undefined;
+};
 
-export const getPostHogKeyEnv = (): string | undefined =>
-  readFirstDefined(
-    'NEXT_PUBLIC_POSTHOG_KEY',
-    'NEXT_PUBLIC_VITE_PUBLIC_POSTHOG_KEY',
-    'NEXT_PUBLIC_VITE_POSTHOG_KEY',
-    'VITE_PUBLIC_POSTHOG_KEY',
-    'VITE_POSTHOG_KEY'
-  );
-
-export const getPostHogHostEnv = (): string | undefined =>
-  readFirstDefined(
-    'NEXT_PUBLIC_POSTHOG_HOST',
-    'NEXT_PUBLIC_VITE_PUBLIC_POSTHOG_HOST',
-    'NEXT_PUBLIC_VITE_POSTHOG_HOST',
-    'VITE_PUBLIC_POSTHOG_HOST',
-    'VITE_POSTHOG_HOST'
-  );
+export const getPostHogHostEnv = (): string | undefined => {
+  if (nonEmpty(process.env.NEXT_PUBLIC_POSTHOG_HOST)) return process.env.NEXT_PUBLIC_POSTHOG_HOST;
+  if (nonEmpty(process.env.NEXT_PUBLIC_VITE_PUBLIC_POSTHOG_HOST))
+    return process.env.NEXT_PUBLIC_VITE_PUBLIC_POSTHOG_HOST;
+  if (nonEmpty(process.env.NEXT_PUBLIC_VITE_POSTHOG_HOST)) return process.env.NEXT_PUBLIC_VITE_POSTHOG_HOST;
+  if (nonEmpty(process.env.VITE_PUBLIC_POSTHOG_HOST)) return process.env.VITE_PUBLIC_POSTHOG_HOST;
+  if (nonEmpty(process.env.VITE_POSTHOG_HOST)) return process.env.VITE_POSTHOG_HOST;
+  return undefined;
+};

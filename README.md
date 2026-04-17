@@ -25,6 +25,18 @@ Setup:
 - Production build: `npm run build`
 - Start production server: `npm run start`
 
+## End-to-end tests (Playwright)
+
+From this directory:
+
+```bash
+npm install
+npx playwright install chromium
+npm run test:e2e
+```
+
+See [`e2e/README.md`](e2e/README.md) for how mocks work and how to run headed/UI mode.
+
 ## Key routes
 
 - `/` landing page
