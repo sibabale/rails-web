@@ -22,4 +22,7 @@ COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 
 EXPOSE 3000
-CMD ["node", "server.js"]
+# Next standalone binds to process.env.HOSTNAME || "0.0.0.0". Railway (and many
+# runtimes) set HOSTNAME to the container hostname, which breaks edge/health probes.
+# Force public bind; Railway still routes via $PORT.
+CMD ["sh", "-c", "HOSTNAME=0.0.0.0 exec node server.js"]
