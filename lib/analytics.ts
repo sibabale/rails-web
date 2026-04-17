@@ -1,25 +1,23 @@
 import posthog from 'posthog-js';
+import { getPostHogHostEnv, getPostHogKeyEnv, isAnalyticsExplicitlyDisabled } from './env';
 
 const DEFAULT_POSTHOG_HOST = 'https://eu.i.posthog.com';
 
-// Support both VITE_PUBLIC_* (PostHog’s recommended for Vite) and VITE_*
+const IS_DEV = process.env.NODE_ENV !== 'production';
+
 const POSTHOG_KEY =
-  (import.meta.env.VITE_PUBLIC_POSTHOG_KEY as string | undefined) ||
-  (import.meta.env.VITE_POSTHOG_KEY as string | undefined);
-const POSTHOG_HOST =
-  (import.meta.env.VITE_PUBLIC_POSTHOG_HOST as string | undefined) ||
-  (import.meta.env.VITE_POSTHOG_HOST as string | undefined) ||
-  DEFAULT_POSTHOG_HOST;
+  getPostHogKeyEnv();
+const POSTHOG_HOST = getPostHogHostEnv() || DEFAULT_POSTHOG_HOST;
 
 let landingTrackingInitialized = false;
 
 /**
- * Analytics is enabled when a PostHog key is set, unless VITE_ENABLE_ANALYTICS=false.
- * Key/host are read at build time (Vite inlines import.meta.env). Set them where you run `vite build`.
+ * Analytics is enabled when a PostHog key is set, unless analytics is explicitly disabled.
+ * Key/host values are read from Next public env vars at build/runtime.
  */
 export const isAnalyticsEnabled = () => {
   if (!POSTHOG_KEY) return false;
-  if (import.meta.env.VITE_ENABLE_ANALYTICS === 'false') return false;
+  if (isAnalyticsExplicitlyDisabled()) return false;
   return true;
 };
 
@@ -36,7 +34,7 @@ export const getPostHogOptions = () => ({
   cross_subdomain_cookie: false,
   persistence: 'localStorage' as const,
   autocapture: false,
-  ...(import.meta.env.DEV && { debug: true }),
+  ...(IS_DEV && { debug: true }),
 });
 
 export const trackEvent = (eventName: string, properties: Record<string, unknown> = {}) => {

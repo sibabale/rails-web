@@ -4,6 +4,7 @@
 // Removed ApiConfig interface - we only use client-server now
 
 import type { Environment } from '../state/slices/environmentSlice';
+import { getClientServerUrl } from './env';
 import { getStoreState } from '../state/store';
 
 interface ApiRequestOptions {
@@ -28,10 +29,10 @@ interface Session {
 
 // Get client-server base URL from environment
 // All API calls must go through rails-client-server, never directly to services
-const getClientServerUrl = (): string => {
-  const clientServer = (import.meta.env.VITE_CLIENT_SERVER as string | undefined) || '';
+const getClientServerBaseUrl = (): string => {
+  const clientServer = getClientServerUrl();
   if (!clientServer) {
-    throw new Error('VITE_CLIENT_SERVER is required. All API calls must go through rails-client-server.');
+    throw new Error('NEXT_PUBLIC_CLIENT_SERVER is required. All API calls must go through rails-client-server.');
   }
   return clientServer.replace(/\/$/, '');
 };
@@ -44,7 +45,7 @@ export async function apiRequest<T>(
   session?: Session | null
 ): Promise<T> {
   const { method = 'GET', headers = {}, body, requiresAuth = true, requiresEnvironment = true, environment } = options;
-  const baseUrl = getClientServerUrl();
+  const baseUrl = getClientServerBaseUrl();
 
   const requestHeaders: Record<string, string> = {
     'Content-Type': 'application/json',

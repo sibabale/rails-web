@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { getClientServerUrl } from '../lib/env';
 import { useAppSelector } from '../state/hooks';
 
 type ApiKeyStatus = 'active' | 'revoked' | 'none';
@@ -40,7 +41,7 @@ const ApiKeyManager: React.FC<ApiKeyManagerProps> = ({ session }) => {
   const [plaintextKey, setPlaintextKey] = useState<string | null>(null);
   const [copyFeedback, setCopyFeedback] = useState<'idle' | 'copied' | 'failed'>('idle');
 
-  const CLIENT_SERVER_URL = (import.meta.env.VITE_CLIENT_SERVER as string | undefined) || '';
+  const CLIENT_SERVER_URL = getClientServerUrl() || '';
   const environmentId = session?.environment_id;
   const accessToken = session?.access_token;
 

@@ -452,7 +452,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, currentTheme, onToggleT
                     {transactions.slice(0, 5).map((tx) => (
                       <div key={tx.id} className="bg-zinc-50 dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 rounded-lg p-4">
                         <div className="flex items-center justify-between mb-2">
-                          <span className="text-xs font-mono font-bold text-zinc-800 dark:text-white">{tx.transaction_type}</span>
+                          <span className="text-xs font-mono font-bold text-zinc-800 dark:text-white">{tx.transaction_kind}</span>
                           <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase ${
                             tx.status?.toLowerCase() === 'posted' 
                               ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-500'

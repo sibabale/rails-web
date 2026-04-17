@@ -1,0 +1,74 @@
+'use client';
+
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { useAppDispatch } from '../../state/hooks';
+import { setEnvironment } from '../../state/slices/environmentSlice';
+import { isAuthViewsEnabled } from '../../lib/env';
+import { useTheme } from '../../lib/useTheme';
+import Navbar from '../../components/Navbar';
+import Footer from '../../components/Footer';
+import RegisterPage from '../../components/RegisterPage';
+
+interface EnvironmentInfo {
+  id: string;
+  type: string;
+}
+
+interface Session {
+  access_token: string;
+  refresh_token: string;
+  expires_in: number;
+  timestamp: number;
+  environment_id: string;
+  environments: EnvironmentInfo[];
+}
+
+export default function RegisterRoute() {
+  const router = useRouter();
+  const dispatch = useAppDispatch();
+  const { theme, toggleTheme } = useTheme();
+  const authEnabled = isAuthViewsEnabled();
+
+  useEffect(() => {
+    if (!authEnabled) router.replace('/');
+  }, [authEnabled, router]);
+
+  if (!authEnabled) return null;
+
+  const handleAuthSuccess = (data: any) => {
+    const envId =
+      data.selected_environment_id ||
+      data.environment?.id ||
+      data.user?.environment_id ||
+      data.environment_id;
+
+    if (!envId) return;
+
+    const environments: EnvironmentInfo[] = data.environments || [];
+    const selectedEnv = environments.find((e) => e.id === envId);
+    const environmentType = (selectedEnv?.type || 'sandbox') as 'sandbox' | 'production';
+    dispatch(setEnvironment(environmentType));
+
+    const sessionData: Session = {
+      access_token: data.access_token,
+      refresh_token: data.refresh_token,
+      expires_in: data.expires_in,
+      timestamp: Date.now(),
+      environment_id: envId,
+      environments,
+    };
+
+    localStorage.setItem('rails_session', JSON.stringify(sessionData));
+    document.cookie = 'rails_session_present=1; Path=/; SameSite=Lax';
+    router.push('/dashboard');
+  };
+
+  return (
+    <div className="min-h-screen bg-white text-zinc-800 dark:bg-black dark:text-white transition-colors duration-300">
+      <Navbar onLogin={() => router.push('/login')} onRegister={() => router.push('/register')} />
+      <RegisterPage onBack={() => router.push('/')} onSuccess={handleAuthSuccess} />
+      <Footer onToggleTheme={toggleTheme} currentTheme={theme} />
+    </div>
+  );
+}
