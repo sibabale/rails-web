@@ -4,9 +4,10 @@ import { passwordResetApi } from '../lib/api';
 interface ResetPasswordPageProps {
   onBack: () => void;
   onSuccess: () => void;
+  initialToken?: string | null;
 }
 
-const ResetPasswordPage: React.FC<ResetPasswordPageProps> = ({ onBack, onSuccess }) => {
+const ResetPasswordPage: React.FC<ResetPasswordPageProps> = ({ onBack, onSuccess, initialToken }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -19,14 +20,13 @@ const ResetPasswordPage: React.FC<ResetPasswordPageProps> = ({ onBack, onSuccess
   const confirmPasswordInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const tokenParam = urlParams.get('token');
+    const tokenParam = initialToken;
     if (!tokenParam) {
       setError('Invalid reset link. Please request a new password reset.');
     } else {
       setToken(tokenParam);
     }
-  }, []);
+  }, [initialToken]);
 
   // Clear password fields when component unmounts (security measure)
   useEffect(() => {
