@@ -18,7 +18,7 @@ Setup:
 4. Start dev server:
    - `npm run dev`
 5. Open:
-   - `http://localhost:3000`
+   - `http://localhost:3005`
 
 ## Build and run
 

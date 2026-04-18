@@ -23,6 +23,8 @@ export const isAuthButtonsEnabled = (): boolean => {
   if (nonEmpty(process.env.NEXT_PUBLIC_SHOW_AUTH_BUTTONS))
     return process.env.NEXT_PUBLIC_SHOW_AUTH_BUTTONS === 'true';
   if (nonEmpty(process.env.VITE_SHOW_AUTH_BUTTONS)) return process.env.VITE_SHOW_AUTH_BUTTONS === 'true';
+  // Local `next dev`: show Login / Get Started unless explicitly turned off above.
+  if (process.env.NODE_ENV === 'development') return true;
   return false;
 };
 

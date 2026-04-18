@@ -7,7 +7,7 @@ interface NavbarProps {
   onRegister?: () => void;
 }
 
-// Show auth buttons only when explicitly enabled (development only)
+// Shown when NEXT_PUBLIC_SHOW_AUTH_BUTTONS is true, or in development if unset
 const showAuthButtons = isAuthButtonsEnabled();
 
 const Navbar: React.FC<NavbarProps> = ({ onLogin, onRegister }) => {
