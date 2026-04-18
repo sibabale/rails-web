@@ -60,4 +60,4 @@ Set `NEXT_PUBLIC_SITE_URL` in deployment for correct canonical/sitemap host.
 - Docker build uses Next standalone output (`next.config.ts` -> `output: 'standalone'`).
 - Railway health check endpoint:
   - `/api/health`
-- On Railway, the app must listen on `0.0.0.0` and on the `PORT` the platform sets. Next standalone uses the `HOSTNAME` env for the bind address; the image and `railway.toml` start command set `HOSTNAME=0.0.0.0` so health checks and the edge proxy can reach the process. If you change the start command in the dashboard, keep that binding or probes may fail with “service unavailable”.
+- On Railway, the app must listen on `0.0.0.0` and on the `PORT` the platform sets. Next standalone uses the `HOSTNAME` env for the bind address; the image `CMD` and `railway.toml` `startCommand` use `sh -c 'HOSTNAME=0.0.0.0 exec node server.js'` (Railway does not run `startCommand` through a shell, so `HOSTNAME=0.0.0.0 node …` alone is treated as a bogus executable name). If you change the start command in the dashboard, keep that binding or probes may fail with “service unavailable”.
