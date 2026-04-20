@@ -57,6 +57,7 @@ Set `NEXT_PUBLIC_SITE_URL` in deployment for correct canonical/sitemap host.
 
 ## Deploy
 
+- On Railway with a Dockerfile, declare `NEXT_PUBLIC_*` service variables as `ARG` in the `builder` stage (see `Dockerfile`) so they exist during `npm run build`; otherwise the client bundle is built with those flags unset ([Railway build-time variables](https://docs.railway.com/guides/dockerfiles#using-variables-at-build-time)).
 - Docker build uses Next standalone output (`next.config.ts` -> `output: 'standalone'`).
 - Railway health check endpoint:
   - `/api/health`

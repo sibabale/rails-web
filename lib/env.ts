@@ -8,47 +8,33 @@ const nonEmpty = (value: string | undefined): value is string =>
 
 export const getClientServerUrl = (): string | undefined => {
   if (nonEmpty(process.env.NEXT_PUBLIC_CLIENT_SERVER)) return process.env.NEXT_PUBLIC_CLIENT_SERVER;
-  if (nonEmpty(process.env.VITE_CLIENT_SERVER)) return process.env.VITE_CLIENT_SERVER;
   return undefined;
 };
 
 export const isAuthViewsEnabled = (): boolean => {
   if (nonEmpty(process.env.NEXT_PUBLIC_ENABLE_AUTH_VIEWS))
     return process.env.NEXT_PUBLIC_ENABLE_AUTH_VIEWS === 'true';
-  if (nonEmpty(process.env.VITE_ENABLE_AUTH_VIEWS)) return process.env.VITE_ENABLE_AUTH_VIEWS === 'true';
   return false;
 };
 
 export const isAuthButtonsEnabled = (): boolean => {
   if (nonEmpty(process.env.NEXT_PUBLIC_SHOW_AUTH_BUTTONS))
     return process.env.NEXT_PUBLIC_SHOW_AUTH_BUTTONS === 'true';
-  if (nonEmpty(process.env.VITE_SHOW_AUTH_BUTTONS)) return process.env.VITE_SHOW_AUTH_BUTTONS === 'true';
   return false;
 };
 
 export const isAnalyticsExplicitlyDisabled = (): boolean => {
   if (nonEmpty(process.env.NEXT_PUBLIC_ENABLE_ANALYTICS))
     return process.env.NEXT_PUBLIC_ENABLE_ANALYTICS === 'false';
-  if (nonEmpty(process.env.VITE_ENABLE_ANALYTICS)) return process.env.VITE_ENABLE_ANALYTICS === 'false';
   return false;
 };
 
 export const getPostHogKeyEnv = (): string | undefined => {
   if (nonEmpty(process.env.NEXT_PUBLIC_POSTHOG_KEY)) return process.env.NEXT_PUBLIC_POSTHOG_KEY;
-  if (nonEmpty(process.env.NEXT_PUBLIC_VITE_PUBLIC_POSTHOG_KEY))
-    return process.env.NEXT_PUBLIC_VITE_PUBLIC_POSTHOG_KEY;
-  if (nonEmpty(process.env.NEXT_PUBLIC_VITE_POSTHOG_KEY)) return process.env.NEXT_PUBLIC_VITE_POSTHOG_KEY;
-  if (nonEmpty(process.env.VITE_PUBLIC_POSTHOG_KEY)) return process.env.VITE_PUBLIC_POSTHOG_KEY;
-  if (nonEmpty(process.env.VITE_POSTHOG_KEY)) return process.env.VITE_POSTHOG_KEY;
   return undefined;
 };
 
 export const getPostHogHostEnv = (): string | undefined => {
   if (nonEmpty(process.env.NEXT_PUBLIC_POSTHOG_HOST)) return process.env.NEXT_PUBLIC_POSTHOG_HOST;
-  if (nonEmpty(process.env.NEXT_PUBLIC_VITE_PUBLIC_POSTHOG_HOST))
-    return process.env.NEXT_PUBLIC_VITE_PUBLIC_POSTHOG_HOST;
-  if (nonEmpty(process.env.NEXT_PUBLIC_VITE_POSTHOG_HOST)) return process.env.NEXT_PUBLIC_VITE_POSTHOG_HOST;
-  if (nonEmpty(process.env.VITE_PUBLIC_POSTHOG_HOST)) return process.env.VITE_PUBLIC_POSTHOG_HOST;
-  if (nonEmpty(process.env.VITE_POSTHOG_HOST)) return process.env.VITE_POSTHOG_HOST;
   return undefined;
 };

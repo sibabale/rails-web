@@ -10,9 +10,7 @@ export const SDK_SAMPLE_FOLDERS = [
 ] as const;
 
 export function getSamplesRepoBaseUrl(): string {
-  const raw =
-    process.env.NEXT_PUBLIC_SAMPLES_REPO_URL?.trim() ||
-    process.env.VITE_SAMPLES_REPO_URL?.trim();
+  const raw = process.env.NEXT_PUBLIC_SAMPLES_REPO_URL?.trim();
   const base = raw || DEFAULT_SAMPLES_REPO_URL;
   return base.replace(/\/$/, '');
 }
