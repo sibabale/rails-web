@@ -3,7 +3,9 @@ builder = "dockerfile"
 dockerfilePath = "Dockerfile"
 
 [deploy]
-healthcheckPath = "/health"
+# Railway runs startCommand without a shell; VAR=value cmd is invalid. Use sh -c (match Dockerfile).
+startCommand = "sh -c 'HOSTNAME=0.0.0.0 exec node server.js'"
+healthcheckPath = "/api/health"
 healthcheckTimeout = 60
 restartPolicyType = "on_failure"
 restartPolicyMaxRetries = 3

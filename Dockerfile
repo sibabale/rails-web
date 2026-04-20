@@ -1,47 +1,51 @@
-# Build stage
-FROM node:20-bookworm-slim AS builder
-
+FROM node:20-bookworm-slim AS base
 WORKDIR /app
 
-# Copy package files
+FROM base AS deps
 COPY package.json package-lock.json ./
+# Install must include devDependencies (tailwindcss, postcss, etc.) for `next build`.
+# NODE_ENV=production on the install stage would omit them and break PostCSS/Turbopack.
 RUN npm ci
 
-# Copy source files
+FROM base AS builder
+ENV NODE_ENV=production
+COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# Build the Vite app
-# Build-time env vars are injected via ARG
-ARG VITE_CLIENT_SERVER
-ENV VITE_CLIENT_SERVER=$VITE_CLIENT_SERVER
-ARG VITE_SHOW_AUTH_BUTTONS
-ENV VITE_SHOW_AUTH_BUTTONS=$VITE_SHOW_AUTH_BUTTONS
-ARG VITE_ENABLE_AUTH_VIEWS
-ENV VITE_ENABLE_AUTH_VIEWS=$VITE_ENABLE_AUTH_VIEWS
-ARG VITE_PUBLIC_POSTHOG_KEY
-ENV VITE_PUBLIC_POSTHOG_KEY=$VITE_PUBLIC_POSTHOG_KEY
-ARG VITE_PUBLIC_POSTHOG_HOST
-ENV VITE_PUBLIC_POSTHOG_HOST=$VITE_PUBLIC_POSTHOG_HOST
+# Railway exposes service variables during `docker build` only after matching ARG
+# declarations (same names as in the dashboard). Otherwise `next build` inlines
+# empty NEXT_PUBLIC_* and client features (e.g. auth nav) stay off.
+# https://docs.railway.com/guides/dockerfiles#using-variables-at-build-time
+ARG NEXT_PUBLIC_CLIENT_SERVER
+ARG NEXT_PUBLIC_SITE_URL
+ARG NEXT_PUBLIC_ENABLE_AUTH_VIEWS
+ARG NEXT_PUBLIC_SHOW_AUTH_BUTTONS
+ARG NEXT_PUBLIC_ENABLE_ANALYTICS
+ARG NEXT_PUBLIC_POSTHOG_KEY
+ARG NEXT_PUBLIC_POSTHOG_HOST
+ARG NEXT_PUBLIC_SAMPLES_REPO_URL
+
+ENV NEXT_PUBLIC_CLIENT_SERVER=$NEXT_PUBLIC_CLIENT_SERVER \
+    NEXT_PUBLIC_SITE_URL=$NEXT_PUBLIC_SITE_URL \
+    NEXT_PUBLIC_ENABLE_AUTH_VIEWS=$NEXT_PUBLIC_ENABLE_AUTH_VIEWS \
+    NEXT_PUBLIC_SHOW_AUTH_BUTTONS=$NEXT_PUBLIC_SHOW_AUTH_BUTTONS \
+    NEXT_PUBLIC_ENABLE_ANALYTICS=$NEXT_PUBLIC_ENABLE_ANALYTICS \
+    NEXT_PUBLIC_POSTHOG_KEY=$NEXT_PUBLIC_POSTHOG_KEY \
+    NEXT_PUBLIC_POSTHOG_HOST=$NEXT_PUBLIC_POSTHOG_HOST \
+    NEXT_PUBLIC_SAMPLES_REPO_URL=$NEXT_PUBLIC_SAMPLES_REPO_URL
 
 RUN npm run build
 
-# Production stage - use nginx to serve static files
-FROM nginx:alpine
+FROM base AS runner
+ENV NODE_ENV=production
+ENV PORT=3000
 
-# Remove default nginx config
-RUN rm -f /etc/nginx/conf.d/default.conf
+COPY --from=builder /app/public ./public
+COPY --from=builder /app/.next/standalone ./
+COPY --from=builder /app/.next/static ./.next/static
 
-# Create templates directory and copy nginx config as template
-RUN mkdir -p /etc/nginx/templates
-COPY nginx.conf /etc/nginx/templates/default.conf.template
-
-# Copy entrypoint script
-COPY docker-entrypoint.sh /docker-entrypoint.sh
-RUN chmod +x /docker-entrypoint.sh
-
-# Copy built files from builder stage
-COPY --from=builder /app/dist /usr/share/nginx/html
-
-# Use entrypoint script to substitute PORT at runtime
-# PORT will be provided by Railway at runtime
-ENTRYPOINT ["/docker-entrypoint.sh"]
+EXPOSE 3000
+# Next standalone binds to process.env.HOSTNAME || "0.0.0.0". Railway (and many
+# runtimes) set HOSTNAME to the container hostname, which breaks edge/health probes.
+# Force public bind; Railway still routes via $PORT.
+CMD ["sh", "-c", "HOSTNAME=0.0.0.0 exec node server.js"]
