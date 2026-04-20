@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
+import { getClientServerUrl } from '../lib/env';
 
 interface LoginPageProps {
   onBack: () => void;
@@ -63,11 +64,10 @@ const LoginPage: React.FC<LoginPageProps> = ({ onBack, onSuccess, onForgotPasswo
     setLoading(true);
     setError(null);
 
-    const CLIENT_SERVER_URL =
-      (import.meta.env.VITE_CLIENT_SERVER as string | undefined) || '';
+    const CLIENT_SERVER_URL = getClientServerUrl() || '';
     
     if (!CLIENT_SERVER_URL) {
-      setError('VITE_CLIENT_SERVER is not configured. All API calls must go through rails-client-server.');
+      setError('NEXT_PUBLIC_CLIENT_SERVER is not configured. All API calls must go through rails-client-server.');
       setLoading(false);
       return;
     }

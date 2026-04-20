@@ -12,9 +12,9 @@ vi.mock('posthog-js', () => ({
 describe('analytics', () => {
   beforeEach(() => {
     vi.resetModules();
-    vi.stubEnv('VITE_ENABLE_ANALYTICS', 'true');
-    vi.stubEnv('VITE_POSTHOG_KEY', 'test_key');
-    vi.stubEnv('VITE_POSTHOG_HOST', 'https://example.com');
+    vi.stubEnv('NEXT_PUBLIC_ENABLE_ANALYTICS', 'true');
+    vi.stubEnv('NEXT_PUBLIC_POSTHOG_KEY', 'test_key');
+    vi.stubEnv('NEXT_PUBLIC_POSTHOG_HOST', 'https://example.com');
   });
 
   afterEach(() => {
@@ -35,16 +35,16 @@ describe('analytics', () => {
   });
 
   it('isAnalyticsEnabled returns true when key is set and not disabled', async () => {
-    vi.stubEnv('VITE_POSTHOG_KEY', 'test_key');
-    vi.stubEnv('VITE_ENABLE_ANALYTICS', 'true');
+    vi.stubEnv('NEXT_PUBLIC_POSTHOG_KEY', 'test_key');
+    vi.stubEnv('NEXT_PUBLIC_ENABLE_ANALYTICS', 'true');
     vi.resetModules();
     const { isAnalyticsEnabled } = await import('../lib/analytics');
     expect(isAnalyticsEnabled()).toBe(true);
   });
 
-  it('isAnalyticsEnabled returns false when VITE_ENABLE_ANALYTICS is false', async () => {
-    vi.stubEnv('VITE_POSTHOG_KEY', 'test_key');
-    vi.stubEnv('VITE_ENABLE_ANALYTICS', 'false');
+  it('isAnalyticsEnabled returns false when NEXT_PUBLIC_ENABLE_ANALYTICS is false', async () => {
+    vi.stubEnv('NEXT_PUBLIC_POSTHOG_KEY', 'test_key');
+    vi.stubEnv('NEXT_PUBLIC_ENABLE_ANALYTICS', 'false');
     vi.resetModules();
     const { isAnalyticsEnabled } = await import('../lib/analytics');
     expect(isAnalyticsEnabled()).toBe(false);
