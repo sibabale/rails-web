@@ -2,16 +2,16 @@ import type { Metadata } from 'next';
 import MarketingHome from '@/components/marketing/pages/MarketingHome';
 
 export const metadata: Metadata = {
-  title: 'Rails | Open-source banking rails for modern finance',
+  title: 'Rails | Bank—infrastructure you can run',
   description:
-    'Build accounts, wallets, ledgers, and money movement systems faster—with hardened infrastructure and bank-grade integrity.',
+    'Start with a working setup for your bank, with a clear history when someone asks what happened. Open source, self-hostable.',
   alternates: {
     canonical: '/',
   },
   openGraph: {
-    title: 'Rails | Open-source banking rails for modern finance',
+    title: 'Rails | Bank—infrastructure you can run',
     description:
-      'Build accounts, wallets, ledgers, and money movement systems faster—with hardened infrastructure and bank-grade integrity.',
+      'Start with a working setup for your bank, with a clear history when someone asks what happened. Open source, self-hostable.',
     url: '/',
     siteName: 'Rails',
     type: 'website',

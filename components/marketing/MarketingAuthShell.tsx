@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation';
 import React, { useState } from 'react';
 import { getMarketingDocsHref } from '@/lib/env';
 import { MarketingThemeToggle } from './ThemeToggle';
+import { RailsTrackMark } from './atoms/RailsTrackMark';
 
 type MarketingAuthShellProps = {
   children: React.ReactNode;
@@ -24,12 +25,7 @@ export function MarketingAuthShell({ children }: MarketingAuthShellProps) {
           <div className="flex items-center gap-4">
             <Link href="/" className="flex items-center gap-3" onClick={closeMobileMenu}>
               <div className="w-5 h-5 bg-black dark:bg-white flex items-center justify-center">
-                <span
-                  className="material-symbols-sharp text-white dark:text-black"
-                  style={{ fontSize: '0.75rem' }}
-                >
-                  keyboard_command_key
-                </span>
+                <RailsTrackMark className="h-3 w-3 text-white dark:text-black" />
               </div>
               <span className="font-bold tracking-tight text-black dark:text-white">RAILS</span>
             </Link>
@@ -51,15 +47,14 @@ export function MarketingAuthShell({ children }: MarketingAuthShellProps) {
             >
               Use Cases
             </Link>
-            <a href="#" className="hover:text-black dark:hover:text-white transition-colors">
-              Enterprise
-            </a>
           </nav>
 
           <div className="flex items-center gap-4">
             <MarketingThemeToggle />
             <a
-              href="#"
+              href="https://github.com/railsinfra"
+              target="_blank"
+              rel="noopener noreferrer"
               className="hidden sm:flex items-center gap-2 text-sm text-zinc-500 dark:text-zinc-400 hover:text-black dark:hover:text-white transition-colors"
             >
               <SiGithub className="w-4 h-4" />
@@ -114,9 +109,6 @@ export function MarketingAuthShell({ children }: MarketingAuthShellProps) {
             <a href="#" className="hover:text-black dark:hover:text-white transition-colors block">
               Documentation
             </a>
-            <a href="#" className="hover:text-black dark:hover:text-white transition-colors block">
-              Enterprise
-            </a>
             <div className="h-px bg-zinc-200 dark:bg-zinc-800 my-2 w-full"></div>
             <Link
               href="/login"
@@ -142,16 +134,19 @@ export function MarketingAuthShell({ children }: MarketingAuthShellProps) {
         <div className="max-w-7xl mx-auto px-6 py-12 flex flex-col md:flex-row justify-between items-center gap-6">
           <div className="flex items-center gap-3">
             <div className="w-4 h-4 bg-zinc-300 dark:bg-zinc-700 flex items-center justify-center">
-              <span className="material-symbols-sharp text-black" style={{ fontSize: '0.5rem' }}>
-                keyboard_command_key
-              </span>
+              <RailsTrackMark className="h-2.5 w-2.5 text-black dark:text-white" />
             </div>
             <span className="font-mono text-xs font-bold text-zinc-500 tracking-wider">
               RAILS INFRASTRUCTURE
             </span>
           </div>
           <div className="flex gap-6 text-[11px] font-mono text-zinc-500 dark:text-zinc-600 uppercase tracking-widest">
-            <a href="#" className="hover:text-zinc-900 dark:hover:text-zinc-300 transition-colors">
+            <a
+              href="https://github.com/railsinfra"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-zinc-900 dark:hover:text-zinc-300 transition-colors"
+            >
               GitHub
             </a>
             <a href="#" className="hover:text-zinc-900 dark:hover:text-zinc-300 transition-colors">

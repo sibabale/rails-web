@@ -44,3 +44,9 @@ export const getPostHogHostEnv = (): string | undefined => {
   if (nonEmpty(process.env.NEXT_PUBLIC_POSTHOG_HOST)) return process.env.NEXT_PUBLIC_POSTHOG_HOST;
   return undefined;
 };
+
+/** Default marketing copy variant (`a` or `d`) when no `?copy=` or session override. */
+export const getDefaultMarketingCopyVariant = (): 'a' | 'd' => {
+  if (process.env.NEXT_PUBLIC_MARKETING_COPY_VARIANT === 'd') return 'd';
+  return 'a';
+};

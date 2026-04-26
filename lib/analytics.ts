@@ -48,6 +48,17 @@ export const trackEvent = (eventName: string, properties: Record<string, unknown
   });
 };
 
+/** Fires when marketing copy variant is active (for A/B analysis). Dedupes repeats of the same variant in-session. */
+export const trackMarketingCopyExposure = (variant: 'a' | 'd') => {
+  if (typeof window === 'undefined') return;
+  const key = `rails_mkt_copy_exposure_${variant}`;
+  if (sessionStorage.getItem(key) === '1') return;
+  sessionStorage.setItem(key, '1');
+  trackEvent('marketing_copy_exposure', {
+    marketing_copy_variant: variant,
+  });
+};
+
 export const trackPageView = (page: string, title?: string) => {
   if (!isAnalyticsEnabled() || typeof window === 'undefined') return;
 
