@@ -1,13 +1,23 @@
-
 import React, { useState, useEffect, useRef } from 'react';
+import Link from 'next/link';
+import { Button } from './marketing/atoms/Button';
+import { Container } from './marketing/atoms/Container';
+import { Heading } from './marketing/atoms/Heading';
+import { Text } from './marketing/atoms/Text';
+import {
+  AUTH_ERROR_BOX,
+  AUTH_INPUT,
+  AUTH_LABEL,
+  AUTH_LINK_BACK,
+  AUTH_SUCCESS_BOX,
+} from './marketing/marketingAuthUi';
 import { getClientServerUrl } from '../lib/env';
 
 interface RegisterPageProps {
-  onBack: () => void;
   onSuccess: (data: any) => void;
 }
 
-const RegisterPage: React.FC<RegisterPageProps> = ({ onBack, onSuccess }) => {
+const RegisterPage: React.FC<RegisterPageProps> = ({ onSuccess }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [errorTitle, setErrorTitle] = useState<string | null>(null);
@@ -109,157 +119,189 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onBack, onSuccess }) => {
   };
 
   return (
-    <div className="pt-32 pb-24 max-w-7xl mx-auto px-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
-      <div className="max-w-2xl mx-auto">
-        <div className="mb-12">
-          <button 
-            onClick={onBack}
-            className="flex items-center gap-2 text-sm text-zinc-400 hover:text-zinc-800 dark:hover:text-white transition-colors mb-8 group"
-          >
-            <span className="material-symbols-sharp !text-[18px] transform group-hover:-translate-x-1 transition-transform">arrow_back</span>
-            Back to landing
-          </button>
-          
-          <h1 className="text-4xl md:text-5xl font-bold tracking-tighter mb-4 text-zinc-800 dark:text-white">
+    <Container className="min-h-[70vh] flex flex-col py-16 !border-0 px-4 w-full">
+      <div className="w-full max-w-2xl mx-auto">
+        <Link href="/" data-testid="register-back-home" className={AUTH_LINK_BACK}>
+          <span className="material-symbols-sharp" style={{ fontSize: '1rem' }}>
+            arrow_back
+          </span>
+          <span>Back to landing</span>
+        </Link>
+
+        <div className="mb-10">
+          <Heading level={2} className="!text-4xl mb-4">
             Ready to build <br />
             <span className="text-zinc-400 dark:text-zinc-500">on Rails?</span>
-          </h1>
-          <p className="text-zinc-500 dark:text-zinc-400 text-lg font-light">
+          </Heading>
+          <Text variant="p" className="!text-sm max-w-md text-zinc-600 dark:text-zinc-400">
             Create your institutional account and get instant access to our banking infrastructure.
-          </p>
+          </Text>
         </div>
 
         {success ? (
-          <div className="bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-800/50 p-8 rounded-2xl text-center shadow-sm">
+          <div className={AUTH_SUCCESS_BOX} data-testid="register-success">
             <div className="w-12 h-12 bg-emerald-500 rounded-full flex items-center justify-center mx-auto mb-4">
-              <span className="material-symbols-sharp text-white !text-[24px]">check</span>
+              <span className="material-symbols-sharp text-white" style={{ fontSize: '1.5rem' }}>
+                check
+              </span>
             </div>
-            <h2 className="text-xl font-bold text-emerald-800 dark:text-emerald-400 mb-2">Registration Successful</h2>
-            <p className="text-emerald-600 dark:text-emerald-600/80 text-sm">
-              Your business node is being initialized. Redirecting to your dashboard...
-            </p>
+            <Heading level={3} className="!text-xl mb-2 text-emerald-800 dark:text-emerald-400">
+              Registration successful
+            </Heading>
+            <Text variant="p" className="!text-sm text-emerald-700 dark:text-emerald-500/90">
+              Your business node is being initialized. Redirecting to your dashboard…
+            </Text>
           </div>
         ) : (
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={handleSubmit} className="flex flex-col gap-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <label className="text-xs font-mono font-bold uppercase tracking-widest text-zinc-400 dark:text-zinc-500">Company Name</label>
-                <input 
-                  type="text" 
+              <div className="flex flex-col gap-2">
+                <label htmlFor="reg-name" className={AUTH_LABEL}>
+                  Company Name
+                </label>
+                <input
+                  id="reg-name"
+                  type="text"
                   name="name"
                   required
                   placeholder="Acme Institutional"
                   value={formData.name}
                   onChange={handleChange}
-                  className="w-full bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-100 dark:border-zinc-800 rounded-xl px-4 py-3 text-zinc-800 dark:text-white focus:outline-none focus:border-zinc-300 dark:focus:border-white transition-all font-medium"
+                  className={AUTH_INPUT}
                 />
               </div>
-              <div className="space-y-2">
-                <label className="text-xs font-mono font-bold uppercase tracking-widest text-zinc-400 dark:text-zinc-500">Website <span className="text-[10px] opacity-60">(Optional)</span></label>
-                <input 
-                  type="url" 
+              <div className="flex flex-col gap-2">
+                <label htmlFor="reg-website" className={AUTH_LABEL}>
+                  Website <span className="text-zinc-400 dark:text-zinc-600 font-normal">(Optional)</span>
+                </label>
+                <input
+                  id="reg-website"
+                  type="url"
                   name="website"
                   placeholder="https://acme.com"
                   value={formData.website}
                   onChange={handleChange}
-                  className="w-full bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-100 dark:border-zinc-800 rounded-xl px-4 py-3 text-zinc-800 dark:text-white focus:outline-none focus:border-zinc-300 dark:focus:border-white transition-all font-medium"
+                  className={AUTH_INPUT}
                 />
               </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <label className="text-xs font-mono font-bold uppercase tracking-widest text-zinc-400 dark:text-zinc-500">Admin First Name</label>
-                <input 
-                  type="text" 
+              <div className="flex flex-col gap-2">
+                <label htmlFor="reg-fn" className={AUTH_LABEL}>
+                  Admin First Name
+                </label>
+                <input
+                  id="reg-fn"
+                  type="text"
                   name="admin_first_name"
                   required
                   placeholder="Alice"
                   value={formData.admin_first_name}
                   onChange={handleChange}
-                  className="w-full bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-100 dark:border-zinc-800 rounded-xl px-4 py-3 text-zinc-800 dark:text-white focus:outline-none focus:border-zinc-300 dark:focus:border-white transition-all font-medium"
+                  className={AUTH_INPUT}
                 />
               </div>
-              <div className="space-y-2">
-                <label className="text-xs font-mono font-bold uppercase tracking-widest text-zinc-400 dark:text-zinc-500">Admin Last Name</label>
-                <input 
-                  type="text" 
+              <div className="flex flex-col gap-2">
+                <label htmlFor="reg-ln" className={AUTH_LABEL}>
+                  Admin Last Name
+                </label>
+                <input
+                  id="reg-ln"
+                  type="text"
                   name="admin_last_name"
                   required
                   placeholder="Admin"
                   value={formData.admin_last_name}
                   onChange={handleChange}
-                  className="w-full bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-100 dark:border-zinc-800 rounded-xl px-4 py-3 text-zinc-800 dark:text-white focus:outline-none focus:border-zinc-300 dark:focus:border-white transition-all font-medium"
+                  className={AUTH_INPUT}
                 />
               </div>
             </div>
 
-            <div className="space-y-2">
-              <label className="text-xs font-mono font-bold uppercase tracking-widest text-zinc-400 dark:text-zinc-500">Admin Email</label>
-              <input 
-                type="email" 
+            <div className="flex flex-col gap-2">
+              <label htmlFor="reg-email" className={AUTH_LABEL}>
+                Admin Email
+              </label>
+              <input
+                id="reg-email"
+                type="email"
                 name="admin_email"
                 autoComplete="email"
                 required
                 placeholder="admin@acme.com"
                 value={formData.admin_email}
                 onChange={handleChange}
-                className="w-full bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-100 dark:border-zinc-800 rounded-xl px-4 py-3 text-zinc-800 dark:text-white focus:outline-none focus:border-zinc-300 dark:focus:border-white transition-all font-medium"
+                className={AUTH_INPUT}
               />
             </div>
 
-            <div className="space-y-2">
-              <label className="text-xs font-mono font-bold uppercase tracking-widest text-zinc-400 dark:text-zinc-500">Password</label>
-              <input 
+            <div className="flex flex-col gap-2">
+              <label htmlFor="reg-password" className={AUTH_LABEL}>
+                Password
+              </label>
+              <input
+                id="reg-password"
                 ref={passwordInputRef}
-                type="password" 
+                type="password"
                 name="admin_password"
                 autoComplete="new-password"
                 required
                 placeholder="••••••••••••"
                 value={formData.admin_password}
                 onChange={handleChange}
-                className="w-full bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-100 dark:border-zinc-800 rounded-xl px-4 py-3 text-zinc-800 dark:text-white focus:outline-none focus:border-zinc-300 dark:focus:border-white transition-all font-medium"
+                className={AUTH_INPUT}
               />
             </div>
 
             {error && (
-              <div className="p-4 bg-red-50 dark:bg-red-950/20 border border-red-100 dark:border-red-900/50 rounded-xl flex items-start gap-3 text-red-600 dark:text-red-400 text-sm animate-in fade-in duration-300">
-                <span className="material-symbols-sharp !text-[18px] mt-0.5">error</span>
-                <div className="flex-1">
-                  <p className="font-bold mb-1">{errorTitle ?? 'Infrastructure Error'}</p>
+              <div className={AUTH_ERROR_BOX} data-testid="register-error">
+                <span className="material-symbols-sharp shrink-0" style={{ fontSize: '1rem' }}>
+                  error
+                </span>
+                <div className="flex-1 text-left">
+                  <p className="font-mono font-semibold mb-1 text-[10px] uppercase tracking-wide">
+                    {errorTitle ?? 'Infrastructure error'}
+                  </p>
                   <p className="leading-relaxed">{error}</p>
                 </div>
               </div>
             )}
 
-            <div className="pt-4">
-              <button 
-                type="submit"
-                disabled={loading}
-                className="w-full bg-zinc-800 dark:bg-white text-white dark:text-black font-bold py-4 rounded-xl hover:bg-zinc-700 dark:hover:bg-zinc-100 transition-all transform active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-3 shadow-lg shadow-zinc-100 dark:shadow-white/5"
-              >
-                {loading ? (
-                  <>
-                    <div className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
-                    <span>Initializing Node...</span>
-                  </>
-                ) : (
-                  <>
-                    <span>Create My Account</span>
-                    <span className="material-symbols-sharp !text-[20px]">arrow_right_alt</span>
-                  </>
-                )}
-              </button>
-            </div>
+            <Button
+              type="submit"
+              variant="primary"
+              disabled={loading}
+              className="w-full py-3.5 mt-2 flex justify-center items-center gap-2 disabled:opacity-60"
+              data-testid="register-submit"
+            >
+              {loading ? (
+                <>
+                  <span className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin shrink-0" />
+                  <span className="text-sm">Initializing node…</span>
+                </>
+              ) : (
+                <>
+                  <span>Create My Account</span>
+                  <span className="material-symbols-sharp" style={{ fontSize: '1rem' }}>
+                    arrow_forward
+                  </span>
+                </>
+              )}
+            </Button>
 
-            <p className="text-center text-[10px] uppercase tracking-widest text-zinc-400 dark:text-zinc-600 font-mono">
-              By registering, you agree to the Rails Institutional Terms of Service.
-            </p>
+            <div className="mt-10 flex flex-col items-center gap-4 text-[10px] font-mono text-zinc-500 tracking-widest uppercase text-center">
+              <span className="text-zinc-500 dark:text-zinc-600">
+                By registering, you agree to the rails institutional terms of service.
+              </span>
+              <Link href="/login" data-testid="register-go-login" className="mt-4 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors border-b border-dotted border-zinc-400 dark:border-zinc-700 pb-0.5">
+                Already have an account? Sign in
+              </Link>
+            </div>
           </form>
         )}
       </div>
-    </div>
+    </Container>
   );
 };
 

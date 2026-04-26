@@ -1,0 +1,15 @@
+import type { Metadata } from 'next';
+import ClientsBackendPage from '@/components/marketing/pages/infrastructure/ClientsBackendPage';
+
+export const metadata: Metadata = {
+  title: 'Backend SDKs | Rails Infrastructure',
+  description:
+    'Integrate Rails from your backend with official TypeScript, Go, Kotlin, Java, and .NET SDKs.',
+  alternates: {
+    canonical: '/infrastructure/clients-backend',
+  },
+};
+
+export default function ClientsBackendRoute() {
+  return <ClientsBackendPage />;
+}

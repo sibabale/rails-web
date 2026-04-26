@@ -61,7 +61,7 @@ export default function RootLayout({
         />
       </head>
       <body
-        className={`${inter.variable} ${spaceGrotesk.variable} ${notoSansMono.variable} bg-white text-zinc-800 dark:bg-zinc-950 dark:text-zinc-50`}
+        className={`${inter.variable} ${spaceGrotesk.variable} ${notoSansMono.variable} bg-white text-zinc-800 antialiased dark:bg-black dark:text-zinc-50`}
       >
         <Providers>{children}</Providers>
       </body>

@@ -1,9 +1,12 @@
 .env
 .env.bak*
 .env.*.bak*
+.env.local
+.env.development
 .env.dev
 .env.staging
 .env.prod
+.env.production
 node_modules
 dist
 .DS_Store

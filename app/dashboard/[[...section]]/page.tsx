@@ -2,11 +2,10 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAppDispatch } from '../../state/hooks';
-import { resetToSandbox } from '../../state/slices/environmentSlice';
-import { getClientServerUrl } from '../../lib/env';
-import { useTheme } from '../../lib/useTheme';
-import Dashboard from '../../components/Dashboard';
+import { useAppDispatch } from '../../../state/hooks';
+import { resetToSandbox } from '../../../state/slices/environmentSlice';
+import { getClientServerUrl } from '../../../lib/env';
+import Dashboard from '../../../components/Dashboard';
 
 interface EnvironmentInfo {
   id: string;
@@ -34,7 +33,6 @@ interface UserProfile {
 export default function DashboardRoute() {
   const router = useRouter();
   const dispatch = useAppDispatch();
-  const { theme, toggleTheme } = useTheme();
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const clientServerUrl = getClientServerUrl() || '';
@@ -104,12 +102,6 @@ export default function DashboardRoute() {
   if (!session) return null;
 
   return (
-    <Dashboard
-      onLogout={handleLogout}
-      currentTheme={theme}
-      onToggleTheme={toggleTheme}
-      session={session}
-      profile={profile}
-    />
+    <Dashboard onLogout={handleLogout} session={session} profile={profile} />
   );
 }

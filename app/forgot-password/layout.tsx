@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { MarketingAuthShell } from '@/components/marketing/MarketingAuthShell';
 
 export const metadata: Metadata = {
   title: 'Forgot Password | Rails',
@@ -9,5 +10,5 @@ export const metadata: Metadata = {
 };
 
 export default function ForgotPasswordLayout({ children }: { children: React.ReactNode }) {
-  return children;
+  return <MarketingAuthShell>{children}</MarketingAuthShell>;
 }
