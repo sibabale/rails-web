@@ -1,5 +1,12 @@
 import posthog from 'posthog-js';
-import { getPostHogHostEnv, getPostHogKeyEnv, isAnalyticsExplicitlyDisabled } from './env';
+import {
+  getDefaultMarketingCopyVariant,
+  getPostHogHostEnv,
+  getPostHogKeyEnv,
+  getPostHogMarketingCopyFlagKey,
+  isAnalyticsExplicitlyDisabled,
+} from './env';
+import type { MarketingCopyVariantId } from './marketingCopyVariant';
 
 const DEFAULT_POSTHOG_HOST = 'https://eu.i.posthog.com';
 
@@ -22,6 +29,44 @@ export const isAnalyticsEnabled = () => {
 };
 
 export const getPostHogKey = () => POSTHOG_KEY;
+
+export const getMarketingCopyFeatureFlagKey = () => getPostHogMarketingCopyFlagKey();
+
+const normalizeMultivariateFlag = (value: unknown): MarketingCopyVariantId | null => {
+  if (value === 'a' || value === 'd') return value;
+  // PostHog Experiments require a multivariate key named `control`; we treat it as copy variant A.
+  if (value === 'control') return 'a';
+  return null;
+};
+
+/**
+ * Reads the PostHog multivariate payload for the marketing copy experiment.
+ * Call after flags have loaded (e.g. inside `onMarketingCopyFlagsReady`).
+ */
+export const getMarketingCopyExperimentVariant = (): MarketingCopyVariantId | null => {
+  if (!isAnalyticsEnabled() || typeof window === 'undefined') return null;
+  const raw = posthog.getFeatureFlag(getMarketingCopyFeatureFlagKey());
+  return normalizeMultivariateFlag(raw);
+};
+
+/**
+ * Runs `callback` when feature flags are ready (or immediately if disabled / not in browser).
+ * Returns an unsubscribe function when PostHog is enabled.
+ */
+export const onMarketingCopyFlagsReady = (callback: () => void): (() => void) | void => {
+  if (typeof window === 'undefined') return;
+  if (!isAnalyticsEnabled()) {
+    callback();
+    return;
+  }
+  return posthog.onFeatureFlags(callback);
+};
+
+/** Attach variant to subsequent PostHog events (super properties). */
+export const registerMarketingCopyVariant = (variant: MarketingCopyVariantId) => {
+  if (!isAnalyticsEnabled() || typeof window === 'undefined') return;
+  posthog.register({ marketing_copy_variant: variant });
+};
 
 /**
  * Options for posthog.init(). Passed when initializing before render (index) so capture is safe from first frame.
