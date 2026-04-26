@@ -26,13 +26,5 @@ export default function ResetPasswordRoute() {
     );
   }
 
-  return (
-    <div className="w-full max-w-lg mx-auto px-4 py-8">
-      <ResetPasswordPage
-        initialToken={searchParams.get('token')}
-        onBack={() => router.push('/login')}
-        onSuccess={() => router.push('/login')}
-      />
-    </div>
-  );
+  return <ResetPasswordPage initialToken={searchParams.get('token')} onSuccess={() => router.push('/login')} />;
 }

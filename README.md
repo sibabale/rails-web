@@ -10,15 +10,24 @@ Prerequisites:
 Setup:
 1. Install dependencies:
    - `npm install`
-2. Copy env template:
-   - `cp .env.example .env.local`
-3. Set required values in `.env.local`:
-   - `NEXT_PUBLIC_CLIENT_SERVER`
-   - optional: analytics/env flags in `.env.example`
+2. Create your local env file from the development template:
+   - `cp .env.development.example .env.development`
+3. Edit `.env.development` and set at least:
+   - `NEXT_PUBLIC_CLIENT_SERVER` (your rails-client-server / API base URL)
+   - `NEXT_PUBLIC_SITE_URL` (usually `http://localhost:3000` for this app)
+   - Other flags as needed (see comments in `.env.development.example`)
+
+   Next.js loads **`.env.development`** automatically when you run `next dev` (`NODE_ENV=development`). Later keys override earlier ones in the [Next env load order](https://nextjs.org/docs/app/building-your-application/configuring/environment-variables).
+
 4. Start dev server:
    - `npm run dev`
 5. Open:
    - `http://localhost:3000`
+
+**Other templates** (for deploy or documentation only; not loaded by `next dev` unless you copy/rename appropriately):
+
+- `.env.staging.example` — reference for staging deployments
+- `.env.production.example` — reference for production builds (`next build` / `next start` use `.env.production` when present)
 
 ## Build and run
 

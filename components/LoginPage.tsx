@@ -1,5 +1,17 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
+import { Button } from './marketing/atoms/Button';
+import { Container } from './marketing/atoms/Container';
+import { Heading } from './marketing/atoms/Heading';
+import { Text } from './marketing/atoms/Text';
+import {
+  AUTH_ERROR_BOX,
+  AUTH_FOOTER_MICRO,
+  AUTH_INPUT,
+  AUTH_LABEL,
+  AUTH_LINK_BACK,
+  AUTH_REGISTER_LINK,
+} from './marketing/marketingAuthUi';
 import { getClientServerUrl } from '../lib/env';
 
 interface LoginPageProps {
@@ -128,111 +140,110 @@ const LoginPage: React.FC<LoginPageProps> = ({ onSuccess, onForgotPassword }) =>
   };
 
   return (
-    <div className="pt-32 pb-24 max-w-7xl mx-auto px-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
-      <div className="max-w-md mx-auto">
-        <div className="mb-12 text-center">
-          <Link
-            href="/"
-            data-testid="login-back-home"
-            className="inline-flex items-center gap-2 text-sm text-zinc-400 hover:text-zinc-800 dark:hover:text-white transition-colors mb-8 group"
-          >
-            <span className="material-symbols-sharp !text-[18px] transform group-hover:-translate-x-1 transition-transform">arrow_back</span>
-            Back to landing
-          </Link>
-          
-          <h1 className="text-4xl font-bold tracking-tighter mb-4 text-zinc-800 dark:text-white">
+    <Container className="min-h-[70vh] flex flex-col justify-center items-center py-16 !border-0 px-4 w-full">
+      <div className="w-full max-w-sm mx-auto">
+        <Link href="/" data-testid="login-back-home" className={AUTH_LINK_BACK}>
+          <span className="material-symbols-sharp" style={{ fontSize: '1rem' }}>
+            arrow_back
+          </span>
+          <span>Back to landing</span>
+        </Link>
+
+        <div className="mb-10 flex flex-col items-center text-center">
+          <Heading level={2} className="!text-3xl mb-2">
             Infrastructure <span className="text-zinc-400 dark:text-zinc-500">Auth</span>
-          </h1>
-          <p className="text-zinc-500 dark:text-zinc-400 text-sm font-light">
+          </Heading>
+          <Text variant="p" className="!text-sm">
             Authenticate to your business node. Access restricted to institutional partners.
-          </p>
+          </Text>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="space-y-2">
-            <label className="text-[10px] font-mono font-bold uppercase tracking-widest text-zinc-400 dark:text-zinc-500 ml-1">Work Email</label>
-            <input 
-              type="email" 
+        <form onSubmit={handleSubmit} className="flex flex-col gap-6">
+          <div className="flex flex-col gap-2">
+            <label htmlFor="login-email" className={AUTH_LABEL}>
+              Work Email
+            </label>
+            <input
+              id="login-email"
+              type="email"
               name="email"
               autoComplete="email"
               required
               placeholder="admin@example.com"
               value={formData.email}
               onChange={handleChange}
-              className="w-full bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-100 dark:border-zinc-800 rounded-xl px-4 py-3 text-zinc-800 dark:text-white focus:outline-none focus:border-zinc-300 dark:focus:border-white transition-all font-mono text-sm"
+              className={AUTH_INPUT}
             />
           </div>
 
-          <div className="space-y-2">
-            <label className="text-[10px] font-mono font-bold uppercase tracking-widest text-zinc-400 dark:text-zinc-500 ml-1">Password</label>
-            <input 
+          <div className="flex flex-col gap-2">
+            <label htmlFor="login-password" className={AUTH_LABEL}>
+              Password
+            </label>
+            <input
+              id="login-password"
               ref={passwordInputRef}
-              type="password" 
+              type="password"
               name="password"
               autoComplete="current-password"
               required
               placeholder="••••••••••••"
               value={formData.password}
               onChange={handleChange}
-              className="w-full bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-100 dark:border-zinc-800 rounded-xl px-4 py-3 text-zinc-800 dark:text-white focus:outline-none focus:border-zinc-300 dark:focus:border-white transition-all font-mono text-sm"
+              className={AUTH_INPUT}
             />
           </div>
 
           {error && (
-            <div className="p-4 bg-red-50 dark:bg-red-950/20 border border-red-100 dark:border-red-900/50 rounded-xl flex items-start gap-3 text-red-600 dark:text-red-400 text-xs animate-in shake duration-300">
-              <span className="material-symbols-sharp !text-[18px] mt-0.5">lock_reset</span>
-              <div className="flex-1">
-                <p className="font-bold mb-0.5 uppercase tracking-tighter">Auth Failure</p>
-                <p className="leading-relaxed opacity-80">{error}</p>
+            <div className={AUTH_ERROR_BOX} data-testid="login-error">
+              <span className="material-symbols-sharp shrink-0" style={{ fontSize: '1rem' }}>
+                lock_reset
+              </span>
+              <div className="flex-1 text-left">
+                <p className="font-mono font-semibold mb-1 uppercase tracking-wide text-[10px]">Auth failure</p>
+                <p className="leading-relaxed opacity-90">{error}</p>
               </div>
             </div>
           )}
 
-          <div className="pt-4">
-            <button 
-              type="submit"
-              disabled={loading}
-              className="w-full bg-zinc-800 dark:bg-white text-white dark:text-black font-bold py-4 rounded-xl hover:bg-zinc-700 dark:hover:bg-zinc-100 transition-all transform active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-3 shadow-lg shadow-zinc-100 dark:shadow-white/5"
-            >
-              {loading ? (
-                <>
-                  <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
-                  <span className="text-sm font-mono">Authenticating...</span>
-                </>
-              ) : (
-                <>
-                  <span className="text-sm">Sign In</span>
-                  <span className="material-symbols-sharp !text-[18px]">key</span>
-                </>
-              )}
-            </button>
-          </div>
+          <Button
+            type="submit"
+            variant="primary"
+            disabled={loading}
+            className="w-full py-3.5 mt-2 flex justify-center items-center gap-2 disabled:opacity-60"
+            data-testid="login-submit"
+          >
+            {loading ? (
+              <>
+                <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin shrink-0" />
+                <span className="text-sm">Authenticating…</span>
+              </>
+            ) : (
+              <>
+                <span>Sign In</span>
+                <span className="material-symbols-sharp" style={{ fontSize: '1.25rem' }}>
+                  key
+                </span>
+              </>
+            )}
+          </Button>
 
-          <div className="text-center space-y-4">
+          <div className={AUTH_FOOTER_MICRO}>
             <button
               type="button"
               onClick={onForgotPassword}
-              className="text-[10px] font-mono uppercase tracking-widest text-zinc-400 hover:text-zinc-800 dark:hover:text-white transition-colors"
+              className="hover:text-black dark:hover:text-white transition-colors"
             >
               Forgot security credentials?
             </button>
-            <p className="text-[10px] uppercase tracking-widest text-zinc-400 dark:text-zinc-600 font-mono">
-              SECURE SESSION • TLS 1.3 ENFORCED
-            </p>
+            <span className="text-zinc-400 dark:text-zinc-600">Secure session • TLS 1.3 enforced</span>
+            <Link href="/register" data-testid="login-go-register" className={AUTH_REGISTER_LINK}>
+              Register for a new institutional account
+            </Link>
           </div>
         </form>
-
-        <div className="mt-8 flex flex-col items-center text-center">
-          <Link
-            href="/register"
-            data-testid="login-go-register"
-            className="text-[10px] font-mono uppercase tracking-widest text-zinc-500 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors border-b border-dotted border-zinc-400 dark:border-zinc-600 pb-0.5"
-          >
-            Register for a new institutional account
-          </Link>
-        </div>
       </div>
-    </div>
+    </Container>
   );
 };
 

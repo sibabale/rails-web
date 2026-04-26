@@ -25,9 +25,5 @@ export default function ForgotPasswordRoute() {
     );
   }
 
-  return (
-    <div className="w-full max-w-lg mx-auto px-4 py-8">
-      <ForgotPasswordPage onBack={() => router.push('/login')} onSuccess={() => router.push('/login')} />
-    </div>
-  );
+  return <ForgotPasswordPage onSuccess={() => router.push('/login')} />;
 }

@@ -70,9 +70,5 @@ export default function RegisterRoute() {
     router.push('/dashboard');
   };
 
-  return (
-    <div className="w-full max-w-lg mx-auto px-4 py-8">
-      <RegisterPage onSuccess={handleAuthSuccess} />
-    </div>
-  );
+  return <RegisterPage onSuccess={handleAuthSuccess} />;
 }

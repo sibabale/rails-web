@@ -1,13 +1,24 @@
 import React, { useState, useEffect, useRef } from 'react';
+import Link from 'next/link';
+import { Button } from './marketing/atoms/Button';
+import { Container } from './marketing/atoms/Container';
+import { Heading } from './marketing/atoms/Heading';
+import { Text } from './marketing/atoms/Text';
+import {
+  AUTH_ERROR_BOX,
+  AUTH_INPUT,
+  AUTH_LABEL,
+  AUTH_LINK_BACK,
+  AUTH_SUCCESS_BOX,
+} from './marketing/marketingAuthUi';
 import { passwordResetApi } from '../lib/api';
 
 interface ResetPasswordPageProps {
-  onBack: () => void;
   onSuccess: () => void;
   initialToken?: string | null;
 }
 
-const ResetPasswordPage: React.FC<ResetPasswordPageProps> = ({ onBack, onSuccess, initialToken }) => {
+const ResetPasswordPage: React.FC<ResetPasswordPageProps> = ({ onSuccess, initialToken }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -28,7 +39,6 @@ const ResetPasswordPage: React.FC<ResetPasswordPageProps> = ({ onBack, onSuccess
     }
   }, [initialToken]);
 
-  // Clear password fields when component unmounts (security measure)
   useEffect(() => {
     return () => {
       if (passwordInputRef.current) {
@@ -71,8 +81,7 @@ const ResetPasswordPage: React.FC<ResetPasswordPageProps> = ({ onBack, onSuccess
 
     try {
       await passwordResetApi.reset(token, formData.password);
-      
-      // SECURITY: Clear password fields immediately after successful reset
+
       setFormData({ password: '', confirmPassword: '' });
       if (passwordInputRef.current) {
         passwordInputRef.current.value = '';
@@ -80,16 +89,14 @@ const ResetPasswordPage: React.FC<ResetPasswordPageProps> = ({ onBack, onSuccess
       if (confirmPasswordInputRef.current) {
         confirmPasswordInputRef.current.value = '';
       }
-      
+
       setSuccess(true);
-      // Redirect to login after 3 seconds
       setTimeout(() => {
         onSuccess();
       }, 3000);
     } catch (err: any) {
       console.error('Password reset error:', err);
       setError(err.message || 'Failed to reset password. The link may have expired. Please request a new one.');
-      // Clear password on error as well for security
       setFormData({ password: '', confirmPassword: '' });
       if (passwordInputRef.current) {
         passwordInputRef.current.value = '';
@@ -104,46 +111,57 @@ const ResetPasswordPage: React.FC<ResetPasswordPageProps> = ({ onBack, onSuccess
 
   if (success) {
     return (
-      <div className="pt-32 pb-24 max-w-7xl mx-auto px-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
-        <div className="max-w-md mx-auto">
-          <div className="mb-12 text-center">
-            <div className="mb-8">
-              <span className="material-symbols-sharp !text-[48px] text-green-500 dark:text-green-400 mb-4">check_circle</span>
+      <Container className="min-h-[70vh] flex flex-col justify-center items-center py-16 !border-0 px-4 w-full">
+        <div className="w-full max-w-sm mx-auto text-center">
+          <div className={AUTH_SUCCESS_BOX} data-testid="reset-success">
+            <div className="mb-6 flex justify-center">
+              <span className="material-symbols-sharp text-emerald-600 dark:text-emerald-400" style={{ fontSize: '3rem' }}>
+                check_circle
+              </span>
             </div>
-            
-            <h1 className="text-4xl font-bold tracking-tighter mb-4 text-zinc-800 dark:text-white">
-              Password Reset Successful
-            </h1>
-            <p className="text-zinc-500 dark:text-zinc-400 text-sm font-light mb-8">
-              Your password has been reset successfully. You can now log in with your new password.
-            </p>
-            <p className="text-zinc-400 dark:text-zinc-500 text-xs font-mono">
-              Redirecting to login...
-            </p>
+            <Heading level={2} className="!text-3xl mb-4">
+              Password reset successful
+            </Heading>
+            <Text variant="p" className="!text-sm mb-4">
+              Your password has been reset. You can now sign in with your new password.
+            </Text>
+            <Text variant="micro" className="!text-zinc-500">
+              Redirecting to login…
+            </Text>
           </div>
         </div>
-      </div>
+      </Container>
     );
   }
 
   return (
-    <div className="pt-32 pb-24 max-w-7xl mx-auto px-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
-      <div className="max-w-md mx-auto">
-        <div className="mb-12 text-center">
-          <h1 className="text-4xl font-bold tracking-tighter mb-4 text-zinc-800 dark:text-white">
-            Set New Password
-          </h1>
-          <p className="text-zinc-500 dark:text-zinc-400 text-sm font-light">
+    <Container className="min-h-[70vh] flex flex-col justify-center items-center py-16 !border-0 px-4 w-full">
+      <div className="w-full max-w-sm mx-auto">
+        <Link href="/login" className={AUTH_LINK_BACK}>
+          <span className="material-symbols-sharp" style={{ fontSize: '1rem' }}>
+            arrow_back
+          </span>
+          <span>Back to login</span>
+        </Link>
+
+        <div className="mb-10 flex flex-col items-center text-center">
+          <Heading level={2} className="!text-3xl mb-2">
+            Set new password
+          </Heading>
+          <Text variant="p" className="!text-sm">
             Enter your new password below.
-          </p>
+          </Text>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="space-y-2">
-            <label className="text-[10px] font-mono font-bold uppercase tracking-widest text-zinc-400 dark:text-zinc-500 ml-1">New Password</label>
-            <input 
+        <form onSubmit={handleSubmit} className="flex flex-col gap-6">
+          <div className="flex flex-col gap-2">
+            <label htmlFor="reset-password" className={AUTH_LABEL}>
+              New password
+            </label>
+            <input
+              id="reset-password"
               ref={passwordInputRef}
-              type="password" 
+              type="password"
               name="password"
               autoComplete="new-password"
               required
@@ -151,18 +169,19 @@ const ResetPasswordPage: React.FC<ResetPasswordPageProps> = ({ onBack, onSuccess
               placeholder="••••••••••••"
               value={formData.password}
               onChange={handleChange}
-              className="w-full bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-100 dark:border-zinc-800 rounded-xl px-4 py-3 text-zinc-800 dark:text-white focus:outline-none focus:border-zinc-300 dark:focus:border-white transition-all font-mono text-sm"
+              className={AUTH_INPUT}
             />
-            <p className="text-[10px] text-zinc-400 dark:text-zinc-500 font-mono ml-1">
-              Must be at least 8 characters
-            </p>
+            <span className="text-[10px] font-mono text-zinc-500">Must be at least 8 characters</span>
           </div>
 
-          <div className="space-y-2">
-            <label className="text-[10px] font-mono font-bold uppercase tracking-widest text-zinc-400 dark:text-zinc-500 ml-1">Confirm Password</label>
-            <input 
+          <div className="flex flex-col gap-2">
+            <label htmlFor="reset-confirm" className={AUTH_LABEL}>
+              Confirm password
+            </label>
+            <input
+              id="reset-confirm"
               ref={confirmPasswordInputRef}
-              type="password" 
+              type="password"
               name="confirmPassword"
               autoComplete="new-password"
               required
@@ -170,42 +189,46 @@ const ResetPasswordPage: React.FC<ResetPasswordPageProps> = ({ onBack, onSuccess
               placeholder="••••••••••••"
               value={formData.confirmPassword}
               onChange={handleChange}
-              className="w-full bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-100 dark:border-zinc-800 rounded-xl px-4 py-3 text-zinc-800 dark:text-white focus:outline-none focus:border-zinc-300 dark:focus:border-white transition-all font-mono text-sm"
+              className={AUTH_INPUT}
             />
           </div>
 
           {error && (
-            <div className="p-4 bg-red-50 dark:bg-red-950/20 border border-red-100 dark:border-red-900/50 rounded-xl flex items-start gap-3 text-red-600 dark:text-red-400 text-xs animate-in shake duration-300">
-              <span className="material-symbols-sharp !text-[18px] mt-0.5">error</span>
-              <div className="flex-1">
-                <p className="font-bold mb-0.5 uppercase tracking-tighter">Error</p>
-                <p className="leading-relaxed opacity-80">{error}</p>
+            <div className={AUTH_ERROR_BOX} data-testid="reset-error">
+              <span className="material-symbols-sharp shrink-0" style={{ fontSize: '1rem' }}>
+                error
+              </span>
+              <div className="flex-1 text-left">
+                <p className="font-mono font-semibold mb-1 text-[10px] uppercase tracking-wide">Error</p>
+                <p className="leading-relaxed">{error}</p>
               </div>
             </div>
           )}
 
-          <div className="pt-4">
-            <button 
-              type="submit"
-              disabled={loading || !token}
-              className="w-full bg-zinc-800 dark:bg-white text-white dark:text-black font-bold py-4 rounded-xl hover:bg-zinc-700 dark:hover:bg-zinc-100 transition-all transform active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-3 shadow-lg shadow-zinc-100 dark:shadow-white/5"
-            >
-              {loading ? (
-                <>
-                  <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
-                  <span className="text-sm font-mono">Resetting...</span>
-                </>
-              ) : (
-                <>
-                  <span className="text-sm">Reset Password</span>
-                  <span className="material-symbols-sharp !text-[18px]">lock_reset</span>
-                </>
-              )}
-            </button>
-          </div>
+          <Button
+            type="submit"
+            variant="primary"
+            disabled={loading || !token}
+            className="w-full py-3.5 flex justify-center items-center gap-2 disabled:opacity-60"
+            data-testid="reset-submit"
+          >
+            {loading ? (
+              <>
+                <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin shrink-0" />
+                <span className="text-sm">Resetting…</span>
+              </>
+            ) : (
+              <>
+                <span>Reset password</span>
+                <span className="material-symbols-sharp" style={{ fontSize: '1rem' }}>
+                  lock_reset
+                </span>
+              </>
+            )}
+          </Button>
         </form>
       </div>
-    </div>
+    </Container>
   );
 };
 
