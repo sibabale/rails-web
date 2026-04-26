@@ -1,5 +1,5 @@
 /** Public GitHub repository root for SDK sample folders (no trailing slash). */
-const DEFAULT_SAMPLES_REPO_URL = 'https://github.com/sibabale/rails-sdk-samples';
+const DEFAULT_SAMPLES_REPO_URL = 'https://github.com/railsinfra/rails-sdk-samples';
 
 export const SDK_SAMPLE_FOLDERS = [
   { id: 'typescript', label: 'TypeScript' },

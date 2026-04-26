@@ -53,7 +53,7 @@ export default function ArchitectureDiagram({ activeSection }: Props) {
         <div className="h-4 w-px bg-zinc-300 dark:bg-zinc-700"></div>
         <div className={`w-2 h-2 border bg-white dark:bg-black rotate-45 -my-1 z-10 ${isClients || isApi ? 'border-emerald-500' : 'border-zinc-300 dark:border-zinc-700'}`}></div>
         <div className="h-4 w-px bg-zinc-300 dark:bg-zinc-700"></div>
-        <div className={`absolute right-8 top-1/2 -translate-y-1/2 text-[9px] ${isClients || isApi ? 'text-emerald-600 dark:text-emerald-500/80' : 'text-zinc-500 dark:text-zinc-600'}`}>REST / GraphQL</div>
+        <div className={`absolute right-8 top-1/2 -translate-y-1/2 text-[9px] ${isClients || isApi ? 'text-emerald-600 dark:text-emerald-500/80' : 'text-zinc-500 dark:text-zinc-600'}`}>REST</div>
       </div>
       
       {/* NGINX Gateway */}
@@ -68,38 +68,67 @@ export default function ArchitectureDiagram({ activeSection }: Props) {
         <div className="h-4 w-px bg-zinc-300 dark:bg-zinc-700"></div>
       </div>
 
-      {/* Rails API Box */}
+      {/* rails core diagram box */}
       <div className={`w-full border p-6 relative shadow-xl transition-all duration-500 block
         ${isApi ? 'border-emerald-500 bg-white dark:bg-black ring-1 ring-emerald-500/20' : 'border-zinc-300 dark:border-zinc-800 bg-zinc-50 dark:bg-black opacity-50 dark:opacity-40'}`}>
         <div className={`absolute top-0 left-0 px-3 py-1 text-[9px] uppercase tracking-widest font-bold transition-all duration-500
           ${isApi ? 'bg-emerald-500 text-white dark:text-black' : 'bg-zinc-200 dark:bg-zinc-800 text-zinc-500'}`}>
-          Rails API
+          rails core
         </div>
         
-        <div className="mt-6 flex flex-col gap-5 relative">
-          <div className="grid grid-cols-2 gap-4 relative z-10">
+        <div className="mt-6 flex flex-col gap-3 relative">
+          <div className="grid grid-cols-3 gap-2 sm:gap-3 relative z-10">
             {/* Users */}
-            <div className={`border p-4 text-center transition-colors flex flex-col items-center
+            <div className={`border p-3 sm:p-4 text-center transition-colors flex flex-col items-center
               ${isApi ? 'border-zinc-200 dark:border-zinc-600 bg-zinc-50 dark:bg-[#050505]' : 'border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-black'}`}>
-              <span className={`material-symbols-sharp mb-2 ${isApi ? 'text-emerald-600 dark:text-emerald-400' : 'text-zinc-400 dark:text-zinc-600'}`} style={{ fontSize: '1.25rem' }}>group</span>
-              <div className={`font-medium transition-colors ${isApi ? 'text-black dark:text-white' : 'text-zinc-500 dark:text-zinc-600'}`}>Users</div>
-              <div className="text-[10px] text-zinc-400 dark:text-zinc-500 mt-1">Rust</div>
+              <span className={`material-symbols-sharp mb-1 sm:mb-2 ${isApi ? 'text-emerald-600 dark:text-emerald-400' : 'text-zinc-400 dark:text-zinc-600'}`} style={{ fontSize: '1.1rem' }}>group</span>
+              <div className={`font-medium text-[11px] sm:text-xs transition-colors ${isApi ? 'text-black dark:text-white' : 'text-zinc-500 dark:text-zinc-600'}`}>Users</div>
+              <div className="text-[10px] text-zinc-400 dark:text-zinc-500 mt-1">service</div>
             </div>
-            
-            {/* Dotted horizontal line */}
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-6 border-t border-dashed border-zinc-300 dark:border-zinc-700"></div>
-            
+
             {/* Accounts */}
-            <div className={`border p-4 text-center transition-colors flex flex-col items-center
+            <div className={`border p-3 sm:p-4 text-center transition-colors flex flex-col items-center
               ${isApi ? 'border-zinc-200 dark:border-zinc-600 bg-zinc-50 dark:bg-[#050505]' : 'border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-black'}`}>
-              <span className={`material-symbols-sharp mb-2 ${isApi ? 'text-emerald-600 dark:text-emerald-400' : 'text-zinc-400 dark:text-zinc-600'}`} style={{ fontSize: '1.25rem' }}>account_balance_wallet</span>
-              <div className={`font-medium transition-colors ${isApi ? 'text-black dark:text-white' : 'text-zinc-500 dark:text-zinc-600'}`}>Accounts</div>
-              <div className="text-[10px] text-zinc-400 dark:text-zinc-500 mt-1">Rust</div>
+              <span className={`material-symbols-sharp mb-1 sm:mb-2 ${isApi ? 'text-emerald-600 dark:text-emerald-400' : 'text-zinc-400 dark:text-zinc-600'}`} style={{ fontSize: '1.1rem' }}>account_balance_wallet</span>
+              <div className={`font-medium text-[11px] sm:text-xs transition-colors ${isApi ? 'text-black dark:text-white' : 'text-zinc-500 dark:text-zinc-600'}`}>Accounts</div>
+              <div className="text-[10px] text-zinc-400 dark:text-zinc-500 mt-1">service</div>
+            </div>
+
+            {/* Audit */}
+            <div className={`border p-3 sm:p-4 text-center transition-colors flex flex-col items-center
+              ${isApi ? 'border-zinc-200 dark:border-zinc-600 bg-zinc-50 dark:bg-[#050505]' : 'border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-black'}`}>
+              <span className={`material-symbols-sharp mb-1 sm:mb-2 ${isApi ? 'text-emerald-600 dark:text-emerald-400' : 'text-zinc-400 dark:text-zinc-600'}`} style={{ fontSize: '1.1rem' }}>fact_check</span>
+              <div className={`font-medium text-[11px] sm:text-xs transition-colors ${isApi ? 'text-black dark:text-white' : 'text-zinc-500 dark:text-zinc-600'}`}>Audit</div>
+              <div className="text-[10px] text-zinc-400 dark:text-zinc-500 mt-1">service</div>
             </div>
           </div>
 
-          <div className="absolute inset-0 flex justify-center items-center pointer-events-none">
-            <div className="h-full w-px border-l border-dashed border-zinc-300 dark:border-zinc-700"></div>
+          <div className="relative w-full pointer-events-none z-0 -my-0.5 flex flex-col items-stretch" aria-hidden>
+            <div className="grid grid-cols-3 gap-2 sm:gap-3">
+              <div className="flex justify-center">
+                <div
+                  className={`h-6 w-0 border-l border-dashed transition-all duration-500 ${isApi ? 'border-emerald-300 dark:border-emerald-500/50' : 'border-zinc-300 dark:border-zinc-700'}`}
+                />
+              </div>
+              <div className="flex justify-center">
+                <div
+                  className={`h-6 w-0 border-l border-dashed transition-all duration-500 ${isApi ? 'border-emerald-300 dark:border-emerald-500/50' : 'border-zinc-300 dark:border-zinc-700'}`}
+                />
+              </div>
+              <div className="flex justify-center">
+                <div
+                  className={`h-6 w-0 border-l border-dashed transition-all duration-500 ${isApi ? 'border-emerald-300 dark:border-emerald-500/50' : 'border-zinc-300 dark:border-zinc-700'}`}
+                />
+              </div>
+            </div>
+            <div
+              className={`h-0 w-full border-t border-dashed transition-all duration-500 ${isApi ? 'border-emerald-300 dark:border-emerald-500/50' : 'border-zinc-300 dark:border-zinc-700'}`}
+            />
+            <div className="flex justify-center">
+              <div
+                className={`h-5 w-0 border-l border-dashed transition-all duration-500 ${isApi ? 'border-emerald-300 dark:border-emerald-500/50' : 'border-zinc-300 dark:border-zinc-700'}`}
+              />
+            </div>
           </div>
 
           {/* Ledger */}
@@ -107,7 +136,7 @@ export default function ArchitectureDiagram({ activeSection }: Props) {
             ${isApi ? 'border-zinc-200 dark:border-zinc-600 bg-white dark:bg-[#0a0a0a]' : 'border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-black'}`}>
             <span className={`material-symbols-sharp mb-2 ${isApi ? 'text-emerald-600 dark:text-emerald-400' : 'text-zinc-400 dark:text-zinc-600'}`} style={{ fontSize: '1.25rem' }}>menu_book</span>
             <div className={`font-medium ${isApi ? 'text-black dark:text-white' : 'text-zinc-500 dark:text-zinc-600'}`}>Ledger Engine</div>
-            <div className="text-[10px] text-zinc-400 dark:text-zinc-500 mt-1">Rails</div>
+            <div className="text-[10px] text-zinc-400 dark:text-zinc-500 mt-1">service</div>
           </div>
         </div>
 
