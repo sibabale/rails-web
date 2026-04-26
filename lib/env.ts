@@ -23,6 +23,12 @@ export const isAuthButtonsEnabled = (): boolean => {
   return false;
 };
 
+/** Public docs URL for marketing CTAs; falls back to infrastructure overview. */
+export const getMarketingDocsHref = (): string => {
+  if (nonEmpty(process.env.NEXT_PUBLIC_DOCS_URL)) return process.env.NEXT_PUBLIC_DOCS_URL;
+  return '/infrastructure';
+};
+
 export const isAnalyticsExplicitlyDisabled = (): boolean => {
   if (nonEmpty(process.env.NEXT_PUBLIC_ENABLE_ANALYTICS))
     return process.env.NEXT_PUBLIC_ENABLE_ANALYTICS === 'false';
@@ -37,4 +43,10 @@ export const getPostHogKeyEnv = (): string | undefined => {
 export const getPostHogHostEnv = (): string | undefined => {
   if (nonEmpty(process.env.NEXT_PUBLIC_POSTHOG_HOST)) return process.env.NEXT_PUBLIC_POSTHOG_HOST;
   return undefined;
+};
+
+/** Default marketing copy variant (`a` or `d`) when no `?copy=` or session override. */
+export const getDefaultMarketingCopyVariant = (): 'a' | 'd' => {
+  if (process.env.NEXT_PUBLIC_MARKETING_COPY_VARIANT === 'd') return 'd';
+  return 'a';
 };

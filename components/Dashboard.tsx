@@ -1,16 +1,68 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { GoogleGenAI } from "@google/genai";
+'use client';
+
+import React, { useState, useEffect, useRef, memo } from 'react';
+import Link from 'next/link';
+import { usePathname, useRouter } from 'next/navigation';
 import { useAppDispatch, useAppSelector } from '../state/hooks';
 import { setEnvironment } from '../state/slices/environmentSlice';
 import ApiKeyManager from './ApiKeyManager';
 import Pagination from './Pagination';
 import DashboardOverviewV2 from './DashboardOverviewV2';
+import { DashboardMaterialThemeToggle } from './DashboardMaterialThemeToggle';
 import { accountsApi, transactionsApi, ledgerApi, type Account as ApiAccount, type Transaction, type LedgerEntry, type PaginationMeta } from '../lib/api';
+
+function dashboardTabFromPathname(pathname: string | null): string {
+  if (!pathname) return 'Overview';
+  const base = pathname.replace(/\/$/, '');
+  if (base === '/dashboard') return 'Overview';
+  if (base.endsWith('/accounts')) return 'Accounts';
+  if (base.endsWith('/transactions')) return 'Transactions';
+  if (base.endsWith('/ledger')) return 'Ledger';
+  if (base.endsWith('/identity')) return 'Identity';
+  return 'Overview';
+}
+
+const DASHBOARD_SIDEBAR_NAV_ITEMS: { name: string; icon: string; href: string }[] = [
+  { name: 'Overview', icon: 'dashboard', href: '/dashboard' },
+  { name: 'Accounts', icon: 'account_balance', href: '/dashboard/accounts' },
+  { name: 'Transactions', icon: 'swap_horiz', href: '/dashboard/transactions' },
+  { name: 'Ledger', icon: 'book', href: '/dashboard/ledger' },
+];
+
+const DashboardSidebarPrimaryNav = memo(function DashboardSidebarPrimaryNav({ activeTab }: { activeTab: string }) {
+  return (
+    <nav className="space-y-1 px-3 py-4">
+      {DASHBOARD_SIDEBAR_NAV_ITEMS.map((item) => {
+        const isActive = activeTab === item.name;
+        return (
+          <Link
+            key={item.name}
+            href={item.href}
+            data-testid={`dashboard-nav-${item.name.toLowerCase()}`}
+            className={`flex items-center gap-3 px-3 py-2.5 text-sm font-medium transition-colors outline-none ${
+              isActive
+                ? 'bg-black text-white shadow-sm dark:bg-white dark:text-black'
+                : 'text-zinc-600 hover:bg-zinc-100 hover:text-black dark:text-zinc-400 dark:hover:bg-zinc-900/50 dark:hover:text-white'
+            }`}
+          >
+            <span
+              className={`material-symbols-sharp shrink-0 !text-[16px] leading-none ${
+                isActive ? 'text-white dark:text-black' : 'text-zinc-500'
+              }`}
+              aria-hidden
+            >
+              {item.icon}
+            </span>
+            {item.name}
+          </Link>
+        );
+      })}
+    </nav>
+  );
+});
 
 interface DashboardProps {
   onLogout: () => void;
-  currentTheme?: 'light' | 'dark';
-  onToggleTheme?: () => void;
   session?: any;
   profile?: any;
 }
@@ -27,10 +79,13 @@ interface Account {
   metadata?: Record<string, string>;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ onLogout, currentTheme, onToggleTheme, session, profile }) => {
+const Dashboard: React.FC<DashboardProps> = ({ onLogout, session, profile }) => {
   const dispatch = useAppDispatch();
   const environment = useAppSelector((state) => state.environment.current);
   const isProduction = environment === 'production';
+  const pathname = usePathname();
+  const router = useRouter();
+  const prevPathnameRef = useRef<string | null>(null);
 
   const [activeTab, setActiveTab] = useState('Overview');
   const [timeLeft, setTimeLeft] = useState<string>('');
@@ -71,6 +126,18 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, currentTheme, onToggleT
   const [transactionsPagination, setTransactionsPagination] = useState<PaginationMeta | null>(null);
   const [ledgerPage, setLedgerPage] = useState(1);
   const [ledgerPagination, setLedgerPagination] = useState<PaginationMeta | null>(null);
+
+  useEffect(() => {
+    setActiveTab(dashboardTabFromPathname(pathname));
+  }, [pathname]);
+
+  useEffect(() => {
+    if (prevPathnameRef.current !== null && prevPathnameRef.current !== pathname) {
+      setSelectedAccountId(null);
+      setSelectedTransactionId(null);
+    }
+    prevPathnameRef.current = pathname;
+  }, [pathname]);
 
   useEffect(() => {
     if (session?.timestamp && session?.expires_in) {
@@ -365,49 +432,43 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, currentTheme, onToggleT
 
   const useOverviewV2 = true;
 
-  const navItems = [
-    { name: 'Overview', icon: 'dashboard' },
-    { name: 'Accounts', icon: 'account_balance' },
-    { name: 'Transactions', icon: 'swap_horiz' },
-    // { name: 'Settlements', icon: 'account_tree' },
-    // { name: 'Payments', icon: 'payments' },
-    { name: 'Ledger', icon: 'book' },
-    // { name: 'Infrastructure', icon: 'dns' },
-  ];
-
   const renderAccountDetails = (account: Account) => (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="flex items-center gap-4">
         <button 
           onClick={() => setSelectedAccountId(null)}
           className="p-2 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors text-zinc-500 hover:text-zinc-800 dark:hover:text-white"
+          type="button"
+          aria-label="Back to accounts"
         >
-          <span className="material-symbols-sharp">arrow_back</span>
+          <span className="material-symbols-sharp !text-[20px] leading-none" aria-hidden>
+            arrow_back
+          </span>
         </button>
         <div>
-          <h2 className="text-2xl font-bold tracking-tight text-zinc-800 dark:text-white">Account Details</h2>
+          <h2 className="text-xl font-medium tracking-tight text-black dark:text-white">Account Details</h2>
           <p className="text-sm font-mono text-zinc-500">{account.id}</p>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         <div className="lg:col-span-8 space-y-6">
-          <div className="bg-white dark:bg-black border border-zinc-100 dark:border-zinc-800/50 rounded-2xl p-8 space-y-8">
+          <div className="border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#050505] transition-colors p-8 space-y-8">
             <div className="grid grid-cols-2 gap-8">
               <div>
-                <label className="text-[10px] font-mono text-zinc-400 uppercase font-bold tracking-widest">Account Number</label>
-                <p className="text-lg font-bold text-zinc-800 dark:text-white mt-1">{account.account_number}</p>
+                <label className="text-[10px] font-mono font-semibold uppercase tracking-widest text-zinc-500">Account Number</label>
+                <p className="text-lg font-bold text-black dark:text-white mt-1">{account.account_number}</p>
               </div>
               <div>
-                <label className="text-[10px] font-mono text-zinc-400 uppercase font-bold tracking-widest">Account Type</label>
-                <p className="text-lg font-bold text-zinc-800 dark:text-white mt-1">{account.account_type}</p>
+                <label className="text-[10px] font-mono font-semibold uppercase tracking-widest text-zinc-500">Account Type</label>
+                <p className="text-lg font-bold text-black dark:text-white mt-1">{account.account_type}</p>
               </div>
               <div>
-                <label className="text-[10px] font-mono text-zinc-400 uppercase font-bold tracking-widest">Balance</label>
-                <p className="text-lg font-bold text-zinc-800 dark:text-white mt-1">{account.balance} {account.currency}</p>
+                <label className="text-[10px] font-mono font-semibold uppercase tracking-widest text-zinc-500">Balance</label>
+                <p className="text-lg font-bold text-black dark:text-white mt-1">{account.balance} {account.currency}</p>
               </div>
               <div>
-                <label className="text-[10px] font-mono text-zinc-400 uppercase font-bold tracking-widest">Status</label>
+                <label className="text-[10px] font-mono font-semibold uppercase tracking-widest text-zinc-500">Status</label>
                 <div className="mt-1">
                   <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${account.status === 'Active' || account.status === 'active' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-500' : 'bg-red-500/10 text-red-600 dark:text-red-500'}`}>
                     {account.status}
@@ -417,13 +478,13 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, currentTheme, onToggleT
             </div>
 
             {account.metadata && (
-              <div className="pt-8 border-t border-zinc-50 dark:border-zinc-900">
-                <h4 className="text-[10px] font-mono font-bold uppercase tracking-widest text-zinc-400 mb-4">Metadata Shard Context</h4>
+              <div className="pt-8 border-t border-zinc-200 dark:border-zinc-800">
+                <h4 className="mb-4 text-[10px] font-mono font-semibold uppercase tracking-widest text-zinc-500">Metadata Shard Context</h4>
                 <div className="grid grid-cols-2 gap-4">
                   {Object.entries(account.metadata).map(([key, value]) => (
-                    <div key={key} className="bg-zinc-50 dark:bg-zinc-950 p-3 rounded-lg border border-zinc-100 dark:border-zinc-800">
+                    <div key={key} className="border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-black p-3 transition-colors">
                       <label className="text-[9px] font-mono text-zinc-400 uppercase block mb-1">{key.replace('_', ' ')}</label>
-                      <p className="text-xs font-mono font-bold text-zinc-800 dark:text-white">{value}</p>
+                      <p className="text-xs font-mono font-bold text-black dark:text-white">{value}</p>
                     </div>
                   ))}
                 </div>
@@ -431,28 +492,28 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, currentTheme, onToggleT
             )}
 
             {selectedAccountId && (
-              <div className="pt-8 border-t border-zinc-50 dark:border-zinc-900">
-                <h4 className="text-[10px] font-mono font-bold uppercase tracking-widest text-zinc-400 mb-4">Recent Transactions</h4>
+              <div className="pt-8 border-t border-zinc-200 dark:border-zinc-800">
+                <h4 className="mb-4 text-[10px] font-mono font-semibold uppercase tracking-widest text-zinc-500">Recent Transactions</h4>
                 {transactionsError ? (
-                  <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4">
+                  <div className="border border-red-200 dark:border-red-900/40 bg-red-50/80 dark:bg-red-950/20 p-4 transition-colors">
                     <p className="text-xs font-mono text-red-600 dark:text-red-500">{transactionsError}</p>
                   </div>
                 ) : isLoadingTransactions ? (
                   <div className="space-y-3">
                     {Array.from({ length: 3 }).map((_, i) => (
-                      <div key={i} className="h-16 bg-zinc-50 dark:bg-zinc-900 rounded-lg animate-pulse"></div>
+                      <div key={i} className="h-16 animate-pulse border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-black" />
                     ))}
                   </div>
                 ) : transactions.length === 0 ? (
-                  <div className="bg-zinc-50 dark:bg-zinc-900 rounded-lg p-6 text-center">
-                    <p className="text-xs font-mono text-zinc-400 dark:text-zinc-600">No transactions found</p>
+                  <div className="border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-[#050505] p-6 text-center transition-colors">
+                    <p className="text-xs font-mono text-zinc-500 dark:text-zinc-400">No transactions found</p>
                   </div>
                 ) : (
                   <div className="space-y-3">
                     {transactions.slice(0, 5).map((tx) => (
-                      <div key={tx.id} className="bg-zinc-50 dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 rounded-lg p-4">
+                      <div key={tx.id} className="border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-[#050505] p-4 transition-colors">
                         <div className="flex items-center justify-between mb-2">
-                          <span className="text-xs font-mono font-bold text-zinc-800 dark:text-white">{tx.transaction_kind}</span>
+                          <span className="text-xs font-mono font-bold text-black dark:text-white">{tx.transaction_kind}</span>
                           <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase ${
                             tx.status?.toLowerCase() === 'posted' 
                               ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-500'
@@ -469,7 +530,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, currentTheme, onToggleT
                           <span className="text-xs font-mono text-zinc-500 dark:text-zinc-400">
                             {new Date(tx.created_at).toLocaleString()}
                           </span>
-                          <span className="text-xs font-mono font-bold text-zinc-800 dark:text-white">
+                          <span className="text-xs font-mono font-bold text-black dark:text-white">
                             {typeof tx.amount === 'number' 
                               ? tx.amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
                               : tx.amount} {tx.currency}
@@ -485,20 +546,25 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, currentTheme, onToggleT
         </div>
 
         <div className="lg:col-span-4 space-y-6">
-          <div className="bg-red-500/5 border border-red-500/20 rounded-2xl p-6">
-            <h4 className="text-[10px] font-mono font-bold uppercase tracking-widest text-red-500 mb-4">Danger Zone</h4>
-            <p className="text-xs text-zinc-500 mb-6 leading-relaxed">
+          <div className="border border-red-200 dark:border-red-900/50 bg-white dark:bg-[#050505] p-6 transition-colors">
+            <h4 className="text-[10px] font-mono font-bold uppercase tracking-widest text-red-600 dark:text-red-400 mb-4">Danger Zone</h4>
+            <p className="text-xs text-zinc-600 dark:text-zinc-400 mb-6 leading-relaxed">
               Decommissioning an account is irreversible. It will freeze the ledger state in the Merkle root.
             </p>
-              <div className="w-full py-3 bg-zinc-100 dark:bg-zinc-900 text-zinc-500 dark:text-zinc-400 text-xs font-bold rounded-xl text-center">
+              <div className="w-full border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-black py-3 text-zinc-600 dark:text-zinc-400 text-xs font-bold text-center transition-colors">
                 Read-Only Access
               </div>
           </div>
 
-          <div className="bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-100 dark:border-zinc-800 rounded-2xl p-6">
-            <h4 className="text-[10px] font-mono font-bold uppercase tracking-widest text-zinc-400 mb-4">Integrity Check</h4>
+          <div className="border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#050505] p-6 transition-colors">
+            <h4 className="mb-4 text-[10px] font-mono font-semibold uppercase tracking-widest text-zinc-500">Integrity Check</h4>
             <div className="flex items-center gap-3">
-              <span className="material-symbols-sharp text-emerald-500 !text-[18px]">verified</span>
+              <span
+                className="material-symbols-sharp shrink-0 text-emerald-500 !text-[18px] leading-none"
+                aria-hidden
+              >
+                verified
+              </span>
               <span className="text-[10px] font-mono font-bold text-emerald-500 uppercase">Hash Verified</span>
             </div>
             <p className="mt-3 text-[10px] text-zinc-500 leading-relaxed font-mono">
@@ -538,38 +604,45 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, currentTheme, onToggleT
           <button 
             onClick={() => setSelectedTransactionId(null)}
             className="p-2 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors text-zinc-500 hover:text-zinc-800 dark:hover:text-white flex items-center justify-center"
+            type="button"
+            aria-label="Back to transactions"
           >
-            <span className="material-symbols-sharp">arrow_back</span>
+            <span className="material-symbols-sharp !text-[20px] leading-none" aria-hidden>
+              arrow_back
+            </span>
           </button>
           <div>
-            <h2 className="text-2xl font-bold tracking-tight text-zinc-800 dark:text-white">Transaction</h2>
-            <p className="text-sm text-zinc-500">Transaction details and metadata</p>
+            <h2 className="text-xl font-medium tracking-tight text-black dark:text-white">Transaction</h2>
+            <p className="text-sm text-zinc-600 dark:text-zinc-400">Transaction details and metadata</p>
           </div>
         </div>
 
         {/* Section 1: Summary */}
-        <div className="bg-white dark:bg-black border border-zinc-100 dark:border-zinc-800/50 rounded-2xl p-8 space-y-6">
-          <h3 className="text-[10px] font-mono font-bold uppercase tracking-widest text-zinc-400">Summary</h3>
+        <div className="border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#050505] transition-colors p-8 space-y-6">
+          <h3 className="text-[10px] font-mono font-semibold uppercase tracking-widest text-zinc-500">Summary</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label className="text-[10px] font-mono text-zinc-400 uppercase font-bold tracking-widest block mb-2">Transaction ID</label>
+              <label className="text-[10px] font-mono font-semibold uppercase tracking-widest text-zinc-500 block mb-2">Transaction ID</label>
               <div className="flex items-center gap-2">
-                <p className="text-sm font-mono font-bold text-zinc-800 dark:text-white">{transaction.id}</p>
+                <p className="text-sm font-mono font-bold text-black dark:text-white">{transaction.id}</p>
                 <button
                   onClick={() => copyToClipboard(transaction.id)}
                   className="p-1 rounded hover:bg-zinc-100 dark:hover:bg-zinc-900 text-zinc-500 hover:text-zinc-800 dark:hover:text-white transition-colors"
                   title="Copy to clipboard"
+                  type="button"
                 >
-                  <span className="material-symbols-sharp !text-[16px]">content_copy</span>
+                  <span className="material-symbols-sharp !text-[16px] leading-none" aria-hidden>
+                    content_copy
+                  </span>
                 </button>
               </div>
             </div>
             <div>
-              <label className="text-[10px] font-mono text-zinc-400 uppercase font-bold tracking-widest block mb-2">Type</label>
-              <p className="text-sm font-bold text-zinc-800 dark:text-white uppercase">{transaction.transaction_kind}</p>
+              <label className="text-[10px] font-mono font-semibold uppercase tracking-widest text-zinc-500 block mb-2">Type</label>
+              <p className="text-sm font-bold text-black dark:text-white uppercase">{transaction.transaction_kind}</p>
             </div>
             <div>
-              <label className="text-[10px] font-mono text-zinc-400 uppercase font-bold tracking-widest block mb-2">Status</label>
+              <label className="text-[10px] font-mono font-semibold uppercase tracking-widest text-zinc-500 block mb-2">Status</label>
               <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase inline-block ${
                 transaction.status?.toLowerCase().trim() === 'posted' 
                   ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-500' 
@@ -583,13 +656,13 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, currentTheme, onToggleT
               </span>
             </div>
             <div>
-              <label className="text-[10px] font-mono text-zinc-400 uppercase font-bold tracking-widest block mb-2">Amount</label>
-              <p className="text-lg font-bold text-zinc-800 dark:text-white">
+              <label className="text-[10px] font-mono font-semibold uppercase tracking-widest text-zinc-500 block mb-2">Amount</label>
+              <p className="text-lg font-bold text-black dark:text-white">
                 {formatAmount(transaction.amount)} {transaction.currency}
               </p>
             </div>
             <div>
-              <label className="text-[10px] font-mono text-zinc-400 uppercase font-bold tracking-widest block mb-2">Environment</label>
+              <label className="text-[10px] font-mono font-semibold uppercase tracking-widest text-zinc-500 block mb-2">Environment</label>
               <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase inline-block ${
                 transaction.environment === 'production'
                   ? 'bg-purple-500/10 text-purple-600 dark:text-purple-500'
@@ -599,47 +672,53 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, currentTheme, onToggleT
               </span>
             </div>
             <div>
-              <label className="text-[10px] font-mono text-zinc-400 uppercase font-bold tracking-widest block mb-2">Created At</label>
-              <p className="text-sm font-mono text-zinc-800 dark:text-white">{formatDate(transaction.created_at)}</p>
+              <label className="text-[10px] font-mono font-semibold uppercase tracking-widest text-zinc-500 block mb-2">Created At</label>
+              <p className="text-sm font-mono text-black dark:text-white">{formatDate(transaction.created_at)}</p>
             </div>
           </div>
         </div>
 
         {/* Section 2: Parties Involved */}
-        <div className="bg-white dark:bg-black border border-zinc-100 dark:border-zinc-800/50 rounded-2xl p-8 space-y-6">
-          <h3 className="text-[10px] font-mono font-bold uppercase tracking-widest text-zinc-400">Parties Involved</h3>
+        <div className="border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#050505] transition-colors p-8 space-y-6">
+          <h3 className="text-[10px] font-mono font-semibold uppercase tracking-widest text-zinc-500">Parties Involved</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label className="text-[10px] font-mono text-zinc-400 uppercase font-bold tracking-widest block mb-4">From Account</label>
+              <label className="text-[10px] font-mono font-semibold uppercase tracking-widest text-zinc-500 block mb-4">From Account</label>
               <div className="space-y-3">
                 <div>
                   <label className="text-[9px] font-mono text-zinc-500 uppercase block mb-1">Account ID</label>
                   <div className="flex items-center gap-2">
-                    <p className="text-sm font-mono font-bold text-zinc-800 dark:text-white break-all">{transaction.from_account_id}</p>
+                    <p className="text-sm font-mono font-bold text-black dark:text-white break-all">{transaction.from_account_id}</p>
                     <button
                       onClick={() => copyToClipboard(transaction.from_account_id)}
                       className="p-1 rounded hover:bg-zinc-100 dark:hover:bg-zinc-900 text-zinc-500 hover:text-zinc-800 dark:hover:text-white transition-colors flex-shrink-0"
                       title="Copy to clipboard"
+                      type="button"
                     >
-                      <span className="material-symbols-sharp !text-[16px]">content_copy</span>
+                      <span className="material-symbols-sharp !text-[16px] leading-none" aria-hidden>
+                    content_copy
+                  </span>
                     </button>
                   </div>
                 </div>
               </div>
             </div>
             <div>
-              <label className="text-[10px] font-mono text-zinc-400 uppercase font-bold tracking-widest block mb-4">To Account</label>
+              <label className="text-[10px] font-mono font-semibold uppercase tracking-widest text-zinc-500 block mb-4">To Account</label>
               <div className="space-y-3">
                 <div>
                   <label className="text-[9px] font-mono text-zinc-500 uppercase block mb-1">Account ID</label>
                   <div className="flex items-center gap-2">
-                    <p className="text-sm font-mono font-bold text-zinc-800 dark:text-white break-all">{transaction.to_account_id}</p>
+                    <p className="text-sm font-mono font-bold text-black dark:text-white break-all">{transaction.to_account_id}</p>
                     <button
                       onClick={() => copyToClipboard(transaction.to_account_id)}
                       className="p-1 rounded hover:bg-zinc-100 dark:hover:bg-zinc-900 text-zinc-500 hover:text-zinc-800 dark:hover:text-white transition-colors flex-shrink-0"
                       title="Copy to clipboard"
+                      type="button"
                     >
-                      <span className="material-symbols-sharp !text-[16px]">content_copy</span>
+                      <span className="material-symbols-sharp !text-[16px] leading-none" aria-hidden>
+                    content_copy
+                  </span>
                     </button>
                   </div>
                 </div>
@@ -649,20 +728,23 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, currentTheme, onToggleT
         </div>
 
         {/* Section 3: Technical Metadata */}
-        <div className="bg-white dark:bg-black border border-zinc-100 dark:border-zinc-800/50 rounded-2xl p-8 space-y-6">
-          <h3 className="text-[10px] font-mono font-bold uppercase tracking-widest text-zinc-400">Technical Metadata</h3>
+        <div className="border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#050505] transition-colors p-8 space-y-6">
+          <h3 className="text-[10px] font-mono font-semibold uppercase tracking-widest text-zinc-500">Technical Metadata</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {transaction.organization_id && (
               <div>
                 <label className="text-[9px] font-mono text-zinc-500 uppercase block mb-1">Organization ID</label>
                 <div className="flex items-center gap-2">
-                  <p className="text-sm font-mono font-bold text-zinc-800 dark:text-white break-all">{transaction.organization_id}</p>
+                  <p className="text-sm font-mono font-bold text-black dark:text-white break-all">{transaction.organization_id}</p>
                   <button
                     onClick={() => copyToClipboard(transaction.organization_id)}
                     className="p-1 rounded hover:bg-zinc-100 dark:hover:bg-zinc-900 text-zinc-500 hover:text-zinc-800 dark:hover:text-white transition-colors flex-shrink-0"
                     title="Copy to clipboard"
+                    type="button"
                   >
-                    <span className="material-symbols-sharp !text-[16px]">content_copy</span>
+                    <span className="material-symbols-sharp !text-[16px] leading-none" aria-hidden>
+                    content_copy
+                  </span>
                   </button>
                 </div>
               </div>
@@ -671,13 +753,16 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, currentTheme, onToggleT
               <div>
                 <label className="text-[9px] font-mono text-zinc-500 uppercase block mb-1">Idempotency Key</label>
                 <div className="flex items-center gap-2">
-                  <p className="text-sm font-mono font-bold text-zinc-800 dark:text-white break-all">{transaction.idempotency_key}</p>
+                  <p className="text-sm font-mono font-bold text-black dark:text-white break-all">{transaction.idempotency_key}</p>
                   <button
                     onClick={() => copyToClipboard(transaction.idempotency_key)}
                     className="p-1 rounded hover:bg-zinc-100 dark:hover:bg-zinc-900 text-zinc-500 hover:text-zinc-800 dark:hover:text-white transition-colors flex-shrink-0"
                     title="Copy to clipboard"
+                    type="button"
                   >
-                    <span className="material-symbols-sharp !text-[16px]">content_copy</span>
+                    <span className="material-symbols-sharp !text-[16px] leading-none" aria-hidden>
+                    content_copy
+                  </span>
                   </button>
                 </div>
               </div>
@@ -690,7 +775,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, currentTheme, onToggleT
             )}
             <div>
               <label className="text-[9px] font-mono text-zinc-500 uppercase block mb-1">Updated At</label>
-              <p className="text-sm font-mono text-zinc-800 dark:text-white">{formatDate(transaction.updated_at)}</p>
+              <p className="text-sm font-mono text-black dark:text-white">{formatDate(transaction.updated_at)}</p>
             </div>
           </div>
         </div>
@@ -701,48 +786,48 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, currentTheme, onToggleT
   const renderIdentityView = () => (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div>
-        <h2 className="text-3xl font-bold tracking-tighter mb-2 text-zinc-800 dark:text-white">Identity & Profile</h2>
-        <p className="text-sm font-mono text-zinc-500 uppercase tracking-widest">Business Information Node Context</p>
+        <h2 className="text-2xl font-medium tracking-tight text-black dark:text-white md:text-3xl mb-2">Identity & Profile</h2>
+        <p className="text-sm font-mono uppercase tracking-widest text-zinc-500 dark:text-zinc-400">Business Information Node Context</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         <div className="lg:col-span-8 space-y-6">
-          <div className="bg-white dark:bg-black border border-zinc-100 dark:border-zinc-800/50 rounded-2xl p-8 space-y-8 shadow-sm">
+          <div className="border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#050505] transition-colors p-8 space-y-8">
             <section className="space-y-6">
-              <h4 className="text-[10px] font-mono font-bold uppercase tracking-widest text-zinc-400 mb-4">Business Profile</h4>
+              <h4 className="mb-4 text-[10px] font-mono font-semibold uppercase tracking-widest text-zinc-500">Business Profile</h4>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-mono text-zinc-400 uppercase tracking-tight">Legal Entity Name</label>
+                  <label className="text-[10px] font-mono uppercase tracking-tight text-zinc-500">Legal Entity Name</label>
                   <input 
                     type="text" 
                     readOnly 
                     value={profile?.business_name || "Rails Institutional Bank"} 
-                    className="w-full bg-zinc-50/50 dark:bg-zinc-900/50 border border-zinc-100 dark:border-zinc-800 rounded-lg px-4 py-2 text-sm font-bold text-zinc-800 dark:text-white outline-none cursor-default" 
+                    className="w-full border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-black px-4 py-2 text-sm font-bold text-black dark:text-white outline-none transition-colors cursor-default" 
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-mono text-zinc-400 uppercase tracking-tight">Infrastructure ID</label>
+                  <label className="text-[10px] font-mono uppercase tracking-tight text-zinc-500">Infrastructure ID</label>
                   <input 
                     type="text" 
                     readOnly 
                     value={profile?.id?.slice(0, 12).toUpperCase() || "RAILS_INST_001"} 
-                    className="w-full bg-zinc-50/50 dark:bg-zinc-900/50 border border-zinc-100 dark:border-zinc-800 rounded-lg px-4 py-2 text-sm font-mono font-bold text-zinc-800 dark:text-white outline-none cursor-default" 
+                    className="w-full border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-black px-4 py-2 text-sm font-mono font-bold text-black dark:text-white outline-none transition-colors cursor-default" 
                   />
                 </div>
                 <div className="col-span-1 md:col-span-2 space-y-1.5">
-                  <label className="text-[10px] font-mono text-zinc-400 uppercase tracking-tight">Official Website</label>
+                  <label className="text-[10px] font-mono uppercase tracking-tight text-zinc-500">Official Website</label>
                   <input 
                     type="text" 
                     readOnly 
                     value="https://rails.finance" 
-                    className="w-full bg-zinc-50/50 dark:bg-zinc-900/50 border border-zinc-100 dark:border-zinc-800 rounded-lg px-4 py-2 text-sm font-bold text-zinc-500 dark:text-zinc-400 outline-none cursor-default" 
+                    className="w-full border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-black px-4 py-2 text-sm font-bold text-zinc-600 dark:text-zinc-400 outline-none transition-colors cursor-default" 
                   />
                 </div>
               </div>
             </section>
 
-            <section className="space-y-6 pt-8 border-t border-zinc-50 dark:border-zinc-900">
-              <h4 className="text-[10px] font-mono font-bold uppercase tracking-widest text-zinc-400 mb-4">Admin Identity Management</h4>
+            <section className="space-y-6 pt-8 border-t border-zinc-200 dark:border-zinc-800">
+              <h4 className="mb-4 text-[10px] font-mono font-semibold uppercase tracking-widest text-zinc-500">Admin Identity Management</h4>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-mono text-zinc-500 uppercase">First Name</label>
@@ -750,7 +835,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, currentTheme, onToggleT
                     type="text" 
                     readOnly 
                     value={profile?.name?.split(' ')[0] || "James"} 
-                    className="w-full bg-zinc-50/50 dark:bg-zinc-900/50 border border-zinc-100 dark:border-zinc-800 rounded-lg px-4 py-2 text-sm font-bold text-zinc-800 dark:text-white outline-none cursor-default" 
+                    className="w-full border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-black px-4 py-2 text-sm font-bold text-black dark:text-white outline-none transition-colors cursor-default" 
                   />
                 </div>
                 <div className="space-y-1.5">
@@ -759,7 +844,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, currentTheme, onToggleT
                     type="text" 
                     readOnly 
                     value={profile?.name?.split(' ')[1] || "Stork"} 
-                    className="w-full bg-zinc-50/50 dark:bg-zinc-900/50 border border-zinc-100 dark:border-zinc-800 rounded-lg px-4 py-2 text-sm font-bold text-zinc-800 dark:text-white outline-none cursor-default" 
+                    className="w-full border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-black px-4 py-2 text-sm font-bold text-black dark:text-white outline-none transition-colors cursor-default" 
                   />
                 </div>
                 <div className="col-span-1 md:col-span-2 space-y-1.5">
@@ -768,7 +853,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, currentTheme, onToggleT
                     type="text" 
                     readOnly 
                     value={profile?.email || 'james@rails.infra'} 
-                    className="w-full bg-zinc-50/50 dark:bg-zinc-900/50 border border-zinc-100 dark:border-zinc-800 rounded-lg px-4 py-2 text-sm font-mono font-bold text-zinc-800 dark:text-white outline-none cursor-default" 
+                    className="w-full border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-black px-4 py-2 text-sm font-mono font-bold text-black dark:text-white outline-none transition-colors cursor-default" 
                   />
                 </div>
               </div>
@@ -779,8 +864,8 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, currentTheme, onToggleT
         </div>
 
         <div className="lg:col-span-4 space-y-6">
-           <div className="bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-100 dark:border-zinc-800 rounded-2xl p-6 shadow-sm">
-             <h4 className="text-[10px] font-mono font-bold uppercase tracking-widest text-zinc-400 mb-4">Auth Service Policy</h4>
+           <div className="border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#050505] p-6 transition-colors">
+             <h4 className="mb-4 text-[10px] font-mono font-semibold uppercase tracking-widest text-zinc-500">Auth Service Policy</h4>
              <ul className="space-y-4">
                 <li className="flex items-center justify-between">
                    <span className="text-xs text-zinc-500">JWT Enforcement</span>
@@ -809,23 +894,25 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, currentTheme, onToggleT
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-500">
       <div className="flex justify-between items-center">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight text-zinc-800 dark:text-white">Transactions</h2>
-          <p className="text-sm text-zinc-500">View all transactions in your organization. Transactions are created via SDK.</p>
+          <h2 className="text-xl font-medium tracking-tight text-black dark:text-white">Transactions</h2>
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">View all transactions in your organization. Transactions are created via SDK.</p>
         </div>
       </div>
 
       {transactionsListError ? (
-        <div className="bg-amber-500/10 border border-amber-500/20 rounded-2xl p-6">
+        <div className="border border-amber-200 dark:border-amber-900/40 bg-amber-50/90 dark:bg-amber-950/25 p-6 transition-colors">
           <div className="flex items-center gap-3 mb-2">
-            <span className="material-symbols-sharp text-amber-500 !text-[18px]">info</span>
+            <span className="material-symbols-sharp shrink-0 text-amber-500 !text-[18px] leading-none" aria-hidden>
+              info
+            </span>
             <h3 className="text-sm font-bold text-amber-600 dark:text-amber-500">Unable to Load Transactions</h3>
           </div>
           <p className="text-sm text-zinc-600 dark:text-zinc-400">{transactionsListError}</p>
         </div>
       ) : isLoadingTransactionsList ? (
-        <div className="bg-white dark:bg-black border border-zinc-100 dark:border-zinc-800/50 rounded-2xl overflow-hidden shadow-sm">
+        <div className="border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#050505] transition-colors overflow-hidden">
           <table className="w-full text-left">
-            <thead className="text-[10px] font-mono text-zinc-400 dark:text-zinc-600 uppercase border-b border-zinc-50 dark:border-zinc-900 bg-zinc-50 dark:bg-zinc-950">
+            <thead className="text-[10px] font-mono font-semibold uppercase tracking-widest text-zinc-500 dark:text-zinc-400 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-black">
               <tr>
                 <th className="px-6 py-4">Transaction ID</th>
                 <th className="px-6 py-4">Type</th>
@@ -836,7 +923,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, currentTheme, onToggleT
                 <th className="px-6 py-4">Created</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-zinc-50 dark:divide-zinc-900 font-mono text-xs">
+            <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800 font-mono text-xs">
               {Array.from({ length: 10 }).map((_, i) => (
                 <tr key={i}>
                   <td className="px-6 py-5"><div className="h-4 w-32 bg-zinc-100 dark:bg-zinc-800 animate-pulse rounded"></div></td>
@@ -852,15 +939,20 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, currentTheme, onToggleT
           </table>
         </div>
       ) : transactionsList.length === 0 ? (
-        <div className="bg-white dark:bg-black border border-zinc-100 dark:border-zinc-800/50 rounded-2xl p-12 text-center">
-          <span className="material-symbols-sharp text-zinc-300 dark:text-zinc-700 !text-[48px] mb-4 block">swap_horiz</span>
-          <p className="text-sm font-mono text-zinc-400 dark:text-zinc-600 uppercase tracking-widest">No Transactions Found</p>
+        <div className="border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#050505] transition-colors p-12 text-center">
+          <span
+            className="material-symbols-sharp mx-auto mb-4 block text-zinc-300 dark:text-zinc-600 !text-[48px] leading-none"
+            aria-hidden
+          >
+            swap_horiz
+          </span>
+          <p className="text-sm font-mono uppercase tracking-widest text-zinc-500 dark:text-zinc-400">No Transactions Found</p>
           <p className="text-xs text-zinc-500 dark:text-zinc-500 mt-2">Transactions are created via SDK, not through the dashboard.</p>
         </div>
       ) : (
-        <div className="bg-white dark:bg-black border border-zinc-100 dark:border-zinc-800/50 rounded-2xl overflow-hidden shadow-sm">
+        <div className="border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#050505] transition-colors overflow-hidden">
           <table className="w-full text-left">
-            <thead className="text-[10px] font-mono text-zinc-400 dark:text-zinc-600 uppercase border-b border-zinc-50 dark:border-zinc-900 bg-zinc-50 dark:bg-zinc-950">
+            <thead className="text-[10px] font-mono font-semibold uppercase tracking-widest text-zinc-500 dark:text-zinc-400 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-black">
               <tr>
                 <th className="px-6 py-4">Transaction ID</th>
                 <th className="px-6 py-4">Type</th>
@@ -871,21 +963,21 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, currentTheme, onToggleT
                 <th className="px-6 py-4">Created</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-zinc-50 dark:divide-zinc-900 font-mono text-xs">
+            <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800 font-mono text-xs">
               {transactionsList.map((tx) => (
                 <tr 
                   key={tx.id} 
                   onClick={() => setSelectedTransactionId(tx.id)}
-                  className="hover:bg-zinc-50 dark:hover:bg-zinc-900/30 transition-colors cursor-pointer"
+                  className="hover:bg-zinc-50 dark:hover:bg-zinc-900/50 transition-colors cursor-pointer"
                 >
                   <td className="px-6 py-5">
-                    <span className="text-zinc-700 dark:text-white font-bold">{tx.id.slice(0, 8)}...</span>
+                    <span className="font-bold text-black dark:text-white">{tx.id.slice(0, 8)}...</span>
                   </td>
                   <td className="px-6 py-5">
                     <span className="text-zinc-500 dark:text-zinc-300 uppercase">{tx.transaction_kind}</span>
                   </td>
                   <td className="px-6 py-5">
-                    <span className="text-zinc-800 dark:text-white font-bold">
+                    <span className="text-black dark:text-white font-bold">
                       {(tx.amount / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {tx.currency}
                     </span>
                   </td>
@@ -941,18 +1033,22 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, currentTheme, onToggleT
                   <button 
                     onClick={() => setSelectedTransactionId(null)}
                     className="p-2 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors text-zinc-500 hover:text-zinc-800 dark:hover:text-white"
+                    type="button"
+                    aria-label="Back to transactions"
                   >
-                    <span className="material-symbols-sharp">arrow_back</span>
+                    <span className="material-symbols-sharp !text-[20px] leading-none" aria-hidden>
+                      arrow_back
+                    </span>
                   </button>
                   <div>
-                    <h2 className="text-2xl font-bold tracking-tight text-zinc-800 dark:text-white">Transaction</h2>
-                    <p className="text-sm text-zinc-500">Loading transaction details...</p>
+                    <h2 className="text-xl font-medium tracking-tight text-black dark:text-white">Transaction</h2>
+                    <p className="text-sm text-zinc-600 dark:text-zinc-400">Loading transaction details...</p>
                   </div>
                 </div>
-                <div className="bg-white dark:bg-black border border-zinc-100 dark:border-zinc-800/50 rounded-2xl p-12">
+                <div className="border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#050505] transition-colors p-12">
                   <div className="space-y-4">
                     {Array.from({ length: 6 }).map((_, i) => (
-                      <div key={i} className="h-16 bg-zinc-50 dark:bg-zinc-900 rounded-lg animate-pulse"></div>
+                      <div key={i} className="h-16 animate-pulse border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-black" />
                     ))}
                   </div>
                 </div>
@@ -966,17 +1062,23 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, currentTheme, onToggleT
                   <button 
                     onClick={() => setSelectedTransactionId(null)}
                     className="p-2 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors text-zinc-500 hover:text-zinc-800 dark:hover:text-white"
+                    type="button"
+                    aria-label="Back to transactions"
                   >
-                    <span className="material-symbols-sharp">arrow_back</span>
+                    <span className="material-symbols-sharp !text-[20px] leading-none" aria-hidden>
+                      arrow_back
+                    </span>
                   </button>
                   <div>
-                    <h2 className="text-2xl font-bold tracking-tight text-zinc-800 dark:text-white">Transaction</h2>
-                    <p className="text-sm text-zinc-500">Transaction details and metadata</p>
+                    <h2 className="text-xl font-medium tracking-tight text-black dark:text-white">Transaction</h2>
+                    <p className="text-sm text-zinc-600 dark:text-zinc-400">Transaction details and metadata</p>
                   </div>
                 </div>
-                <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-6">
+                <div className="border border-red-200 dark:border-red-900/40 bg-red-50/80 dark:bg-red-950/20 p-6 transition-colors">
                   <div className="flex items-center gap-3 mb-2">
-                    <span className="material-symbols-sharp text-red-500 !text-[18px]">error</span>
+                    <span className="material-symbols-sharp shrink-0 text-red-500 !text-[18px] leading-none" aria-hidden>
+                      error
+                    </span>
                     <h3 className="text-sm font-bold text-red-600 dark:text-red-500">Unable to Load Transaction</h3>
                   </div>
                   <p className="text-sm text-zinc-600 dark:text-zinc-400">{transactionDetailsError}</p>
@@ -992,29 +1094,33 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, currentTheme, onToggleT
       case 'Overview':
         if (useOverviewV2) {
           return (
-            <DashboardOverviewV2 
-              onGetStarted={() => setActiveTab('Accounts')}
+            <DashboardOverviewV2
+              onGetStarted={() => router.push('/dashboard/accounts')}
               overviewStats={overviewStats}
               isLoadingOverviewStats={isLoadingOverviewStats}
               overviewCurrency={overviewCurrency}
-              session={session}
             />
           );
         }
         return (
           <div className="space-y-8 animate-in fade-in duration-500">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-4">
               {overviewTiles.map((tile) => (
-                <div key={tile.label} className="bg-white dark:bg-black border border-zinc-100 dark:border-zinc-800/50 p-4 rounded-xl flex flex-col justify-between shadow-sm">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-[9px] font-mono font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest">{tile.label}</span>
-                    <span className={`w-1.5 h-1.5 rounded-full ${overviewStatsError ? 'bg-amber-500 animate-pulse' : 'bg-emerald-500'}`}></span>
+                <div
+                  key={tile.label}
+                  className="border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#050505] p-6 transition-colors flex flex-col justify-between"
+                >
+                  <div className="flex items-center justify-between mb-6">
+                    <span className="text-[10px] font-mono font-semibold text-zinc-500 tracking-widest uppercase">{tile.label}</span>
+                    <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${overviewStatsError ? 'animate-pulse bg-amber-500' : 'bg-emerald-500'}`} />
                   </div>
-                  <div className="flex items-baseline justify-between">
-                    <span className={`text-lg font-bold tracking-tight text-zinc-800 dark:text-white ${isLoadingOverviewStats ? 'animate-pulse' : ''}`}>
+                  <div className="flex items-end justify-between">
+                    <span
+                      className={`text-3xl font-medium tracking-tight text-black dark:text-white ${isLoadingOverviewStats ? 'animate-pulse' : ''}`}
+                    >
                       {tile.value}
                     </span>
-                    <span className="text-[10px] font-mono text-zinc-400 dark:text-zinc-600">{tile.sublabel}</span>
+                    <span className="text-xs font-mono text-zinc-500">{tile.sublabel}</span>
                   </div>
                 </div>
               ))}
@@ -1029,22 +1135,24 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, currentTheme, onToggleT
           <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-500">
             <div className="flex justify-between items-center">
               <div>
-                <h2 className="text-2xl font-bold tracking-tight text-zinc-800 dark:text-white">Financial Accounts</h2>
-                <p className="text-sm text-zinc-500">System ledger accounts. Click row to inspect details.</p>
+                <h2 className="text-xl font-medium tracking-tight text-black dark:text-white">Financial Accounts</h2>
+                <p className="text-sm text-zinc-600 dark:text-zinc-400">System ledger accounts. Click row to inspect details.</p>
               </div>
             </div>
             
             {accountsError && (
-              <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-4 mb-4">
+              <div className="border border-red-200 dark:border-red-900/40 bg-red-50/80 dark:bg-red-950/20 p-4 mb-4 transition-colors">
                 <div className="flex items-center gap-2">
-                  <span className="material-symbols-sharp text-red-500 !text-[16px]">error</span>
+                  <span className="material-symbols-sharp shrink-0 text-red-500 !text-[16px] leading-none" aria-hidden>
+                    error
+                  </span>
                   <p className="text-xs font-mono text-red-600 dark:text-red-500">{accountsError}</p>
                 </div>
               </div>
             )}
-            <div className="bg-white dark:bg-black border border-zinc-100 dark:border-zinc-800/50 rounded-2xl overflow-hidden shadow-sm">
+            <div className="border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#050505] transition-colors overflow-hidden">
               <table className="w-full text-left">
-                <thead className="text-[10px] font-mono text-zinc-400 dark:text-zinc-600 uppercase border-b border-zinc-50 dark:border-zinc-900 bg-zinc-50 dark:bg-zinc-950">
+                <thead className="text-[10px] font-mono font-semibold uppercase tracking-widest text-zinc-500 dark:text-zinc-400 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-black">
                   <tr>
                     <th className="px-6 py-4">Account Number / ID</th>
                     <th className="px-6 py-4">Type</th>
@@ -1052,7 +1160,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, currentTheme, onToggleT
                     <th className="px-6 py-4 text-right">Balance</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-zinc-50 dark:divide-zinc-900 font-mono text-xs">
+                <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800 font-mono text-xs">
                   {isLoadingAccounts ? (
                     Array.from({ length: 10 }).map((_, i) => (
                       <tr key={i}>
@@ -1065,8 +1173,13 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, currentTheme, onToggleT
                   ) : accounts.length === 0 ? (
                     <tr>
                       <td colSpan={4} className="px-6 py-12 text-center">
-                        <span className="material-symbols-sharp text-zinc-300 dark:text-zinc-700 !text-[32px] mb-2 block">account_balance</span>
-                        <p className="text-sm font-mono text-zinc-400 dark:text-zinc-600 uppercase tracking-widest">No Accounts Found</p>
+                        <span
+                          className="material-symbols-sharp mx-auto mb-2 block text-zinc-300 dark:text-zinc-600 !text-[32px] leading-none"
+                          aria-hidden
+                        >
+                          account_balance
+                        </span>
+                        <p className="text-sm font-mono uppercase tracking-widest text-zinc-500 dark:text-zinc-400">No Accounts Found</p>
                         <p className="text-xs text-zinc-500 dark:text-zinc-500 mt-2">Accounts are created via SDK, not through the dashboard.</p>
                       </td>
                     </tr>
@@ -1075,10 +1188,10 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, currentTheme, onToggleT
                       <tr 
                         key={acc.id} 
                         onClick={() => setSelectedAccountId(acc.id)}
-                        className="hover:bg-zinc-50 dark:hover:bg-zinc-900/30 transition-colors group cursor-pointer"
+                        className="hover:bg-zinc-50 dark:hover:bg-zinc-900/50 transition-colors group cursor-pointer"
                       >
                         <td className="px-6 py-5">
-                          <span className="text-zinc-700 dark:text-white font-bold block group-hover:underline underline-offset-4">{acc.account_number}</span>
+                          <span className="block font-bold text-black dark:text-white group-hover:underline underline-offset-4">{acc.account_number}</span>
                         </td>
                         <td className="px-6 py-5">
                           <span className="text-zinc-500 dark:text-zinc-300 font-medium">{acc.account_type}</span>
@@ -1088,7 +1201,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, currentTheme, onToggleT
                             {acc.status}
                           </span>
                         </td>
-                        <td className="px-6 py-5 text-right font-bold text-zinc-800 dark:text-white">{acc.balance} {acc.currency}</td>
+                        <td className="px-6 py-5 text-right font-bold text-black dark:text-white">{acc.balance} {acc.currency}</td>
                       </tr>
                     ))
                   )}
@@ -1109,14 +1222,14 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, currentTheme, onToggleT
       case 'Settlements':
         return (
           <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-500">
-            <h2 className="text-2xl font-bold tracking-tight text-zinc-800 dark:text-white">Settlements</h2>
+            <h2 className="text-xl font-medium tracking-tight text-black dark:text-white">Settlements</h2>
             <div className="p-12 text-center text-zinc-400 dark:text-zinc-600 font-mono uppercase tracking-[0.2em] animate-pulse">Endpoint in Stealth... Access Denied</div>
           </div>
         );
       case 'Payments':
         return (
           <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-500">
-            <h2 className="text-2xl font-bold tracking-tight text-zinc-800 dark:text-white">Universal Payments</h2>
+            <h2 className="text-xl font-medium tracking-tight text-black dark:text-white">Universal Payments</h2>
             <div className="p-12 text-center text-zinc-400 dark:text-zinc-600 font-mono uppercase tracking-[0.2em] animate-pulse">Payment Engine Initializing...</div>
           </div>
         );
@@ -1126,41 +1239,48 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, currentTheme, onToggleT
           <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-500">
             <div className="flex justify-between items-center">
               <div>
-                <h2 className="text-2xl font-bold tracking-tight text-zinc-800 dark:text-white">Immutable Ledger</h2>
-                <p className="text-sm text-zinc-500">View ledger entries and transactions. Ledger entries are created via SDK.</p>
+                <h2 className="text-xl font-medium tracking-tight text-black dark:text-white">Immutable Ledger</h2>
+                <p className="text-sm text-zinc-600 dark:text-zinc-400">View ledger entries and transactions. Ledger entries are created via SDK.</p>
               </div>
             </div>
             
             {ledgerError && (
-              <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-4">
+              <div className="border border-red-200 dark:border-red-900/40 bg-red-50/80 dark:bg-red-950/20 p-4 transition-colors">
                 <div className="flex items-center gap-2">
-                  <span className="material-symbols-sharp text-red-500 !text-[16px]">error</span>
+                  <span className="material-symbols-sharp shrink-0 text-red-500 !text-[16px] leading-none" aria-hidden>
+                    error
+                  </span>
                   <p className="text-xs font-mono text-red-600 dark:text-red-500">{ledgerError}</p>
                 </div>
               </div>
             )}
             
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <div className="bg-white dark:bg-black border border-zinc-100 dark:border-zinc-800/50 rounded-2xl p-6">
-                <h3 className="text-sm font-bold text-zinc-800 dark:text-white mb-4">Recent Transactions</h3>
+              <div className="border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#050505] transition-colors p-6">
+                <h3 className="mb-4 text-sm font-medium text-black dark:text-white">Recent Transactions</h3>
                 {isLoadingLedger ? (
                   <div className="space-y-3">
                     {Array.from({ length: 10 }).map((_, i) => (
-                      <div key={i} className="h-16 bg-zinc-50 dark:bg-zinc-900 rounded-lg animate-pulse"></div>
+                      <div key={i} className="h-16 animate-pulse border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-black" />
                     ))}
                   </div>
                 ) : ledgerEntries.length === 0 ? (
                   <div className="text-center py-8">
-                    <span className="material-symbols-sharp text-zinc-300 dark:text-zinc-700 !text-[32px] mb-2 block">receipt_long</span>
-                    <p className="text-xs font-mono text-zinc-400 dark:text-zinc-600">No transactions found</p>
+                    <span
+                      className="material-symbols-sharp mx-auto mb-2 block text-zinc-300 dark:text-zinc-600 !text-[32px] leading-none"
+                      aria-hidden
+                    >
+                      receipt_long
+                    </span>
+                    <p className="text-xs font-mono text-zinc-500 dark:text-zinc-400">No transactions found</p>
                   </div>
                 ) : (
                   <>
                     <div className="space-y-3">
                       {ledgerEntries.map((entry) => (
-                        <div key={entry.id} className="bg-zinc-50 dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 rounded-lg p-3">
+                        <div key={entry.id} className="border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-[#050505] p-3 transition-colors">
                           <div className="flex items-center justify-between mb-1">
-                            <span className="text-xs font-mono font-bold text-zinc-800 dark:text-white">
+                            <span className="text-xs font-mono font-bold text-black dark:text-white">
                               {entry.external_transaction_id || entry.transaction_id.slice(0, 8)}
                             </span>
                             <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase ${
@@ -1175,7 +1295,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, currentTheme, onToggleT
                             <span className="text-xs font-mono text-zinc-500 dark:text-zinc-400">
                               {entry.external_account_id || entry.ledger_account_id.slice(0, 8)}
                             </span>
-                            <span className="text-xs font-mono font-bold text-zinc-800 dark:text-white">
+                            <span className="text-xs font-mono font-bold text-black dark:text-white">
                               {typeof entry.amount === 'number' 
                                 ? entry.amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
                                 : entry.amount} {entry.currency}
@@ -1198,13 +1318,13 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, currentTheme, onToggleT
                 )}
               </div>
               
-              <div className="bg-white dark:bg-black border border-zinc-100 dark:border-zinc-800/50 rounded-2xl p-6">
-                <h3 className="text-sm font-bold text-zinc-800 dark:text-white mb-4">Ledger Summary</h3>
+              <div className="border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#050505] transition-colors p-6">
+                <h3 className="mb-4 text-sm font-medium text-black dark:text-white">Ledger Summary</h3>
                 <div className="space-y-4">
-                  <div className="bg-zinc-50 dark:bg-zinc-900 rounded-lg p-4">
+                  <div className="border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-black p-4 transition-colors">
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-xs font-mono text-zinc-500 dark:text-zinc-400">Total Entries</span>
-                      <span className="text-lg font-bold text-zinc-800 dark:text-white">
+                      <span className="text-lg font-bold text-black dark:text-white">
                         {ledgerPagination?.total_count ?? ledgerEntries.length}
                       </span>
                     </div>
@@ -1230,7 +1350,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, currentTheme, onToggleT
       case 'Infrastructure':
         return (
           <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-500">
-            <h2 className="text-2xl font-bold tracking-tight text-zinc-800 dark:text-white">Infrastructure Status</h2>
+            <h2 className="text-xl font-medium tracking-tight text-black dark:text-white">Infrastructure Status</h2>
             <div className="p-12 text-center text-zinc-400 dark:text-zinc-600 font-mono uppercase tracking-[0.2em] animate-pulse">Scanning Global Nodes...</div>
           </div>
         );
@@ -1241,103 +1361,168 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, currentTheme, onToggleT
   };
 
   return (
-    <div className={`flex h-screen bg-white dark:bg-[#09090b] text-zinc-800 dark:text-[#fafafa] overflow-hidden selection:bg-zinc-100 dark:selection:bg-white selection:text-zinc-900 dark:selection:text-black transition-all duration-700 ${isProduction ? 'shadow-[inset_0_0_100px_rgba(217,119,6,0.05)]' : ''}`}>
-      <aside className="w-64 border-r border-zinc-100 dark:border-zinc-800/50 flex flex-col bg-zinc-50 dark:bg-black relative z-20">
-        <div className="p-6">
-          <div className="flex items-center gap-2 mb-8">
-            <img src={currentTheme === 'dark' ? '/logo-white.svg' : '/logo.svg'} alt="Rails" className="w-5 h-5 object-contain" />
-            <span className="font-heading font-bold text-lg tracking-tight text-zinc-800 dark:text-white">Rails</span>
-            <div className="flex flex-col ml-auto">
-              <span className={`text-[9px] font-mono px-1.5 py-0.5 rounded uppercase font-bold text-center ${isProduction ? 'bg-amber-950 text-amber-500 shadow-lg shadow-amber-900/20' : 'bg-zinc-200 dark:bg-zinc-900 text-zinc-500 dark:text-zinc-500'}`}>
-                {isProduction ? 'Production' : 'Sandbox'}
+    <div
+      className={`flex h-screen min-h-0 bg-zinc-50 dark:bg-[#0a0a0a] text-zinc-900 dark:text-zinc-100 overflow-hidden transition-colors duration-200 ${isProduction ? 'shadow-[inset_0_0_100px_rgba(217,119,6,0.05)]' : ''}`}
+    >
+      <aside className="w-64 border-r border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#050505] flex flex-col transition-colors z-20 relative">
+        <div className="h-16 flex items-center px-6 justify-between border-b border-transparent shrink-0">
+          <Link href="/" className="flex items-center gap-3 outline-none">
+            <div className="w-5 h-5 bg-black dark:bg-white text-white dark:text-black flex items-center justify-center rounded-[3px]">
+              <span className="material-symbols-sharp !text-[12px] leading-none" aria-hidden>
+                local_library
               </span>
             </div>
-          </div>
-          
-          <nav className="space-y-1">
-            {navItems.map((item) => (
-              <button
-                key={item.name}
-                onClick={() => { setActiveTab(item.name); setSelectedAccountId(null); setSelectedTransactionId(null); }}
-                className={`w-full flex items-center gap-3 px-3 py-2 text-sm rounded-lg transition-colors cursor-pointer outline-none ${
-                  activeTab === item.name 
-                    ? 'bg-zinc-800 dark:bg-white text-white dark:text-black font-semibold shadow-sm' 
-                    : 'text-zinc-500 dark:text-zinc-500 hover:text-zinc-800 dark:hover:text-white hover:bg-white dark:hover:bg-zinc-900'
-                }`}
-              >
-                <span className="material-symbols-sharp">{item.icon}</span>
-                {item.name}
-              </button>
-            ))}
-          </nav>
+            <span className="font-semibold text-lg tracking-tight text-black dark:text-white">Rails</span>
+          </Link>
+          <span
+            className={`inline-flex items-center border font-mono text-[10px] font-semibold leading-none tracking-wider px-2 py-1 ${
+              isProduction
+                ? 'border-amber-400 bg-amber-100 text-amber-950 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-100'
+                : 'border-zinc-300 bg-zinc-200 text-zinc-800 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300'
+            }`}
+          >
+            {isProduction ? 'PRODUCTION' : 'SANDBOX'}
+          </span>
+        </div>
 
-          <div className="mt-8 pt-8 border-t border-zinc-100 dark:border-zinc-900">
-            <p className="text-[10px] font-mono text-zinc-400 dark:text-zinc-600 uppercase tracking-widest mb-4 font-bold">Environment</p>
-            <div className="flex bg-zinc-100 dark:bg-zinc-900/50 p-1 rounded-lg border border-zinc-200 dark:border-zinc-800">
-              <button onClick={() => dispatch(setEnvironment('sandbox'))} className={`flex-1 py-1.5 text-[10px] font-bold rounded transition-all cursor-pointer ${!isProduction ? 'bg-white dark:bg-zinc-800 text-zinc-800 dark:text-white shadow-sm' : 'text-zinc-500 hover:text-zinc-300'}`}>SANDBOX</button>
-              <button onClick={() => dispatch(setEnvironment('production'))} className={`flex-1 py-1.5 text-[10px] font-bold rounded transition-all cursor-pointer ${isProduction ? 'bg-amber-950 text-amber-500 shadow-sm' : 'text-zinc-500 hover:text-zinc-300'}`}>PROD</button>
-            </div>
+        <DashboardSidebarPrimaryNav activeTab={activeTab} />
+
+        <div className="mt-8 px-6 pb-2">
+          <div className="mb-4 text-[10px] font-mono font-semibold uppercase tracking-widest text-zinc-500">Environment</div>
+        </div>
+        <div className="px-4">
+          <div className="flex bg-zinc-100 dark:bg-black p-1 border border-zinc-200 dark:border-zinc-800 transition-colors">
+            <button
+              type="button"
+              onClick={() => dispatch(setEnvironment('sandbox'))}
+              className={`flex-1 cursor-pointer border py-1.5 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:ring-offset-zinc-100 dark:focus-visible:ring-offset-black ${
+                !isProduction
+                  ? 'border-zinc-200 bg-white text-black shadow-sm focus-visible:ring-zinc-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:focus-visible:ring-zinc-500'
+                  : 'border-transparent text-zinc-500 hover:text-zinc-700 focus-visible:ring-amber-400/60 dark:hover:text-zinc-300 dark:focus-visible:ring-amber-600/50'
+              }`}
+            >
+              SANDBOX
+            </button>
+            <button
+              type="button"
+              onClick={() => dispatch(setEnvironment('production'))}
+              className={`flex-1 cursor-pointer border py-1.5 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:ring-offset-zinc-100 dark:focus-visible:ring-offset-black ${
+                isProduction
+                  ? 'border-amber-300 bg-amber-100 text-amber-950 focus-visible:ring-amber-500 dark:border-amber-700 dark:bg-amber-950/50 dark:text-amber-100 dark:focus-visible:ring-amber-400'
+                  : 'border-transparent text-zinc-500 hover:text-amber-800 focus-visible:ring-amber-400/50 dark:hover:text-amber-200/90 dark:focus-visible:ring-amber-600/50'
+              }`}
+            >
+              PROD
+            </button>
           </div>
         </div>
-        
-        <div className="mt-auto p-6 border-t border-zinc-100 dark:border-zinc-800/50">
-          <button 
-            onClick={() => { setActiveTab('Identity'); setSelectedAccountId(null); setSelectedTransactionId(null); }}
-            className={`w-full flex items-center gap-3 mb-6 cursor-pointer p-2 -m-2 rounded-xl transition-colors text-left outline-none ${activeTab === 'Identity' ? 'bg-white dark:bg-zinc-900' : 'hover:bg-white dark:hover:bg-zinc-900'}`}
+
+        <div className="mt-auto px-4 py-6 border-t border-zinc-200 dark:border-zinc-900 transition-colors">
+          <Link
+            href="/dashboard/identity"
+            data-testid="dashboard-nav-identity"
+            className={`mb-6 flex items-center gap-3 px-3 py-2.5 text-left text-sm font-medium outline-none transition-colors ${
+              activeTab === 'Identity'
+                ? 'bg-black text-white shadow-sm dark:bg-white dark:text-black'
+                : 'text-zinc-600 hover:bg-zinc-100 hover:text-black dark:text-zinc-400 dark:hover:bg-zinc-900/50 dark:hover:text-white'
+            }`}
           >
             {profile?.avatar_url ? (
-              <img src={profile.avatar_url} alt={profile.name} className="w-8 h-8 rounded-full object-cover border border-zinc-200 dark:border-zinc-700 shadow-sm" />
+              <img
+                src={profile.avatar_url}
+                alt={profile.name ?? 'Profile'}
+                className={`h-8 w-8 rounded-full object-cover ${
+                  activeTab === 'Identity'
+                    ? 'border border-white/30 dark:border-black/15'
+                    : 'border border-zinc-200 dark:border-zinc-700'
+                }`}
+              />
             ) : (
-              <div className="w-8 h-8 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-[10px] font-bold border border-zinc-200 dark:border-zinc-700 text-zinc-500 dark:text-zinc-300">
-                {profile?.name ? profile.name.split(' ').map((n: string) => n[0]).join('').toUpperCase() : 'JS'}
+              <div
+                className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-medium transition-colors ${
+                  activeTab === 'Identity'
+                    ? 'border border-white/25 bg-white/15 text-white dark:border-black/10 dark:bg-black/5 dark:text-black'
+                    : 'border border-transparent bg-zinc-200 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300'
+                }`}
+              >
+                {profile?.name
+                  ? profile.name
+                      .split(' ')
+                      .map((n: string) => n[0])
+                      .join('')
+                      .toUpperCase()
+                  : 'JS'}
               </div>
             )}
-            <div className="flex-1 overflow-hidden">
-              <p className="text-xs font-semibold truncate text-zinc-800 dark:text-white">{profile?.name || "James Stork"}</p>
-              <p className="text-[10px] text-zinc-400 dark:text-zinc-500 truncate font-mono">{isProduction ? 'node_live_9221' : 'node_dev_4410'}</p>
+            <div className="flex min-w-0 flex-col">
+              <span
+                className={`truncate text-sm font-semibold leading-tight ${
+                  activeTab === 'Identity' ? 'text-white dark:text-black' : 'text-black dark:text-white'
+                }`}
+              >
+                {profile?.name || 'James Stork'}
+              </span>
+              <span
+                className={`mt-0.5 truncate font-mono text-[10px] ${
+                  activeTab === 'Identity'
+                    ? 'text-zinc-300 dark:text-zinc-600'
+                    : 'text-zinc-500 dark:text-zinc-500'
+                }`}
+              >
+                {isProduction ? 'node_live_9221' : 'node_dev_4410'}
+              </span>
             </div>
-          </button>
-          <button 
+          </Link>
+          <button
+            type="button"
             onClick={onLogout}
-            className="w-full flex items-center justify-center gap-2 px-3 py-2 text-xs font-medium text-zinc-500 dark:text-zinc-500 hover:text-zinc-800 dark:hover:text-white border border-zinc-200 dark:border-zinc-800 rounded-lg transition-colors cursor-pointer"
+            data-testid="dashboard-sign-out"
+            className="w-full flex items-center justify-center gap-2 py-2 px-4 border border-zinc-200 dark:border-zinc-800 text-sm font-medium text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-colors cursor-pointer"
           >
-            <span className="material-symbols-sharp !text-[14px]">logout</span>
+            <span className="material-symbols-sharp shrink-0 !text-[16px] leading-none" aria-hidden>
+              logout
+            </span>
             Sign Out
           </button>
         </div>
       </aside>
 
-      <div className="flex-1 flex flex-col h-screen overflow-hidden relative">
+      <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden relative bg-zinc-50 dark:bg-[#0a0a0a]">
         {isProduction && (
-          <div className="bg-amber-950/10 border-b border-amber-900/30 px-8 py-2.5 flex items-center justify-between animate-in slide-in-from-top duration-300">
+          <div
+            role="alert"
+            className="flex shrink-0 animate-in items-center justify-between border-b border-amber-300 bg-amber-100 px-8 py-2.5 duration-300 slide-in-from-top dark:border-amber-800 dark:bg-amber-950/50"
+          >
             <div className="flex items-center gap-3">
-              <span className="material-symbols-sharp text-amber-500 animate-pulse !text-[18px]">warning</span>
-              <span className="text-[10px] font-mono font-bold text-amber-500 uppercase tracking-widest">
+              <span
+                className="material-symbols-sharp shrink-0 text-amber-900 dark:text-amber-300 !text-[18px] leading-none"
+                aria-hidden
+              >
+                warning
+              </span>
+              <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-amber-950 dark:text-amber-100">
                 Live Production Environment — Real Assets at Risk
               </span>
             </div>
           </div>
         )}
 
-        <main className="flex-1 overflow-y-auto no-scrollbar bg-white dark:bg-zinc-950/50 transition-colors">
-          <header className="h-16 border-b border-zinc-50 dark:border-zinc-800/50 flex items-center justify-between px-8 bg-white/40 dark:bg-black/40 backdrop-blur-sm sticky top-0 z-10 transition-colors">
-            <h1 className="text-lg font-bold tracking-tight text-zinc-800 dark:text-white">{activeTab}</h1>
+        <main className="flex-1 flex flex-col min-h-0 min-w-0 overflow-hidden transition-colors">
+          <header className="h-16 shrink-0 px-8 flex items-center justify-between border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50/90 dark:bg-[#0a0a0a]/90 backdrop-blur-sm transition-colors z-10">
+            <h1 className="text-xl font-medium tracking-tight text-black dark:text-white">{activeTab}</h1>
             <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                <span className="text-[10px] font-mono text-emerald-600 dark:text-emerald-500 uppercase font-bold">Nominal</span>
+              <div className="flex items-center gap-2 px-3 py-1 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900 rounded-full">
+                <div className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+                <span className="text-[10px] font-mono font-semibold text-emerald-700 dark:text-emerald-500 uppercase tracking-widest">
+                  Nominal
+                </span>
               </div>
-              <button 
-                onClick={onToggleTheme}
-                className="p-2 text-zinc-400 dark:text-zinc-500 hover:text-zinc-800 dark:hover:text-white transition-colors flex items-center justify-center cursor-pointer"
-              >
-                <span className="material-symbols-sharp">{currentTheme === 'dark' ? 'light_mode' : 'dark_mode'}</span>
-              </button>
+              <DashboardMaterialThemeToggle />
             </div>
           </header>
 
-          <div className="p-8 max-w-6xl mx-auto pb-32">
-            {renderContent()}
+          <div className="flex-1 min-h-0 overflow-y-auto no-scrollbar">
+            <div className="p-8 max-w-6xl mx-auto w-full pb-32">{renderContent()}</div>
           </div>
         </main>
       </div>

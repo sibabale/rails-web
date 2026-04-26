@@ -1,12 +1,23 @@
 import React, { useState } from 'react';
+import Link from 'next/link';
+import { Button } from './marketing/atoms/Button';
+import { Container } from './marketing/atoms/Container';
+import { Heading } from './marketing/atoms/Heading';
+import { Text } from './marketing/atoms/Text';
+import {
+  AUTH_ERROR_BOX,
+  AUTH_INPUT,
+  AUTH_LABEL,
+  AUTH_LINK_BACK,
+  AUTH_SUCCESS_BOX,
+} from './marketing/marketingAuthUi';
 import { passwordResetApi } from '../lib/api';
 
 interface ForgotPasswordPageProps {
-  onBack: () => void;
   onSuccess: () => void;
 }
 
-const ForgotPasswordPage: React.FC<ForgotPasswordPageProps> = ({ onBack, onSuccess }) => {
+const ForgotPasswordPage: React.FC<ForgotPasswordPageProps> = ({ onSuccess }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -31,102 +42,113 @@ const ForgotPasswordPage: React.FC<ForgotPasswordPageProps> = ({ onBack, onSucce
 
   if (success) {
     return (
-      <div className="pt-32 pb-24 max-w-7xl mx-auto px-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
-        <div className="max-w-md mx-auto">
-          <div className="mb-12 text-center">
-            <button 
-              onClick={onBack}
-              className="inline-flex items-center gap-2 text-sm text-zinc-400 hover:text-zinc-800 dark:hover:text-white transition-colors mb-8 group"
-            >
-              <span className="material-symbols-sharp !text-[18px] transform group-hover:-translate-x-1 transition-transform">arrow_back</span>
-              Back to login
-            </button>
-            
-            <div className="mb-8">
-              <span className="material-symbols-sharp !text-[48px] text-green-500 dark:text-green-400 mb-4">check_circle</span>
+      <Container className="min-h-[70vh] flex flex-col justify-center items-center py-16 !border-0 px-4 w-full">
+        <div className="w-full max-w-sm mx-auto text-center">
+          <Link href="/login" className={AUTH_LINK_BACK}>
+            <span className="material-symbols-sharp" style={{ fontSize: '1rem' }}>
+              arrow_back
+            </span>
+            <span>Back to login</span>
+          </Link>
+
+          <div className={AUTH_SUCCESS_BOX}>
+            <div className="mb-6 flex justify-center">
+              <span className="material-symbols-sharp text-emerald-600 dark:text-emerald-400" style={{ fontSize: '3rem' }}>
+                check_circle
+              </span>
             </div>
-            
-            <h1 className="text-4xl font-bold tracking-tighter mb-4 text-zinc-800 dark:text-white">
-              Check Your Email
-            </h1>
-            <p className="text-zinc-500 dark:text-zinc-400 text-sm font-light mb-8">
+            <Heading level={2} className="!text-3xl mb-4">
+              Check your email
+            </Heading>
+            <Text variant="p" className="!text-sm mb-6">
               If an account exists with that email, a password reset link has been sent.
-            </p>
-            <p className="text-zinc-400 dark:text-zinc-500 text-xs font-mono">
+            </Text>
+            <Text variant="micro" className="!text-zinc-500">
               The link will expire in 1 hour.
-            </p>
+            </Text>
+            <div className="mt-8">
+              <Button type="button" variant="secondary" className="px-6" onClick={() => onSuccess()}>
+                Return to sign in
+              </Button>
+            </div>
           </div>
         </div>
-      </div>
+      </Container>
     );
   }
 
   return (
-    <div className="pt-32 pb-24 max-w-7xl mx-auto px-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
-      <div className="max-w-md mx-auto">
-        <div className="mb-12 text-center">
-          <button 
-            onClick={onBack}
-            className="inline-flex items-center gap-2 text-sm text-zinc-400 hover:text-zinc-800 dark:hover:text-white transition-colors mb-8 group"
-          >
-            <span className="material-symbols-sharp !text-[18px] transform group-hover:-translate-x-1 transition-transform">arrow_back</span>
-            Back to login
-          </button>
-          
-          <h1 className="text-4xl font-bold tracking-tighter mb-4 text-zinc-800 dark:text-white">
-            Reset Password
-          </h1>
-          <p className="text-zinc-500 dark:text-zinc-400 text-sm font-light">
-            Enter your email address and we'll send you a link to reset your password.
-          </p>
+    <Container className="min-h-[70vh] flex flex-col justify-center items-center py-16 !border-0 px-4 w-full">
+      <div className="w-full max-w-sm mx-auto">
+        <Link href="/login" className={AUTH_LINK_BACK}>
+          <span className="material-symbols-sharp" style={{ fontSize: '1rem' }}>
+            arrow_back
+          </span>
+          <span>Back to login</span>
+        </Link>
+
+        <div className="mb-10 flex flex-col items-center text-center">
+          <Heading level={2} className="!text-3xl mb-2">
+            Reset password
+          </Heading>
+          <Text variant="p" className="!text-sm">
+            Enter your email address and we&apos;ll send you a link to reset your password.
+          </Text>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="space-y-2">
-            <label className="text-[10px] font-mono font-bold uppercase tracking-widest text-zinc-400 dark:text-zinc-500 ml-1">Email Address</label>
-            <input 
-              type="email" 
+        <form onSubmit={handleSubmit} className="flex flex-col gap-6">
+          <div className="flex flex-col gap-2">
+            <label htmlFor="forgot-email" className={AUTH_LABEL}>
+              Email address
+            </label>
+            <input
+              id="forgot-email"
+              type="email"
               autoComplete="email"
               required
               placeholder="admin@example.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-100 dark:border-zinc-800 rounded-xl px-4 py-3 text-zinc-800 dark:text-white focus:outline-none focus:border-zinc-300 dark:focus:border-white transition-all font-mono text-sm"
+              className={AUTH_INPUT}
             />
           </div>
 
           {error && (
-            <div className="p-4 bg-red-50 dark:bg-red-950/20 border border-red-100 dark:border-red-900/50 rounded-xl flex items-start gap-3 text-red-600 dark:text-red-400 text-xs animate-in shake duration-300">
-              <span className="material-symbols-sharp !text-[18px] mt-0.5">error</span>
-              <div className="flex-1">
-                <p className="font-bold mb-0.5 uppercase tracking-tighter">Error</p>
-                <p className="leading-relaxed opacity-80">{error}</p>
+            <div className={AUTH_ERROR_BOX} data-testid="forgot-error">
+              <span className="material-symbols-sharp shrink-0" style={{ fontSize: '1rem' }}>
+                error
+              </span>
+              <div className="flex-1 text-left">
+                <p className="font-mono font-semibold mb-1 text-[10px] uppercase tracking-wide">Error</p>
+                <p className="leading-relaxed">{error}</p>
               </div>
             </div>
           )}
 
-          <div className="pt-4">
-            <button 
-              type="submit"
-              disabled={loading}
-              className="w-full bg-zinc-800 dark:bg-white text-white dark:text-black font-bold py-4 rounded-xl hover:bg-zinc-700 dark:hover:bg-zinc-100 transition-all transform active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-3 shadow-lg shadow-zinc-100 dark:shadow-white/5"
-            >
-              {loading ? (
-                <>
-                  <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
-                  <span className="text-sm font-mono">Sending...</span>
-                </>
-              ) : (
-                <>
-                  <span className="text-sm">Send Reset Link</span>
-                  <span className="material-symbols-sharp !text-[18px]">send</span>
-                </>
-              )}
-            </button>
-          </div>
+          <Button
+            type="submit"
+            variant="primary"
+            disabled={loading}
+            className="w-full py-3.5 flex justify-center items-center gap-2 disabled:opacity-60"
+            data-testid="forgot-submit"
+          >
+            {loading ? (
+              <>
+                <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin shrink-0" />
+                <span className="text-sm">Sending…</span>
+              </>
+            ) : (
+              <>
+                <span>Send reset link</span>
+                <span className="material-symbols-sharp" style={{ fontSize: '1rem' }}>
+                  send
+                </span>
+              </>
+            )}
+          </Button>
         </form>
       </div>
-    </div>
+    </Container>
   );
 };
 

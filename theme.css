@@ -1,6 +1,28 @@
 body {
   font-family: 'Inter', sans-serif;
   transition: background-color 0.3s ease, color 0.3s ease;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.structural-border {
+  border-color: #e5e5e5;
+}
+
+.dark .structural-border {
+  border-color: #1f1f1f;
+}
+
+.label-micro {
+  font-family: 'Noto Sans Mono', 'Menlo', 'Monaco', 'Courier New', monospace;
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #71717a;
+}
+
+.dark .label-micro {
+  color: #a1a1aa;
 }
 
 h1, h2, h3, h4, h5, h6, .font-heading {

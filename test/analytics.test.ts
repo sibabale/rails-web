@@ -64,4 +64,22 @@ describe('analytics', () => {
       })
     );
   });
+
+  it('tracks marketing copy exposure once per variant per session', async () => {
+    sessionStorage.clear();
+    const posthog = (await import('posthog-js')).default as { capture: ReturnType<typeof vi.fn> };
+    posthog.capture.mockClear();
+    const { trackMarketingCopyExposure } = await import('../lib/analytics');
+
+    trackMarketingCopyExposure('a');
+    trackMarketingCopyExposure('a');
+    expect(posthog.capture).toHaveBeenCalledTimes(1);
+    expect(posthog.capture).toHaveBeenCalledWith(
+      'marketing_copy_exposure',
+      expect.objectContaining({ marketing_copy_variant: 'a' })
+    );
+
+    trackMarketingCopyExposure('d');
+    expect(posthog.capture).toHaveBeenCalledTimes(2);
+  });
 });
