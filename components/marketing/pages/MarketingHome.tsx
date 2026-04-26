@@ -1,20 +1,21 @@
 'use client';
 
 import { SiGithub } from '@icons-pack/react-simple-icons';
+import Link from 'next/link';
 import React, { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { CallToAction } from '../molecules/CallToAction';
 import { Section } from '../atoms/Section';
 import { Container } from '../atoms/Container';
 import { Heading } from '../atoms/Heading';
 import { Text } from '../atoms/Text';
-import { Button } from '../atoms/Button';
 import { startLandingTracking } from '@/lib/analytics';
+import { getMarketingDocsHref } from '@/lib/env';
+import { theme } from '@/lib/marketingTheme';
 
 type SdkType = 'TypeScript' | 'Go' | 'Java' | 'Kotlin' | '.NET';
 
 export default function MarketingHome() {
-  const router = useRouter();
+  const docsHref = getMarketingDocsHref();
 
   useEffect(() => {
     startLandingTracking();
@@ -113,13 +114,26 @@ LedgerEntry entry = rails.<span className="text-blue-300">ledger</span>().<span 
             Build accounts, wallets, ledgers, and money movement systems faster—with Rust-grade performance and bank-grade integrity.
           </Text>
           <div className="flex flex-wrap items-center justify-center gap-4 mb-20">
-            <Button variant="primary" className="px-6 py-3" onClick={() => router.push('/login')}>
-              Get Started <span className="material-symbols-sharp ml-2"    style={{ fontSize: '1rem' }}>arrow_forward</span>
-            </Button>
-            <Button variant="secondary" className="px-6 py-3" onClick={() => {/* add docs link later */}}>
-              <span className="material-symbols-sharp mr-2"    style={{ fontSize: '1rem' }}>menu_book</span>
+            <Link
+              href="/login"
+              data-testid="marketing-get-started-hero"
+              className={`px-6 py-3 text-sm inline-flex items-center justify-center gap-2 rounded-none ${theme.buttons.primary}`}
+            >
+              Get Started{' '}
+              <span className="material-symbols-sharp ml-2" style={{ fontSize: '1rem' }}>
+                arrow_forward
+              </span>
+            </Link>
+            <Link
+              href={docsHref}
+              data-testid="marketing-read-docs-hero"
+              className={`px-6 py-3 text-sm inline-flex items-center justify-center gap-2 rounded-none ${theme.buttons.secondary}`}
+            >
+              <span className="material-symbols-sharp mr-2" style={{ fontSize: '1rem' }}>
+                menu_book
+              </span>
               <span>Read Docs</span>
-            </Button>
+            </Link>
           </div>
 
           {/* Terminal / Code / Architecture Block */}

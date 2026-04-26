@@ -23,6 +23,12 @@ export const isAuthButtonsEnabled = (): boolean => {
   return false;
 };
 
+/** Public docs URL for marketing CTAs; falls back to infrastructure overview. */
+export const getMarketingDocsHref = (): string => {
+  if (nonEmpty(process.env.NEXT_PUBLIC_DOCS_URL)) return process.env.NEXT_PUBLIC_DOCS_URL;
+  return '/infrastructure';
+};
+
 export const isAnalyticsExplicitlyDisabled = (): boolean => {
   if (nonEmpty(process.env.NEXT_PUBLIC_ENABLE_ANALYTICS))
     return process.env.NEXT_PUBLIC_ENABLE_ANALYTICS === 'false';

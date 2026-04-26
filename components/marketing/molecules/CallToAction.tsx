@@ -1,18 +1,19 @@
 'use client';
 
+import Link from 'next/link';
 import React from 'react';
-import { useRouter } from 'next/navigation';
 import { Section } from '../atoms/Section';
 import { Container } from '../atoms/Container';
 import { Heading } from '../atoms/Heading';
-import { Button } from '../atoms/Button';
+import { getMarketingDocsHref } from '@/lib/env';
+import { theme } from '@/lib/marketingTheme';
 
 export function CallToAction({
   title = 'Start building financial products on trusted rails.',
 }: {
   title?: string;
 }) {
-  const router = useRouter();
+  const docsHref = getMarketingDocsHref();
   return (
     <Section>
       <Container className="px-8 py-24 text-center flex flex-col items-center">
@@ -20,15 +21,23 @@ export function CallToAction({
           {title}
         </Heading>
         <div className="flex flex-wrap items-center justify-center gap-4">
-          <Button variant="primary" className="px-8" onClick={() => router.push('/login')}>
+          <Link
+            href="/login"
+            data-testid="marketing-get-started-cta"
+            className={`px-8 py-3 text-sm inline-flex items-center justify-center gap-2 rounded-none ${theme.buttons.primary}`}
+          >
             Get Started{' '}
             <span className="material-symbols-sharp ml-2" style={{ fontSize: '1rem' }}>
               arrow_forward
             </span>
-          </Button>
-          <Button variant="secondary" className="px-8" type="button">
+          </Link>
+          <Link
+            href={docsHref}
+            data-testid="marketing-read-docs-cta"
+            className={`px-8 py-3 text-sm inline-flex items-center justify-center gap-2 rounded-none ${theme.buttons.secondary}`}
+          >
             Read Documentation
-          </Button>
+          </Link>
         </div>
       </Container>
     </Section>

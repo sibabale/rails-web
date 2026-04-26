@@ -16,7 +16,7 @@ test.describe('Landing', () => {
 
   test('navigates to login from Get Started', async ({ page }) => {
     await page.goto('/');
-    await page.getByRole('button', { name: /Get Started/i }).first().click();
+    await page.getByTestId('marketing-get-started-hero').click();
     await expect(page).toHaveURL(/\/login/, { timeout: 15_000 });
   });
 });
