@@ -2,11 +2,11 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAppDispatch } from '../../state/hooks';
-import { resetToSandbox } from '../../state/slices/environmentSlice';
-import { getClientServerUrl } from '../../lib/env';
-import { useTheme } from '../../lib/useTheme';
-import Dashboard from '../../components/Dashboard';
+import { useAppDispatch } from '../../../state/hooks';
+import { resetToSandbox } from '../../../state/slices/environmentSlice';
+import { getClientServerUrl } from '../../../lib/env';
+import { useTheme } from '../../../lib/useTheme';
+import Dashboard from '../../../components/Dashboard';
 
 interface EnvironmentInfo {
   id: string;

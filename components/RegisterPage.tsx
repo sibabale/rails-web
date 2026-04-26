@@ -1,13 +1,12 @@
-
 import React, { useState, useEffect, useRef } from 'react';
+import Link from 'next/link';
 import { getClientServerUrl } from '../lib/env';
 
 interface RegisterPageProps {
-  onBack: () => void;
   onSuccess: (data: any) => void;
 }
 
-const RegisterPage: React.FC<RegisterPageProps> = ({ onBack, onSuccess }) => {
+const RegisterPage: React.FC<RegisterPageProps> = ({ onSuccess }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [errorTitle, setErrorTitle] = useState<string | null>(null);
@@ -112,13 +111,14 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onBack, onSuccess }) => {
     <div className="pt-32 pb-24 max-w-7xl mx-auto px-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
       <div className="max-w-2xl mx-auto">
         <div className="mb-12">
-          <button 
-            onClick={onBack}
-            className="flex items-center gap-2 text-sm text-zinc-400 hover:text-zinc-800 dark:hover:text-white transition-colors mb-8 group"
+          <Link
+            href="/"
+            data-testid="register-back-home"
+            className="inline-flex items-center gap-2 text-sm text-zinc-400 hover:text-zinc-800 dark:hover:text-white transition-colors mb-8 group"
           >
             <span className="material-symbols-sharp !text-[18px] transform group-hover:-translate-x-1 transition-transform">arrow_back</span>
             Back to landing
-          </button>
+          </Link>
           
           <h1 className="text-4xl md:text-5xl font-bold tracking-tighter mb-4 text-zinc-800 dark:text-white">
             Ready to build <br />
@@ -256,6 +256,16 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onBack, onSuccess }) => {
             <p className="text-center text-[10px] uppercase tracking-widest text-zinc-400 dark:text-zinc-600 font-mono">
               By registering, you agree to the Rails Institutional Terms of Service.
             </p>
+
+            <div className="text-center pt-2">
+              <Link
+                href="/login"
+                data-testid="register-go-login"
+                className="text-[10px] font-mono uppercase tracking-widest text-zinc-500 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors border-b border-dotted border-zinc-400 dark:border-zinc-600 pb-0.5"
+              >
+                Already have an account? Sign in
+              </Link>
+            </div>
           </form>
         )}
       </div>

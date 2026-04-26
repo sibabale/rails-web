@@ -62,11 +62,7 @@ export default function LoginRoute() {
 
   return (
     <div className="w-full max-w-lg mx-auto px-4 py-8">
-      <LoginPage
-        onBack={() => router.push('/')}
-        onSuccess={handleAuthSuccess}
-        onForgotPassword={() => router.push('/forgot-password')}
-      />
+      <LoginPage onSuccess={handleAuthSuccess} onForgotPassword={() => router.push('/forgot-password')} />
     </div>
   );
 }

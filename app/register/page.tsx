@@ -62,7 +62,7 @@ export default function RegisterRoute() {
 
   return (
     <div className="w-full max-w-lg mx-auto px-4 py-8">
-      <RegisterPage onBack={() => router.push('/')} onSuccess={handleAuthSuccess} />
+      <RegisterPage onSuccess={handleAuthSuccess} />
     </div>
   );
 }

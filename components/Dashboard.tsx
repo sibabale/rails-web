@@ -1,4 +1,8 @@
+'use client';
+
 import React, { useState, useEffect, useRef } from 'react';
+import Link from 'next/link';
+import { usePathname, useRouter } from 'next/navigation';
 import { GoogleGenAI } from "@google/genai";
 import { useAppDispatch, useAppSelector } from '../state/hooks';
 import { setEnvironment } from '../state/slices/environmentSlice';
@@ -6,6 +10,17 @@ import ApiKeyManager from './ApiKeyManager';
 import Pagination from './Pagination';
 import DashboardOverviewV2 from './DashboardOverviewV2';
 import { accountsApi, transactionsApi, ledgerApi, type Account as ApiAccount, type Transaction, type LedgerEntry, type PaginationMeta } from '../lib/api';
+
+function dashboardTabFromPathname(pathname: string | null): string {
+  if (!pathname) return 'Overview';
+  const base = pathname.replace(/\/$/, '');
+  if (base === '/dashboard') return 'Overview';
+  if (base.endsWith('/accounts')) return 'Accounts';
+  if (base.endsWith('/transactions')) return 'Transactions';
+  if (base.endsWith('/ledger')) return 'Ledger';
+  if (base.endsWith('/identity')) return 'Identity';
+  return 'Overview';
+}
 
 interface DashboardProps {
   onLogout: () => void;
@@ -31,6 +46,9 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, currentTheme, onToggleT
   const dispatch = useAppDispatch();
   const environment = useAppSelector((state) => state.environment.current);
   const isProduction = environment === 'production';
+  const pathname = usePathname();
+  const router = useRouter();
+  const prevPathnameRef = useRef<string | null>(null);
 
   const [activeTab, setActiveTab] = useState('Overview');
   const [timeLeft, setTimeLeft] = useState<string>('');
@@ -71,6 +89,18 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, currentTheme, onToggleT
   const [transactionsPagination, setTransactionsPagination] = useState<PaginationMeta | null>(null);
   const [ledgerPage, setLedgerPage] = useState(1);
   const [ledgerPagination, setLedgerPagination] = useState<PaginationMeta | null>(null);
+
+  useEffect(() => {
+    setActiveTab(dashboardTabFromPathname(pathname));
+  }, [pathname]);
+
+  useEffect(() => {
+    if (prevPathnameRef.current !== null && prevPathnameRef.current !== pathname) {
+      setSelectedAccountId(null);
+      setSelectedTransactionId(null);
+    }
+    prevPathnameRef.current = pathname;
+  }, [pathname]);
 
   useEffect(() => {
     if (session?.timestamp && session?.expires_in) {
@@ -366,13 +396,10 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, currentTheme, onToggleT
   const useOverviewV2 = true;
 
   const navItems = [
-    { name: 'Overview', icon: 'dashboard' },
-    { name: 'Accounts', icon: 'account_balance' },
-    { name: 'Transactions', icon: 'swap_horiz' },
-    // { name: 'Settlements', icon: 'account_tree' },
-    // { name: 'Payments', icon: 'payments' },
-    { name: 'Ledger', icon: 'book' },
-    // { name: 'Infrastructure', icon: 'dns' },
+    { name: 'Overview', icon: 'dashboard', href: '/dashboard' },
+    { name: 'Accounts', icon: 'account_balance', href: '/dashboard/accounts' },
+    { name: 'Transactions', icon: 'swap_horiz', href: '/dashboard/transactions' },
+    { name: 'Ledger', icon: 'book', href: '/dashboard/ledger' },
   ];
 
   const renderAccountDetails = (account: Account) => (
@@ -993,7 +1020,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, currentTheme, onToggleT
         if (useOverviewV2) {
           return (
             <DashboardOverviewV2 
-              onGetStarted={() => setActiveTab('Accounts')}
+              onGetStarted={() => router.push('/dashboard/accounts')}
               overviewStats={overviewStats}
               isLoadingOverviewStats={isLoadingOverviewStats}
               overviewCurrency={overviewCurrency}
@@ -1256,18 +1283,19 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, currentTheme, onToggleT
           
           <nav className="space-y-1">
             {navItems.map((item) => (
-              <button
+              <Link
                 key={item.name}
-                onClick={() => { setActiveTab(item.name); setSelectedAccountId(null); setSelectedTransactionId(null); }}
+                href={item.href}
+                data-testid={`dashboard-nav-${item.name.toLowerCase()}`}
                 className={`w-full flex items-center gap-3 px-3 py-2 text-sm rounded-lg transition-colors cursor-pointer outline-none ${
-                  activeTab === item.name 
-                    ? 'bg-zinc-800 dark:bg-white text-white dark:text-black font-semibold shadow-sm' 
+                  activeTab === item.name
+                    ? 'bg-zinc-800 dark:bg-white text-white dark:text-black font-semibold shadow-sm'
                     : 'text-zinc-500 dark:text-zinc-500 hover:text-zinc-800 dark:hover:text-white hover:bg-white dark:hover:bg-zinc-900'
                 }`}
               >
                 <span className="material-symbols-sharp">{item.icon}</span>
                 {item.name}
-              </button>
+              </Link>
             ))}
           </nav>
 
@@ -1281,8 +1309,9 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, currentTheme, onToggleT
         </div>
         
         <div className="mt-auto p-6 border-t border-zinc-100 dark:border-zinc-800/50">
-          <button 
-            onClick={() => { setActiveTab('Identity'); setSelectedAccountId(null); setSelectedTransactionId(null); }}
+          <Link
+            href="/dashboard/identity"
+            data-testid="dashboard-nav-identity"
             className={`w-full flex items-center gap-3 mb-6 cursor-pointer p-2 -m-2 rounded-xl transition-colors text-left outline-none ${activeTab === 'Identity' ? 'bg-white dark:bg-zinc-900' : 'hover:bg-white dark:hover:bg-zinc-900'}`}
           >
             {profile?.avatar_url ? (
@@ -1296,7 +1325,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, currentTheme, onToggleT
               <p className="text-xs font-semibold truncate text-zinc-800 dark:text-white">{profile?.name || "James Stork"}</p>
               <p className="text-[10px] text-zinc-400 dark:text-zinc-500 truncate font-mono">{isProduction ? 'node_live_9221' : 'node_dev_4410'}</p>
             </div>
-          </button>
+          </Link>
           <button 
             onClick={onLogout}
             className="w-full flex items-center justify-center gap-2 px-3 py-2 text-xs font-medium text-zinc-500 dark:text-zinc-500 hover:text-zinc-800 dark:hover:text-white border border-zinc-200 dark:border-zinc-800 rounded-lg transition-colors cursor-pointer"

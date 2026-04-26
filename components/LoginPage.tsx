@@ -1,14 +1,13 @@
-
 import React, { useState, useEffect, useRef } from 'react';
+import Link from 'next/link';
 import { getClientServerUrl } from '../lib/env';
 
 interface LoginPageProps {
-  onBack: () => void;
   onSuccess: (sessionData: any) => void;
   onForgotPassword: () => void;
 }
 
-const LoginPage: React.FC<LoginPageProps> = ({ onBack, onSuccess, onForgotPassword }) => {
+const LoginPage: React.FC<LoginPageProps> = ({ onSuccess, onForgotPassword }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
@@ -132,13 +131,14 @@ const LoginPage: React.FC<LoginPageProps> = ({ onBack, onSuccess, onForgotPasswo
     <div className="pt-32 pb-24 max-w-7xl mx-auto px-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
       <div className="max-w-md mx-auto">
         <div className="mb-12 text-center">
-          <button 
-            onClick={onBack}
+          <Link
+            href="/"
+            data-testid="login-back-home"
             className="inline-flex items-center gap-2 text-sm text-zinc-400 hover:text-zinc-800 dark:hover:text-white transition-colors mb-8 group"
           >
             <span className="material-symbols-sharp !text-[18px] transform group-hover:-translate-x-1 transition-transform">arrow_back</span>
             Back to landing
-          </button>
+          </Link>
           
           <h1 className="text-4xl font-bold tracking-tighter mb-4 text-zinc-800 dark:text-white">
             Infrastructure <span className="text-zinc-400 dark:text-zinc-500">Auth</span>
@@ -221,6 +221,16 @@ const LoginPage: React.FC<LoginPageProps> = ({ onBack, onSuccess, onForgotPasswo
             </p>
           </div>
         </form>
+
+        <div className="mt-8 flex flex-col items-center text-center">
+          <Link
+            href="/register"
+            data-testid="login-go-register"
+            className="text-[10px] font-mono uppercase tracking-widest text-zinc-500 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors border-b border-dotted border-zinc-400 dark:border-zinc-600 pb-0.5"
+          >
+            Register for a new institutional account
+          </Link>
+        </div>
       </div>
     </div>
   );

@@ -7,6 +7,15 @@ import { ledgerApi, accountsApi, transactionsApi } from '../lib/api';
 import Dashboard from '../components/Dashboard';
 import environmentReducer from '../state/slices/environmentSlice';
 
+vi.mock('next/navigation', () => ({
+  usePathname: () => '/dashboard',
+  useRouter: () => ({
+    push: vi.fn(),
+    replace: vi.fn(),
+    prefetch: vi.fn(),
+  }),
+}));
+
 vi.mock('../lib/api', async () => {
   const actual = await vi.importActual<typeof import('../lib/api')>('../lib/api');
   return {
