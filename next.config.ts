@@ -13,6 +13,10 @@ const publicClientEnv = (): Record<string, string> => {
   set('NEXT_PUBLIC_ENABLE_ANALYTICS', process.env.NEXT_PUBLIC_ENABLE_ANALYTICS);
   set('NEXT_PUBLIC_POSTHOG_KEY', process.env.NEXT_PUBLIC_POSTHOG_KEY);
   set('NEXT_PUBLIC_POSTHOG_HOST', process.env.NEXT_PUBLIC_POSTHOG_HOST);
+  set(
+    'NEXT_PUBLIC_POSTHOG_MARKETING_COPY_FLAG_KEY',
+    process.env.NEXT_PUBLIC_POSTHOG_MARKETING_COPY_FLAG_KEY
+  );
   set('NEXT_PUBLIC_SAMPLES_REPO_URL', process.env.NEXT_PUBLIC_SAMPLES_REPO_URL);
   return out;
 };
