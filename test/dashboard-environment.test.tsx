@@ -7,6 +7,14 @@ import { ledgerApi, accountsApi, transactionsApi } from '../lib/api';
 import Dashboard from '../components/Dashboard';
 import environmentReducer from '../state/slices/environmentSlice';
 
+vi.mock('../components/DashboardMaterialThemeToggle', () => ({
+  DashboardMaterialThemeToggle: () => (
+    <button type="button" data-testid="dashboard-theme-toggle-mock" aria-label="Toggle theme">
+      theme
+    </button>
+  ),
+}));
+
 vi.mock('next/navigation', () => ({
   usePathname: () => '/dashboard',
   useRouter: () => ({
@@ -44,13 +52,7 @@ const renderDashboard = (session: any = null) => {
 
   render(
     <Provider store={store}>
-      <Dashboard
-        onLogout={() => undefined}
-        currentTheme="light"
-        onToggleTheme={() => undefined}
-        session={session}
-        profile={null}
-      />
+      <Dashboard onLogout={() => undefined} session={session} profile={null} />
     </Provider>
   );
 
@@ -79,12 +81,12 @@ describe('Dashboard environment selector', () => {
 
   it('defaults to sandbox and switches to production', async () => {
     renderDashboard();
-    expect(screen.getByText('Sandbox')).toBeInTheDocument();
+    expect(screen.getAllByText('SANDBOX').length).toBeGreaterThanOrEqual(1);
 
     const user = userEvent.setup();
     await user.click(screen.getByRole('button', { name: 'PROD' }));
 
-    expect(screen.getByText('Production')).toBeInTheDocument();
+    expect(screen.getByText('PRODUCTION')).toBeInTheDocument();
     expect(
       screen.getByText('Live Production Environment — Real Assets at Risk')
     ).toBeInTheDocument();
@@ -106,11 +108,12 @@ describe('Dashboard environment selector', () => {
       environments: [{ id: 'env-1', type: 'sandbox' }],
     });
 
-    const accountsCard = await screen.findByText('Active Accounts');
+    await screen.findByText('Active Accounts');
     await waitFor(
       () => {
-        const cardElement = accountsCard.closest('div') as HTMLElement;
-        expect(within(cardElement).getByText('2')).toBeInTheDocument();
+        expect(
+          within(screen.getByTestId('dashboard-overview-stat-active-accounts')).getByText('2')
+        ).toBeInTheDocument();
       },
       { timeout: 5000 }
     );
@@ -155,11 +158,12 @@ describe('Dashboard environment selector', () => {
       environments: [{ id: 'env-1', type: 'sandbox' }],
     });
 
-    const postedCard = await screen.findByText('Posted Transactions');
+    await screen.findByText('Posted Transactions');
     await waitFor(
       () => {
-        const cardElement = postedCard.closest('div') as HTMLElement;
-        expect(within(cardElement).getByText('1')).toBeInTheDocument();
+        expect(
+          within(screen.getByTestId('dashboard-overview-stat-posted-transactions')).getByText('1')
+        ).toBeInTheDocument();
       },
       { timeout: 5000 }
     );

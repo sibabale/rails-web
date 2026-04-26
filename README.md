@@ -13,7 +13,7 @@ Setup:
 2. Create your local env file from the development template:
    - `cp .env.development.example .env.development`
 3. Edit `.env.development` and set at least:
-   - `NEXT_PUBLIC_CLIENT_SERVER` (your rails-client-server / API base URL)
+   - `NEXT_PUBLIC_CLIENT_SERVER` — **rails-client-server** (BFF), e.g. `http://localhost:3100`. This is not the rails-core nginx gateway (`:8080`); the BFF proxies to Docker backends.
    - `NEXT_PUBLIC_SITE_URL` (usually `http://localhost:3000` for this app)
    - Other flags as needed (see comments in `.env.development.example`)
 

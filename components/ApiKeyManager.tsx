@@ -220,13 +220,13 @@ const ApiKeyManager: React.FC<ApiKeyManagerProps> = ({ session }) => {
   };
 
   return (
-    <section className="space-y-6 pt-8 border-t border-zinc-50 dark:border-zinc-900">
-      <h4 className="text-[10px] font-mono font-bold uppercase tracking-widest text-zinc-400 mb-4">Security Credentials</h4>
+    <section className="space-y-6 border-t border-zinc-200 pt-8 dark:border-zinc-800">
+      <h4 className="mb-4 text-[10px] font-mono font-semibold uppercase tracking-widest text-zinc-500">Security Credentials</h4>
 
       <div className="space-y-4">
-        <div className="bg-zinc-50/50 dark:bg-zinc-950 border border-zinc-100 dark:border-zinc-800 p-4 rounded-xl">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[9px] font-mono font-bold text-zinc-400 uppercase tracking-widest">API Token</span>
+        <div className="border border-zinc-200 bg-zinc-50 p-4 transition-colors dark:border-zinc-800 dark:bg-[#050505]">
+          <div className="mb-2 flex items-center justify-between">
+            <span className="text-[9px] font-mono font-semibold uppercase tracking-widest text-zinc-500">API Token</span>
 
             {apiKeyStatus === 'active' && apiKeyId ? (
               <span className="text-[9px] font-mono text-emerald-500 uppercase font-bold tracking-tighter flex items-center gap-1">
@@ -248,14 +248,14 @@ const ApiKeyManager: React.FC<ApiKeyManagerProps> = ({ session }) => {
 
           <div className="flex items-center gap-3">
             <div className="flex-1 min-w-0">
-              <p className="text-xs font-mono text-zinc-600 dark:text-white truncate">
+              <p className="truncate text-xs font-mono text-zinc-600 dark:text-zinc-300">
                 {apiKeyId ? maskedPlaceholder : 'No API key has been generated for this environment.'}
               </p>
             </div>
 
             {apiKeyStatus === 'active' && apiKeyId ? (
               <button
-                className="h-7 px-2.5 rounded-md text-[10px] font-mono font-bold uppercase tracking-widest border border-zinc-200 dark:border-zinc-800 bg-white/60 dark:bg-black/40 text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white hover:bg-white dark:hover:bg-black transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                className="h-7 border border-zinc-200 bg-white px-2.5 text-[10px] font-mono font-semibold uppercase tracking-widest text-zinc-600 transition-colors hover:bg-zinc-50 hover:text-black disabled:cursor-not-allowed disabled:opacity-60 dark:border-zinc-800 dark:bg-black dark:text-zinc-300 dark:hover:bg-zinc-900 dark:hover:text-white"
                 onClick={handleRevoke}
                 disabled={isRevoking || isCreating}
               >
@@ -268,7 +268,7 @@ const ApiKeyManager: React.FC<ApiKeyManagerProps> = ({ session }) => {
               </button>
             ) : (
               <button
-                className="h-7 px-2.5 rounded-md text-[10px] font-mono font-bold uppercase tracking-widest border border-zinc-200 dark:border-zinc-800 bg-white/60 dark:bg-black/40 text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white hover:bg-white dark:hover:bg-black transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                className="h-7 border border-zinc-200 bg-white px-2.5 text-[10px] font-mono font-semibold uppercase tracking-widest text-zinc-600 transition-colors hover:bg-zinc-50 hover:text-black disabled:cursor-not-allowed disabled:opacity-60 dark:border-zinc-800 dark:bg-black dark:text-zinc-300 dark:hover:bg-zinc-900 dark:hover:text-white"
                 onClick={handleCreate}
                 disabled={isCreating || isRevoking}
               >
@@ -298,29 +298,33 @@ const ApiKeyManager: React.FC<ApiKeyManagerProps> = ({ session }) => {
 
       {showPlaintextModal && plaintextKey && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-6">
-          <div className="w-full max-w-xl bg-zinc-50 dark:bg-black border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-2xl">
-            <div className="flex items-center justify-between p-6 border-b border-zinc-100 dark:border-zinc-800">
+          <div className="w-full max-w-xl border border-zinc-200 bg-white shadow-2xl transition-colors dark:border-zinc-800 dark:bg-[#050505]">
+            <div className="flex items-center justify-between border-b border-zinc-200 p-6 dark:border-zinc-800">
               <div>
-                <h3 className="text-sm font-bold text-zinc-800 dark:text-white">New API Key</h3>
+                <h3 className="text-sm font-medium text-black dark:text-white">New API Key</h3>
               </div>
               <button
-                className="material-symbols-sharp !text-[18px] text-zinc-400 hover:text-zinc-800 dark:hover:text-white"
+                type="button"
+                className="rounded p-1 text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-800 dark:hover:bg-zinc-900 dark:hover:text-white"
+                aria-label="Close"
                 onClick={() => {
                   setShowPlaintextModal(false);
                   setPlaintextKey(null);
                   setCopyFeedback('idle');
                 }}
               >
-                close
+                <span className="material-symbols-sharp !text-[18px] leading-none" aria-hidden>
+                  close
+                </span>
               </button>
             </div>
 
             <div className="p-6 space-y-4">
-              <div className="bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 text-xs p-4 rounded-xl">
+              <div className="border border-amber-200 bg-amber-50/90 p-4 text-xs text-amber-800 transition-colors dark:border-amber-900/40 dark:bg-amber-950/25 dark:text-amber-200">
                 You can only view API keys once. Make sure to store this in a safe place.
               </div>
 
-              <div className="bg-zinc-900 text-zinc-100 border border-zinc-800 rounded-xl p-4">
+              <div className="border border-zinc-200 bg-zinc-50 p-4 text-zinc-900 transition-colors dark:border-zinc-800 dark:bg-black dark:text-zinc-100">
                 <pre className="whitespace-pre-wrap break-words text-[11px] font-mono leading-relaxed">
                   {plaintextKey}
                 </pre>
@@ -328,7 +332,8 @@ const ApiKeyManager: React.FC<ApiKeyManagerProps> = ({ session }) => {
 
               <div className="flex gap-3">
                 <button
-                  className="w-full py-3 bg-white dark:bg-white text-black text-[10px] font-bold rounded-xl transition-colors border border-zinc-200"
+                  type="button"
+                  className="w-full bg-black py-3.5 text-[10px] font-bold uppercase tracking-widest text-white shadow-sm transition-colors hover:bg-zinc-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900 focus-visible:ring-offset-2 focus-visible:ring-offset-white active:bg-zinc-900 dark:bg-white dark:text-black dark:shadow-none dark:hover:bg-zinc-200 dark:focus-visible:ring-white dark:focus-visible:ring-offset-[#050505] dark:active:bg-zinc-300"
                   onClick={async () => {
                     try {
                       await navigator.clipboard.writeText(plaintextKey);

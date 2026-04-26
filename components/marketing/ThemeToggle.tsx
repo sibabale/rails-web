@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { Monitor, Moon, Sun } from 'lucide-react';
 import { useMarketingTheme } from './ThemeProvider';
 
 export function MarketingThemeToggle() {
@@ -18,21 +19,9 @@ export function MarketingThemeToggle() {
       className="p-2 text-zinc-500 hover:text-zinc-900 dark:hover:text-white transition-colors"
       title="Toggle theme"
     >
-      {theme === 'light' && (
-        <span className="material-symbols-sharp" style={{ fontSize: '1rem' }}>
-          light_mode
-        </span>
-      )}
-      {theme === 'dark' && (
-        <span className="material-symbols-sharp" style={{ fontSize: '1rem' }}>
-          dark_mode
-        </span>
-      )}
-      {theme === 'system' && (
-        <span className="material-symbols-sharp" style={{ fontSize: '1rem' }}>
-          desktop_windows
-        </span>
-      )}
+      {theme === 'light' && <Sun className="size-4" strokeWidth={2} aria-hidden />}
+      {theme === 'dark' && <Moon className="size-4" strokeWidth={2} aria-hidden />}
+      {theme === 'system' && <Monitor className="size-4" strokeWidth={2} aria-hidden />}
     </button>
   );
 }
