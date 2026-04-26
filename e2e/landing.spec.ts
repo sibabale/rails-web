@@ -22,7 +22,6 @@ test.describe('Landing', () => {
       /The backend behind balances and payouts/,
       { timeout: 20_000 }
     );
-    await expect(page.getByTestId('marketing-copy-variant-bar')).toBeVisible();
   });
 
   test('marketing copy variant D on infrastructure overview', async ({ page }) => {

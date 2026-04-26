@@ -98,6 +98,15 @@ describe('analytics', () => {
     expect(getMarketingCopyExperimentVariant()).toBe('d');
   });
 
+  it('getMarketingCopyExperimentVariant maps control variant to a', async () => {
+    const posthog = (await import('posthog-js')).default as {
+      getFeatureFlag: ReturnType<typeof vi.fn>;
+    };
+    posthog.getFeatureFlag.mockReturnValue('control');
+    const { getMarketingCopyExperimentVariant } = await import('../lib/analytics');
+    expect(getMarketingCopyExperimentVariant()).toBe('a');
+  });
+
   it('getMarketingCopyExperimentVariant returns null when flag is off', async () => {
     const posthog = (await import('posthog-js')).default as {
       getFeatureFlag: ReturnType<typeof vi.fn>;

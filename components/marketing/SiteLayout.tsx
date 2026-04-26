@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import React, { useState } from 'react';
 import { getMarketingDocsHref } from '@/lib/env';
-import { MARKETING_COPY_SESSION_KEY } from '@/lib/marketingCopyVariant';
 import { useMarketingSiteCopy } from '@/components/marketing/MarketingCopyVariantProvider';
 import { MarketingThemeToggle } from './ThemeToggle';
 import { RailsTrackMark } from './atoms/RailsTrackMark';
@@ -16,17 +15,11 @@ type SiteLayoutProps = {
 
 export default function SiteLayout({ children }: SiteLayoutProps) {
   const pathname = usePathname() ?? '/';
-  const { copy, withCopy, variant } = useMarketingSiteCopy();
+  const { withCopy } = useMarketingSiteCopy();
   const rawDocs = getMarketingDocsHref();
   const docsHref = rawDocs.startsWith('/') ? withCopy(rawDocs) : rawDocs;
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const closeMobileMenu = () => setMobileMenuOpen(false);
-
-  const switchMarketingCopyVariant = (next: 'a' | 'd') => {
-    if (typeof window === 'undefined') return;
-    sessionStorage.setItem(MARKETING_COPY_SESSION_KEY, next);
-    window.location.assign(pathname);
-  };
 
   return (
     <div className="min-h-screen bg-white dark:bg-black text-zinc-600 dark:text-zinc-300 selection:bg-zinc-200 dark:selection:bg-zinc-800 selection:text-black dark:selection:text-white flex flex-col transition-colors duration-200">
@@ -139,35 +132,6 @@ export default function SiteLayout({ children }: SiteLayoutProps) {
           </div>
         )}
       </header>
-
-      <div
-        className="border-b structural-border bg-zinc-100/90 dark:bg-zinc-950/90 text-center py-1.5 px-4 text-[11px] text-zinc-600 dark:text-zinc-400"
-        data-testid="marketing-copy-variant-bar"
-        data-marketing-copy-variant={variant}
-      >
-        <span className="font-mono uppercase tracking-widest text-zinc-500 dark:text-zinc-500 mr-2">
-          Marketing copy
-        </span>
-        <button
-          type="button"
-          data-testid="marketing-copy-variant-a"
-          onClick={() => switchMarketingCopyVariant('a')}
-          className={`font-mono mr-2 bg-transparent border-0 cursor-pointer p-0 ${variant === 'a' ? 'text-black dark:text-white font-semibold' : 'hover:text-black dark:hover:text-white'}`}
-        >
-          A
-        </button>
-        <span className="text-zinc-400 dark:text-zinc-600 mx-0.5">|</span>
-        <button
-          type="button"
-          data-testid="marketing-copy-variant-d"
-          onClick={() => switchMarketingCopyVariant('d')}
-          className={`font-mono ml-2 bg-transparent border-0 cursor-pointer p-0 ${variant === 'd' ? 'text-black dark:text-white font-semibold' : 'hover:text-black dark:hover:text-white'}`}
-        >
-          D
-        </button>
-        <span className="text-zinc-400 dark:text-zinc-600 mx-2 hidden sm:inline">·</span>
-        <span className="hidden sm:inline text-zinc-500 dark:text-zinc-500">{copy.siteFooterTagline}</span>
-      </div>
 
       <div className="flex-grow">{children}</div>
 

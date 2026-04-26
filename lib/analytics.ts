@@ -34,6 +34,8 @@ export const getMarketingCopyFeatureFlagKey = () => getPostHogMarketingCopyFlagK
 
 const normalizeMultivariateFlag = (value: unknown): MarketingCopyVariantId | null => {
   if (value === 'a' || value === 'd') return value;
+  // PostHog Experiments require a multivariate key named `control`; we treat it as copy variant A.
+  if (value === 'control') return 'a';
   return null;
 };
 
