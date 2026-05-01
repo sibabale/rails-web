@@ -8,6 +8,7 @@ import { setEnvironment } from '../state/slices/environmentSlice';
 import ApiKeyManager from './ApiKeyManager';
 import Pagination from './Pagination';
 import DashboardOverviewV2 from './DashboardOverviewV2';
+import { RailsTrackMark } from '@/components/marketing/atoms/RailsTrackMark';
 import { DashboardMaterialThemeToggle } from './DashboardMaterialThemeToggle';
 import { accountsApi, transactionsApi, ledgerApi, type Account as ApiAccount, type Transaction, type LedgerEntry, type PaginationMeta } from '../lib/api';
 
@@ -1367,10 +1368,8 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, session, profile }) => 
       <aside className="w-64 border-r border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#050505] flex flex-col transition-colors z-20 relative">
         <div className="h-16 flex items-center px-6 justify-between border-b border-transparent shrink-0">
           <Link href="/" className="flex items-center gap-3 outline-none">
-            <div className="w-5 h-5 bg-black dark:bg-white text-white dark:text-black flex items-center justify-center rounded-[3px]">
-              <span className="material-symbols-sharp !text-[12px] leading-none" aria-hidden>
-                local_library
-              </span>
+            <div className="w-5 h-5 bg-black dark:bg-white flex items-center justify-center">
+              <RailsTrackMark className="h-3 w-3 text-white dark:text-black" />
             </div>
             <span className="font-semibold text-lg tracking-tight text-black dark:text-white">Rails</span>
           </Link>
