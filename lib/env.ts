@@ -11,23 +11,38 @@ export const getClientServerUrl = (): string | undefined => {
   return undefined;
 };
 
+/** When false, `/login`, `/register`, `/forgot-password`, and `/reset-password` render the disabled notice instead of real forms. */
 export const isAuthViewsEnabled = (): boolean => {
   if (nonEmpty(process.env.NEXT_PUBLIC_ENABLE_AUTH_VIEWS))
     return process.env.NEXT_PUBLIC_ENABLE_AUTH_VIEWS === 'true';
   return false;
 };
 
+/**
+ * When true, show every **Get Started** / auth entry CTA (marketing header, hero, bottom CTA, auth shell header, legacy `Navbar`).
+ * **Read Documentation** / Read Docs use the same primary (filled black/white) button treatment whether or not Get Started is shown.
+ * Does not enable auth forms by itself—pair with `isAuthViewsEnabled()` for end-to-end sign-up flows.
+ */
 export const isAuthButtonsEnabled = (): boolean => {
   if (nonEmpty(process.env.NEXT_PUBLIC_SHOW_AUTH_BUTTONS))
     return process.env.NEXT_PUBLIC_SHOW_AUTH_BUTTONS === 'true';
   return false;
 };
 
-/** Public docs URL for marketing CTAs; falls back to infrastructure overview. */
-export const getMarketingDocsHref = (): string => {
-  if (nonEmpty(process.env.NEXT_PUBLIC_DOCS_URL)) return process.env.NEXT_PUBLIC_DOCS_URL;
-  return '/infrastructure';
+/**
+ * Public documentation URL for marketing CTAs (`Read Documentation`, `Read Docs`) and the header nav **Documentation** link.
+ * Set `NEXT_PUBLIC_DOCS_URL` in each environment (e.g. `https://docs.example.com`). When unset, a stable external
+ * fallback is used so builds and local runs still produce valid absolute links.
+ */
+const MARKETING_DOCS_CTA_FALLBACK = 'https://github.com/railsinfra';
+
+export const getMarketingDocsCtaUrl = (): string => {
+  if (nonEmpty(process.env.NEXT_PUBLIC_DOCS_URL)) return process.env.NEXT_PUBLIC_DOCS_URL.trim();
+  return MARKETING_DOCS_CTA_FALLBACK;
 };
+
+/** @alias {@link getMarketingDocsCtaUrl} */
+export const getMarketingDocsHref = (): string => getMarketingDocsCtaUrl();
 
 export const isAnalyticsExplicitlyDisabled = (): boolean => {
   if (nonEmpty(process.env.NEXT_PUBLIC_ENABLE_ANALYTICS))

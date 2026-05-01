@@ -1,6 +1,6 @@
 import React from 'react';
 import { SDK_SAMPLE_FOLDERS, samplesFolderUrl } from '../lib/samplesRepo';
-import { getMarketingDocsHref } from '../lib/env';
+import { getMarketingDocsCtaUrl } from '../lib/env';
 
 interface DashboardOverviewV2Props {
   onGetStarted: () => void;
@@ -50,7 +50,7 @@ const DashboardOverviewV2: React.FC<DashboardOverviewV2Props> = ({
     },
   ];
 
-  const docsHref = getMarketingDocsHref();
+  const docsHref = getMarketingDocsCtaUrl();
 
   return (
     <div className="space-y-8 w-full" data-testid="dashboard-overview-v2">
