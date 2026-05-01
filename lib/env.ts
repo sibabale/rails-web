@@ -45,15 +45,3 @@ export const getPostHogHostEnv = (): string | undefined => {
   return undefined;
 };
 
-/** Multivariate flag key in PostHog (variants `a` and `d`). Must match the flag created in PostHog. */
-export const getPostHogMarketingCopyFlagKey = (): string => {
-  if (nonEmpty(process.env.NEXT_PUBLIC_POSTHOG_MARKETING_COPY_FLAG_KEY))
-    return process.env.NEXT_PUBLIC_POSTHOG_MARKETING_COPY_FLAG_KEY;
-  return 'marketing_site_copy';
-};
-
-/** Default marketing copy variant when no session assignment and flags are unavailable. */
-export const getDefaultMarketingCopyVariant = (): 'a' | 'd' => {
-  if (process.env.NEXT_PUBLIC_MARKETING_COPY_VARIANT === 'd') return 'd';
-  return 'a';
-};

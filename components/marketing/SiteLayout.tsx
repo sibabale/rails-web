@@ -18,6 +18,10 @@ export default function SiteLayout({ children }: SiteLayoutProps) {
   const { withCopy } = useMarketingSiteCopy();
   const rawDocs = getMarketingDocsHref();
   const docsHref = rawDocs.startsWith('/') ? withCopy(rawDocs) : rawDocs;
+  const docsIsExternal = /^https?:\/\//i.test(docsHref);
+  const docsLinkProps = docsIsExternal
+    ? ({ target: '_blank' as const, rel: 'noopener noreferrer' as const } as const)
+    : ({} as const);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const closeMobileMenu = () => setMobileMenuOpen(false);
 
@@ -35,9 +39,13 @@ export default function SiteLayout({ children }: SiteLayoutProps) {
           </div>
 
           <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-zinc-500">
-            <a href="#" className="hover:text-black dark:hover:text-white transition-colors">
+            <Link
+              href={docsHref}
+              className="hover:text-black dark:hover:text-white transition-colors"
+              {...docsLinkProps}
+            >
               Documentation
-            </a>
+            </Link>
             <Link
               href={withCopy('/infrastructure')}
               className={`${pathname?.startsWith('/infrastructure') ? 'text-black dark:text-white' : ''} hover:text-black dark:hover:text-white transition-colors`}
@@ -111,9 +119,14 @@ export default function SiteLayout({ children }: SiteLayoutProps) {
             >
               Use Cases
             </Link>
-            <a href="#" className="hover:text-black dark:hover:text-white transition-colors block">
+            <Link
+              href={docsHref}
+              onClick={closeMobileMenu}
+              className="hover:text-black dark:hover:text-white transition-colors block"
+              {...docsLinkProps}
+            >
               Documentation
-            </a>
+            </Link>
             <div className="h-px bg-zinc-200 dark:bg-zinc-800 my-2 w-full"></div>
             <Link
               href="/login"

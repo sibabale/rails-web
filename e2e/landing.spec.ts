@@ -1,38 +1,13 @@
 import { test, expect } from './fixtures';
 
 test.describe('Landing', () => {
-  test('loads marketing home and key sections (copy variant A)', async ({ page }) => {
-    await page.addInitScript(() => {
-      sessionStorage.setItem('rails_marketing_copy_variant', 'a');
-    });
+  test('loads marketing home and key sections', async ({ page }) => {
     await page.goto('/');
     await expect(page.getByTestId('marketing-hero-heading')).toContainText(/Bank/, { timeout: 20_000 });
     await page.locator('#infrastructure').scrollIntoViewIfNeeded();
     await expect(page.locator('#infrastructure')).toBeVisible();
     await page.locator('#beta').scrollIntoViewIfNeeded();
     await expect(page.getByTestId('marketing-cta-heading')).toContainText(/Ship accounts and transfers faster/);
-  });
-
-  test('marketing copy variant D on homepage', async ({ page }) => {
-    await page.addInitScript(() => {
-      sessionStorage.setItem('rails_marketing_copy_variant', 'd');
-    });
-    await page.goto('/');
-    await expect(page.getByTestId('marketing-hero-heading')).toContainText(
-      /The backend behind balances and payouts/,
-      { timeout: 20_000 }
-    );
-  });
-
-  test('marketing copy variant D on infrastructure overview', async ({ page }) => {
-    await page.addInitScript(() => {
-      sessionStorage.setItem('rails_marketing_copy_variant', 'd');
-    });
-    await page.goto('/infrastructure');
-    await expect(page.getByRole('heading', { level: 1 })).toContainText(
-      /A reliable backbone for balances and payouts/,
-      { timeout: 20_000 }
-    );
   });
 
   test('navigates to login from Get Started', async ({ page }) => {

@@ -27,7 +27,7 @@ export function MarketingHeroCodeSample({ activeSdk }: { activeSdk: HeroSdkLabel
         <code className={`${base} transition-colors`}>
           <Line>
             <span className={kw}>import</span> Rails <span className={kw}>from</span>{' '}
-            <span className={str}>&apos;railsinfra&apos;</span>;
+            <span className={str}>&apos;@railsinfra/rails-typescript&apos;</span>;
           </Line>
           <br />
           <Line>
