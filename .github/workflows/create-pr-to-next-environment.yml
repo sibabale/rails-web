@@ -1,8 +1,11 @@
 # When a PR is merged: open a PR to the next environment (develop→staging or staging→main).
 # Only one job runs per event: merged into develop → create PR to staging; merged into staging → create PR to main.
-# Uses `github.token` (GITHUB_TOKEN) with pull-requests: write — same-repo PR creation, no PAT.
-# If your org blocks workflow tokens for REST PR creation, create a classic PAT (`repo`), add secret `GH_PAT`,
-# and set `github-token: ${{ secrets.GH_PAT }}` on each github-script step (remove the line below to use PAT only).
+#
+# Token (403 "not permitted to create or approve pull requests"):
+# - Default: `github.token` needs repo Settings → Actions → General → Workflow permissions:
+#   "Read and write permissions" AND "Allow GitHub Actions to create and approve pull requests".
+# - If your org/repo blocks that, add secret `GH_PAT` (classic PAT, `repo` scope); this workflow prefers it when set.
+#   https://docs.github.com/actions/security-guides/automatic-token-authentication#permissions-for-the-github_token
 name: Create PR to Next Environment
 
 on:
@@ -21,7 +24,7 @@ jobs:
       - name: Create PR from develop to staging
         uses: actions/github-script@v7
         with:
-          github-token: ${{ github.token }}
+          github-token: ${{ secrets.GH_PAT != '' && secrets.GH_PAT || github.token }}
           script: |
             const title = context.payload.pull_request.title;
             const body = context.payload.pull_request.body || title || '';
@@ -37,6 +40,16 @@ jobs:
               });
               core.notice(`Created PR #${data.number}: ${data.html_url}`);
             } catch (err) {
+              if (err.status === 403) {
+                core.setFailed(
+                  'GitHub Actions cannot create pull requests in this repository (403). Fix one of: ' +
+                  '(1) Settings → Actions → General → Workflow permissions: enable "Read and write permissions" and turn ON ' +
+                  '"Allow GitHub Actions to create and approve pull requests"; ' +
+                  '(2) Add repository secret GH_PAT using a classic PAT with the `repo` scope (this workflow uses GH_PAT when set). ' +
+                  `GitHub said: ${err.message}`
+                );
+                return;
+              }
               if (err.status === 422) {
                 const { data: existing } = await github.rest.pulls.list({
                   owner: context.repo.owner,
@@ -66,7 +79,7 @@ jobs:
       - name: Create PR from staging to main
         uses: actions/github-script@v7
         with:
-          github-token: ${{ github.token }}
+          github-token: ${{ secrets.GH_PAT != '' && secrets.GH_PAT || github.token }}
           script: |
             const title = context.payload.pull_request.title;
             const body = context.payload.pull_request.body || title || '';
@@ -82,6 +95,16 @@ jobs:
               });
               core.notice(`Created PR #${data.number}: ${data.html_url}`);
             } catch (err) {
+              if (err.status === 403) {
+                core.setFailed(
+                  'GitHub Actions cannot create pull requests in this repository (403). Fix one of: ' +
+                  '(1) Settings → Actions → General → Workflow permissions: enable "Read and write permissions" and turn ON ' +
+                  '"Allow GitHub Actions to create and approve pull requests"; ' +
+                  '(2) Add repository secret GH_PAT using a classic PAT with the `repo` scope (this workflow uses GH_PAT when set). ' +
+                  `GitHub said: ${err.message}`
+                );
+                return;
+              }
               if (err.status === 422) {
                 const { data: existing } = await github.rest.pulls.list({
                   owner: context.repo.owner,
