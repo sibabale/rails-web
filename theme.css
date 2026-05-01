@@ -105,3 +105,10 @@ h1, h2, h3, h4, h5, h6, .font-heading {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+/* App-wide: no browser default focus ring on links (Next `Link` renders `<a>`). */
+a,
+a:focus,
+a:focus-visible {
+  outline: none;
+}

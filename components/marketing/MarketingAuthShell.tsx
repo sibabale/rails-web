@@ -4,7 +4,8 @@ import { SiGithub } from '@icons-pack/react-simple-icons';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import React, { useState } from 'react';
-import { getMarketingDocsHref, isAuthButtonsEnabled } from '@/lib/env';
+import { isAuthButtonsEnabled } from '@/lib/env';
+import { MarketingDocsCtaLink } from '@/components/marketing/atoms/MarketingDocsCtaLink';
 import { MarketingThemeToggle } from './ThemeToggle';
 import { RailsTrackMark } from './atoms/RailsTrackMark';
 
@@ -14,11 +15,6 @@ type MarketingAuthShellProps = {
 
 export function MarketingAuthShell({ children }: MarketingAuthShellProps) {
   const pathname = usePathname();
-  const docsHref = getMarketingDocsHref();
-  const docsIsExternal = /^https?:\/\//i.test(docsHref);
-  const docsLinkProps = docsIsExternal
-    ? ({ target: '_blank' as const, rel: 'noopener noreferrer' as const } as const)
-    : ({} as const);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const closeMobileMenu = () => setMobileMenuOpen(false);
   const showAuthButtons = isAuthButtonsEnabled();
@@ -37,13 +33,12 @@ export function MarketingAuthShell({ children }: MarketingAuthShellProps) {
           </div>
 
           <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-zinc-500">
-            <Link
-              href={docsHref}
+            <MarketingDocsCtaLink
+              data-testid="marketing-auth-shell-header-documentation"
               className="hover:text-black dark:hover:text-white transition-colors"
-              {...docsLinkProps}
             >
               Documentation
-            </Link>
+            </MarketingDocsCtaLink>
             <Link
               href="/infrastructure"
               className={`${pathname?.startsWith('/infrastructure') ? 'text-black dark:text-white' : ''} hover:text-black dark:hover:text-white transition-colors`}
@@ -78,12 +73,9 @@ export function MarketingAuthShell({ children }: MarketingAuthShellProps) {
                 Get Started
               </Link>
             ) : null}
-            <Link
-              href={docsHref}
-              className="hidden sm:block border structural-border text-black dark:text-white px-4 py-1.5 text-xs font-medium hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors text-center"
-            >
+            <MarketingDocsCtaLink className="hidden sm:block bg-black text-white dark:bg-white dark:text-black px-4 py-1.5 text-xs font-semibold hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-colors text-center">
               Read Docs
-            </Link>
+            </MarketingDocsCtaLink>
             <button
               type="button"
               className="md:hidden text-zinc-500 dark:text-zinc-400 hover:text-black dark:hover:text-white transition-colors"
@@ -118,14 +110,13 @@ export function MarketingAuthShell({ children }: MarketingAuthShellProps) {
             >
               Use Cases
             </Link>
-            <Link
-              href={docsHref}
+            <MarketingDocsCtaLink
+              data-testid="marketing-auth-shell-header-documentation-mobile"
               onClick={closeMobileMenu}
               className="hover:text-black dark:hover:text-white transition-colors block"
-              {...docsLinkProps}
             >
               Documentation
-            </Link>
+            </MarketingDocsCtaLink>
             <div className="h-px bg-zinc-200 dark:bg-zinc-800 my-2 w-full"></div>
             {showAuthButtons ? (
               <Link
@@ -137,13 +128,12 @@ export function MarketingAuthShell({ children }: MarketingAuthShellProps) {
                 Get Started
               </Link>
             ) : null}
-            <Link
-              href={docsHref}
-              className="border structural-border text-black dark:text-white px-4 py-2 text-xs font-medium hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors w-full text-center"
+            <MarketingDocsCtaLink
+              className="bg-black text-white dark:bg-white dark:text-black px-4 py-2 text-xs font-semibold hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-colors w-full text-center"
               onClick={closeMobileMenu}
             >
               Read Docs
-            </Link>
+            </MarketingDocsCtaLink>
           </div>
         )}
       </header>

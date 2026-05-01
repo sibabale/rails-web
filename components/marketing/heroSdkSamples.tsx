@@ -1,4 +1,10 @@
 import React from 'react';
+import {
+  MARKETING_GO_MODULE,
+  MARKETING_GO_MODULE_OPTION,
+  MARKETING_SAMPLE_TRANSFER,
+} from '@/lib/marketingSdkSnippetConstants';
+import { TypescriptRailsAccountsTransferMarketingHero } from '@/components/marketing/snippets/TypescriptRailsAccountsTransferSample';
 
 /** Labels match the shipped Stainless SDKs in `rails-sdks/`. */
 export const HERO_SDK_LABELS = ['TypeScript', 'Go', 'Java', 'Kotlin', '.NET'] as const;
@@ -21,40 +27,10 @@ function Line({ children }: { children: React.ReactNode }) {
 
 /** Account transfer sample aligned with `POST /api/v1/accounts/{id}/transfer` across SDKs. */
 export function MarketingHeroCodeSample({ activeSdk }: { activeSdk: HeroSdkLabel }) {
+  const xfer = MARKETING_SAMPLE_TRANSFER;
   switch (activeSdk) {
     case 'TypeScript':
-      return (
-        <code className={`${base} transition-colors`}>
-          <Line>
-            <span className={kw}>import</span> Rails <span className={kw}>from</span>{' '}
-            <span className={str}>&apos;@railsinfra/rails-typescript&apos;</span>;
-          </Line>
-          <br />
-          <Line>
-            <span className={kw}>const</span> rails = <span className={kw}>new</span> <span className={id}>Rails</span>({'{'}
-          </Line>
-          <Line>
-            {'  '}apiKey: process.env[<span className={str}>&apos;RAILS_API_KEY&apos;</span>],
-          </Line>
-          <Line>{'}'});</Line>
-          <br />
-          <Line>
-            <span className={kw}>const</span> {'{'} transaction {'}'} ={' '}
-            <span className={kw}>await</span> rails.accounts.<span className={id}>transfer</span>(
-            <span className={str}>&apos;acc_checking_123&apos;</span>, {'{'}
-          </Line>
-          <Line>
-            {'  '}amount: <span className={str}>&apos;5000&apos;</span>,
-          </Line>
-          <Line>
-            {'  '}to_account_id: <span className={str}>&apos;acc_savings_456&apos;</span>,
-          </Line>
-          <Line>
-            {'  '}description: <span className={str}>&apos;Monthly savings&apos;</span>,
-          </Line>
-          <Line>{'}'});</Line>
-        </code>
-      );
+      return <TypescriptRailsAccountsTransferMarketingHero />;
     case 'Go':
       return (
         <code className={`${base} transition-colors`}>
@@ -68,10 +44,12 @@ export function MarketingHeroCodeSample({ activeSdk }: { activeSdk: HeroSdkLabel
             {'  '}<span className={str}>&quot;os&quot;</span>
           </Line>
           <Line>
-            {'  '}<span className={str}>&quot;github.com/railsinfra/rails-go&quot;</span>
+            {'  '}
+            <span className={str}>&quot;{MARKETING_GO_MODULE}&quot;</span>
           </Line>
           <Line>
-            {'  '}<span className={str}>&quot;github.com/railsinfra/rails-go/option&quot;</span>
+            {'  '}
+            <span className={str}>&quot;{MARKETING_GO_MODULE_OPTION}&quot;</span>
           </Line>
           <Line>)</Line>
           <br />
@@ -91,19 +69,20 @@ export function MarketingHeroCodeSample({ activeSdk }: { activeSdk: HeroSdkLabel
             {'  '}context.<span className={id}>TODO</span>(),
           </Line>
           <Line>
-            {'  '}<span className={str}>&quot;acc_checking_123&quot;</span>,
+            {'  '}
+            <span className={str}>&quot;{xfer.fromAccountId}&quot;</span>,
           </Line>
           <Line>
             {'  '}rails.<span className={id}>AccountTransferParams</span>{'{'}
           </Line>
           <Line>
-            {'    '}Amount: <span className={str}>&quot;5000&quot;</span>,
+            {'    '}Amount: <span className={str}>&quot;{xfer.amount}&quot;</span>,
           </Line>
           <Line>
-            {'    '}ToAccountID: <span className={str}>&quot;acc_savings_456&quot;</span>,
+            {'    '}ToAccountID: <span className={str}>&quot;{xfer.toAccountId}&quot;</span>,
           </Line>
           <Line>
-            {'    '}Description: rails.<span className={id}>String</span>(<span className={str}>&quot;Monthly savings&quot;</span>),
+            {'    '}Description: rails.<span className={id}>String</span>(<span className={str}>&quot;{xfer.description}&quot;</span>),
           </Line>
           <Line>
             {'  '}{'}'}
@@ -135,19 +114,20 @@ export function MarketingHeroCodeSample({ activeSdk }: { activeSdk: HeroSdkLabel
             AccountTransferResponse response = client.accounts().<span className={id}>transfer</span>(
           </Line>
           <Line>
-            {'    '}<span className={str}>&quot;acc_checking_123&quot;</span>,
+            {'    '}
+            <span className={str}>&quot;{xfer.fromAccountId}&quot;</span>,
           </Line>
           <Line>
             {'    '}AccountTransferParams.<span className={id}>builder</span>()
           </Line>
           <Line>
-            {'        '}.<span className={mut}>amount</span>(<span className={str}>&quot;5000&quot;</span>)
+            {'        '}.<span className={mut}>amount</span>(<span className={str}>&quot;{xfer.amount}&quot;</span>)
           </Line>
           <Line>
-            {'        '}.<span className={mut}>toAccountId</span>(<span className={str}>&quot;acc_savings_456&quot;</span>)
+            {'        '}.<span className={mut}>toAccountId</span>(<span className={str}>&quot;{xfer.toAccountId}&quot;</span>)
           </Line>
           <Line>
-            {'        '}.<span className={mut}>description</span>(<span className={str}>&quot;Monthly savings&quot;</span>)
+            {'        '}.<span className={mut}>description</span>(<span className={str}>&quot;{xfer.description}&quot;</span>)
           </Line>
           <Line>
             {'        '}.<span className={id}>build</span>()
@@ -178,19 +158,20 @@ export function MarketingHeroCodeSample({ activeSdk }: { activeSdk: HeroSdkLabel
             <span className={kw}>val</span> response = client.accounts().<span className={id}>transfer</span>(
           </Line>
           <Line>
-            {'    '}<span className={str}>&quot;acc_checking_123&quot;</span>,
+            {'    '}
+            <span className={str}>&quot;{xfer.fromAccountId}&quot;</span>,
           </Line>
           <Line>
             {'    '}AccountTransferParams.<span className={id}>builder</span>()
           </Line>
           <Line>
-            {'        '}.<span className={mut}>amount</span>(<span className={str}>&quot;5000&quot;</span>)
+            {'        '}.<span className={mut}>amount</span>(<span className={str}>&quot;{xfer.amount}&quot;</span>)
           </Line>
           <Line>
-            {'        '}.<span className={mut}>toAccountId</span>(<span className={str}>&quot;acc_savings_456&quot;</span>)
+            {'        '}.<span className={mut}>toAccountId</span>(<span className={str}>&quot;{xfer.toAccountId}&quot;</span>)
           </Line>
           <Line>
-            {'        '}.<span className={mut}>description</span>(<span className={str}>&quot;Monthly savings&quot;</span>)
+            {'        '}.<span className={mut}>description</span>(<span className={str}>&quot;{xfer.description}&quot;</span>)
           </Line>
           <Line>
             {'        '}.<span className={id}>build</span>(),
@@ -216,19 +197,20 @@ export function MarketingHeroCodeSample({ activeSdk }: { activeSdk: HeroSdkLabel
             <span className={kw}>var</span> result = <span className={kw}>await</span> rails.Accounts.<span className={id}>Transfer</span>(
           </Line>
           <Line>
-            {'    '}<span className={str}>&quot;acc_checking_123&quot;</span>,
+            {'    '}
+            <span className={str}>&quot;{xfer.fromAccountId}&quot;</span>,
           </Line>
           <Line>
             {'    '}<span className={kw}>new</span> AccountTransferParams {'{'}
           </Line>
           <Line>
-            {'        '}Amount = <span className={str}>&quot;5000&quot;</span>,
+            {'        '}Amount = <span className={str}>&quot;{xfer.amount}&quot;</span>,
           </Line>
           <Line>
-            {'        '}ToAccountID = <span className={str}>&quot;acc_savings_456&quot;</span>,
+            {'        '}ToAccountID = <span className={str}>&quot;{xfer.toAccountId}&quot;</span>,
           </Line>
           <Line>
-            {'        '}Description = <span className={str}>&quot;Monthly savings&quot;</span>,
+            {'        '}Description = <span className={str}>&quot;{xfer.description}&quot;</span>,
           </Line>
           <Line>
             {'    '}{'}'}

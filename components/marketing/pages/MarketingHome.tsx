@@ -14,15 +14,14 @@ import { Section } from '../atoms/Section';
 import { Heading } from '../atoms/Heading';
 import { Text } from '../atoms/Text';
 import { startLandingTracking } from '@/lib/analytics';
-import { getMarketingDocsHref, isAuthButtonsEnabled } from '@/lib/env';
+import { isAuthButtonsEnabled } from '@/lib/env';
+import { MarketingDocsCtaLink } from '@/components/marketing/atoms/MarketingDocsCtaLink';
 import { CodeScrollPane } from '../atoms/CodeScrollPane';
 import { theme } from '@/lib/marketingTheme';
 import { useMarketingSiteCopy } from '@/components/marketing/MarketingCopyVariantProvider';
 
 export default function MarketingHome() {
-  const { copy, withCopy } = useMarketingSiteCopy();
-  const rawDocs = getMarketingDocsHref();
-  const docsHref = rawDocs.startsWith('/') ? withCopy(rawDocs) : rawDocs;
+  const { copy } = useMarketingSiteCopy();
   const showAuthButtons = isAuthButtonsEnabled();
   const [activeSdk, setActiveSdk] = useState<HeroSdkLabel>('TypeScript');
   const [sdkMenuOpen, setSdkMenuOpen] = useState(false);
@@ -89,16 +88,15 @@ export default function MarketingHome() {
                     <ArrowRight className="w-4 h-4 shrink-0" aria-hidden />
                   </Link>
                 ) : null}
-                <Link
-                  href={docsHref}
+                <MarketingDocsCtaLink
                   data-testid="marketing-read-docs-hero"
-                  className={`px-6 py-3 text-sm inline-flex items-center gap-2 rounded-none ${theme.buttons.secondary}`}
+                  className={`px-6 py-3 text-sm inline-flex items-center gap-2 rounded-none ${theme.buttons.primary}`}
                 >
                   <span className="material-symbols-sharp shrink-0" style={{ fontSize: '1rem' }} aria-hidden>
                     menu_book
                   </span>
                   <span>{copy.cta.secondaryLabel}</span>
-                </Link>
+                </MarketingDocsCtaLink>
               </div>
 
               <div className="mt-16 pt-8 border-t structural-border">
