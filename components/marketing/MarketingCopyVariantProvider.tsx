@@ -126,7 +126,9 @@ function MarketingCopyVariantInner({ children }: { children: React.ReactNode }) 
 
       const unsub = onMarketingCopyFlagsReady(resolveFromFlags);
       unsubFlags = typeof unsub === 'function' ? unsub : undefined;
-      flagTimeoutId = window.setTimeout(resolveFromFlags, FLAG_RESOLVE_TIMEOUT_MS);
+      flagTimeoutId = window.setTimeout(resolveFromFlags, FLAG_RESOLVE_TIMEOUT_MS) as unknown as ReturnType<
+        typeof setTimeout
+      >;
     };
 
     // Defer until after parent `posthog.init` (same tick’s effects run child-before-parent).
