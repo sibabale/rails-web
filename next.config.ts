@@ -18,6 +18,7 @@ const publicClientEnv = (): Record<string, string> => {
     process.env.NEXT_PUBLIC_POSTHOG_MARKETING_COPY_FLAG_KEY
   );
   set('NEXT_PUBLIC_SAMPLES_REPO_URL', process.env.NEXT_PUBLIC_SAMPLES_REPO_URL);
+  set('NEXT_PUBLIC_DOCS_URL', process.env.NEXT_PUBLIC_DOCS_URL);
   return out;
 };
 

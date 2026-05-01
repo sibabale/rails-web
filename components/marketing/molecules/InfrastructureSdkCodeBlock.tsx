@@ -1,6 +1,14 @@
 'use client';
 
 import React, { useState } from 'react';
+import {
+  MARKETING_API_DEFAULT_BASE_URL,
+  MARKETING_GO_MODULE,
+  MARKETING_SAMPLE_ACCOUNT,
+  MARKETING_SAMPLE_TRANSFER,
+  MARKETING_TYPESCRIPT_NPM_IMPORT,
+} from '@/lib/marketingSdkSnippetConstants';
+import { TypescriptRailsAccountsTransferInfrastructure } from '@/components/marketing/snippets/TypescriptRailsAccountsTransferSample';
 import { CodeScrollPane } from '../atoms/CodeScrollPane';
 
 export type InfrastructureSdkLanguage = 'TypeScript' | 'Go' | 'Java' | 'Kotlin' | '.NET';
@@ -33,17 +41,18 @@ function typ(t: string) {
 }
 
 function AccountSnippet({ sdk }: { sdk: InfrastructureSdkLanguage }) {
+  const acct = MARKETING_SAMPLE_ACCOUNT;
   switch (sdk) {
     case 'TypeScript':
       return (
         <>
-          {kw('import')} Rails {kw('from')} {str("'@railsinfra/rails-typescript'")};<br />
+          {kw('import')} Rails {kw('from')} {str(`'${MARKETING_TYPESCRIPT_NPM_IMPORT}'`)};<br />
           <br />
           {kw('const')} client = {kw('new')} Rails({'{'}<br />
           {'  '}
           {prop('apiKey')}: process.env[{str("'RAILS_API_KEY'")}]!, <br />
           {'  '}
-          {prop('baseURL')}: process.env[{str("'RAILS_BASE_URL'")}] ?? {str("'https://api.railsinfra.com'")},<br />
+          {prop('baseURL')}: process.env[{str("'RAILS_BASE_URL'")}] ?? {str(`'${MARKETING_API_DEFAULT_BASE_URL}'`)},<br />
           {'  '}
           {prop('defaultHeaders')}: {'{'} {str("'X-Environment'")}: {str("'sandbox'")} {'}'},<br />
           {'}'});<br />
@@ -52,11 +61,11 @@ function AccountSnippet({ sdk }: { sdk: InfrastructureSdkLanguage }) {
           {'  {'}
           <br />
           {'  '}
-          {prop('account_type')}: {str("'checking'")},<br />
+          {prop('account_type')}: {str(`'${acct.accountTypeChecking}'`)},<br />
           {'  '}
-          {prop('user_id')}: {str("'182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e'")},<br />
+          {prop('user_id')}: {str(`'${acct.userId}'`)},<br />
           {'  '}
-          {prop('currency')}: {str("'USD'")},<br />
+          {prop('currency')}: {str(`'${acct.currency}'`)},<br />
           {'  }'}<br />
           );
         </>
@@ -66,7 +75,7 @@ function AccountSnippet({ sdk }: { sdk: InfrastructureSdkLanguage }) {
         <>
           {kw('import')} (<br />
           {'  '}{str('"context"')}<br />
-          {'  '}{str('"github.com/railsinfra/rails-go"')}<br />
+          {'  '}{str(`"${MARKETING_GO_MODULE}"`)}<br />
           )<br />
           <br />
           client := rails.{typ('NewClient')}()<br />
@@ -74,9 +83,9 @@ function AccountSnippet({ sdk }: { sdk: InfrastructureSdkLanguage }) {
           {'  '}
           {prop('AccountType')}: rails.AccountNewParamsAccountTypeChecking,<br />
           {'  '}
-          {prop('UserID')}: rails.{typ('String')}({str('"182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e"')}),<br />
+          {prop('UserID')}: rails.{typ('String')}({str(`"${acct.userId}"`)}),<br />
           {'  '}
-          {prop('Currency')}: rails.{typ('String')}({str('"USD"')}),<br />
+          {prop('Currency')}: rails.{typ('String')}({str(`"${acct.currency}"`)}),<br />
           {'}'})<br />
         </>
       );
@@ -93,8 +102,8 @@ function AccountSnippet({ sdk }: { sdk: InfrastructureSdkLanguage }) {
           AccountCreateResponse account = client.accounts().{typ('create')}(<br />
           {'    '}AccountCreateParams.{typ('builder')}()<br />
           {'        .'}{prop('accountType')}(AccountCreateParams.AccountType.{typ('CHECKING')})<br />
-          {'        .'}{prop('userId')}({str('"182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e"')})<br />
-          {'        .'}{prop('currency')}({str('"USD"')})<br />
+          {'        .'}{prop('userId')}({str(`"${acct.userId}"`)})<br />
+          {'        .'}{prop('currency')}({str(`"${acct.currency}"`)})<br />
           {'        .'}{typ('build')}()<br />
           );
         </>
@@ -112,8 +121,8 @@ function AccountSnippet({ sdk }: { sdk: InfrastructureSdkLanguage }) {
           {kw('val')} account: AccountCreateResponse = client.accounts().{typ('create')}(<br />
           {'    '}AccountCreateParams.{typ('builder')}()<br />
           {'        .'}{prop('accountType')}(AccountCreateParams.AccountType.{typ('CHECKING')})<br />
-          {'        .'}{prop('userId')}({str('"182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e"')})<br />
-          {'        .'}{prop('currency')}({str('"USD"')})<br />
+          {'        .'}{prop('userId')}({str(`"${acct.userId}"`)})<br />
+          {'        .'}{prop('currency')}({str(`"${acct.currency}"`)})<br />
           {'        .'}{typ('build')}()<br />
           )<br />
         </>
@@ -131,9 +140,9 @@ function AccountSnippet({ sdk }: { sdk: InfrastructureSdkLanguage }) {
           {'        '}
           {prop('AccountType')} = AccountType.Checking,<br />
           {'        '}
-          {prop('UserID')} = {str("\"182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e\"")},<br />
+          {prop('UserID')} = {str(`"${acct.userId}"`)},<br />
           {'        '}
-          {prop('Currency')} = {str("\"USD\"")},<br />
+          {prop('Currency')} = {str(`"${acct.currency}"`)},<br />
           {'    }'});<br />
         </>
       );
@@ -143,50 +152,29 @@ function AccountSnippet({ sdk }: { sdk: InfrastructureSdkLanguage }) {
 }
 
 function TransferSnippet({ sdk }: { sdk: InfrastructureSdkLanguage }) {
+  const xfer = MARKETING_SAMPLE_TRANSFER;
   switch (sdk) {
     case 'TypeScript':
-      return (
-        <>
-          {kw('import')} Rails {kw('from')} {str("'@railsinfra/rails-typescript'")};<br />
-          <br />
-          {kw('const')} client = {kw('new')} Rails({'{'}<br />
-          {'  '}
-          {prop('apiKey')}: process.env[{str("'RAILS_API_KEY'")}]!, <br />
-          {'  '}
-          {prop('baseURL')}: process.env[{str("'RAILS_BASE_URL'")}] ?? {str("'https://api.railsinfra.com'")},<br />
-          {'  '}
-          {prop('defaultHeaders')}: {'{'} {str("'X-Environment'")}: {str("'sandbox'")} {'}'},<br />
-          {'}'});<br />
-          <br />
-          {kw('const')} result = {kw('await')} client.accounts.{typ('transfer')}({str("'acc_checking_123'")}, {'{'}<br />
-          {'  '}
-          {prop('amount')}: {str("'50.00'")},<br />
-          {'  '}
-          {prop('to_account_id')}: {str("'acc_savings_456'")},<br />
-          {'  '}
-          {prop('description')}: {str("'Monthly savings'")},<br />
-          {'}'});<br />
-        </>
-      );
+      return <TypescriptRailsAccountsTransferInfrastructure />;
     case 'Go':
       return (
         <>
           {kw('import')} (<br />
           {'  '}{str('"context"')}<br />
-          {'  '}{str('"github.com/railsinfra/rails-go"')}<br />
+          {'  '}{str(`"${MARKETING_GO_MODULE}"`)}<br />
           )<br />
           <br />
           client := rails.{typ('NewClient')}()<br />
           result, err := client.Accounts.{typ('Transfer')}(<br />
           {'    '}context.{typ('Background')}(),<br />
-          {'    '}{str('"acc_checking_123"')},<br />
+          {'    '}{str(`"${xfer.fromAccountId}"`)},<br />
           {'    '}rails.AccountTransferParams{'{'}<br />
           {'      '}
-          {prop('Amount')}: {str('"50.00"')},<br />
+          {prop('Amount')}: {str(`"${xfer.amount}"`)},<br />
           {'      '}
-          {prop('ToAccountID')}: {str('"acc_savings_456"')},<br />
+          {prop('ToAccountID')}: {str(`"${xfer.toAccountId}"`)},<br />
           {'      '}
-          {prop('Description')}: rails.{typ('String')}({str('"Monthly savings"')}),<br />
+          {prop('Description')}: rails.{typ('String')}({str(`"${xfer.description}"`)}),<br />
           {'    }'})<br />
         </>
       );
@@ -202,10 +190,10 @@ function TransferSnippet({ sdk }: { sdk: InfrastructureSdkLanguage }) {
           <br />
           AccountTransferResponse result = client.accounts().{typ('transfer')}(<br />
           {'    '}AccountTransferParams.{typ('builder')}()<br />
-          {'        .'}{prop('id')}({str('"acc_checking_123"')})<br />
-          {'        .'}{prop('amount')}({str('"50.00"')})<br />
-          {'        .'}{prop('toAccountId')}({str('"acc_savings_456"')})<br />
-          {'        .'}{prop('description')}({str('"Monthly savings"')})<br />
+          {'        .'}{prop('id')}({str(`"${xfer.fromAccountId}"`)})<br />
+          {'        .'}{prop('amount')}({str(`"${xfer.amount}"`)})<br />
+          {'        .'}{prop('toAccountId')}({str(`"${xfer.toAccountId}"`)})<br />
+          {'        .'}{prop('description')}({str(`"${xfer.description}"`)})<br />
           {'        .'}{typ('build')}()<br />
           );<br />
         </>
@@ -222,10 +210,10 @@ function TransferSnippet({ sdk }: { sdk: InfrastructureSdkLanguage }) {
           <br />
           {kw('val')} result: AccountTransferResponse = client.accounts().{typ('transfer')}(<br />
           {'    '}AccountTransferParams.{typ('builder')}()<br />
-          {'        .'}{prop('id')}({str('"acc_checking_123"')})<br />
-          {'        .'}{prop('amount')}({str('"50.00"')})<br />
-          {'        .'}{prop('toAccountId')}({str('"acc_savings_456"')})<br />
-          {'        .'}{prop('description')}({str('"Monthly savings"')})<br />
+          {'        .'}{prop('id')}({str(`"${xfer.fromAccountId}"`)})<br />
+          {'        .'}{prop('amount')}({str(`"${xfer.amount}"`)})<br />
+          {'        .'}{prop('toAccountId')}({str(`"${xfer.toAccountId}"`)})<br />
+          {'        .'}{prop('description')}({str(`"${xfer.description}"`)})<br />
           {'        .'}{typ('build')}()<br />
           )<br />
         </>
@@ -241,13 +229,13 @@ function TransferSnippet({ sdk }: { sdk: InfrastructureSdkLanguage }) {
           AccountTransferResponse result = {kw('await')} client.Accounts.{typ('Transfer')}(<br />
           {'    '}{kw('new')} AccountTransferParams {'{'}<br />
           {'        '}
-          {prop('ID')} = {str("\"acc_checking_123\"")},<br />
+          {prop('ID')} = {str(`"${xfer.fromAccountId}"`)},<br />
           {'        '}
-          {prop('Amount')} = {str("\"50.00\"")},<br />
+          {prop('Amount')} = {str(`"${xfer.amount}"`)},<br />
           {'        '}
-          {prop('ToAccountID')} = {str("\"acc_savings_456\"")},<br />
+          {prop('ToAccountID')} = {str(`"${xfer.toAccountId}"`)},<br />
           {'        '}
-          {prop('Description')} = {str("\"Monthly savings\"")},<br />
+          {prop('Description')} = {str(`"${xfer.description}"`)},<br />
           {'    }'});<br />
         </>
       );
