@@ -97,9 +97,8 @@ export type MarketingSiteCopy = {
 const variantA: MarketingSiteCopy = {
   home: {
     heroEyebrow: 'Open source · beta',
-    heroTitle: 'Bank—without building the engine yourself.',
-    heroSubtitle:
-      'Build accounts, wallets, ledgers, and money movement systems faster—with Rust-grade performance and bank-grade integrity.',
+    heroTitle: 'open source banking',
+    heroSubtitle: 'bank without building the rails yourself, focus on your business.',
     heroPrimaryCta: 'Get Started',
     heroSupportedSdksLabel: 'Supported SDKs',
     problemTitle: 'Most teams underestimate how much work the money side really is.',
@@ -322,9 +321,8 @@ const variantA: MarketingSiteCopy = {
 const variantD: MarketingSiteCopy = {
   home: {
     heroEyebrow: 'Open source · beta',
-    heroTitle: 'The backend behind balances and payouts.',
-    heroSubtitle:
-      'Spin it up quickly, keep totals trustworthy, and keep a dependable record of important actions.',
+    heroTitle: 'open source banking',
+    heroSubtitle: 'The backend behind balances and payouts.',
     heroPrimaryCta: 'Get Started',
     heroSupportedSdksLabel: 'Supported SDKs',
     problemTitle: 'Production money movement needs more than endpoints.',
