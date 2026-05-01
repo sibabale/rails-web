@@ -37,7 +37,7 @@ function AccountSnippet({ sdk }: { sdk: InfrastructureSdkLanguage }) {
     case 'TypeScript':
       return (
         <>
-          {kw('import')} Rails {kw('from')} {str("'@railsinfra/rails'")};<br />
+          {kw('import')} Rails {kw('from')} {str("'@railsinfra/rails-typescript'")};<br />
           <br />
           {kw('const')} client = {kw('new')} Rails({'{'}<br />
           {'  '}
@@ -147,7 +147,7 @@ function TransferSnippet({ sdk }: { sdk: InfrastructureSdkLanguage }) {
     case 'TypeScript':
       return (
         <>
-          {kw('import')} Rails {kw('from')} {str("'@railsinfra/rails'")};<br />
+          {kw('import')} Rails {kw('from')} {str("'@railsinfra/rails-typescript'")};<br />
           <br />
           {kw('const')} client = {kw('new')} Rails({'{'}<br />
           {'  '}

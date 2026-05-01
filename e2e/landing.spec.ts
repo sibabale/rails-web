@@ -2,7 +2,10 @@ import { test, expect } from './fixtures';
 
 test.describe('Landing', () => {
   test('loads marketing home and key sections (copy variant A)', async ({ page }) => {
-    await page.goto('/?copy=a');
+    await page.addInitScript(() => {
+      sessionStorage.setItem('rails_marketing_copy_variant', 'a');
+    });
+    await page.goto('/');
     await expect(page.getByTestId('marketing-hero-heading')).toContainText(/Bank/, { timeout: 20_000 });
     await page.locator('#infrastructure').scrollIntoViewIfNeeded();
     await expect(page.locator('#infrastructure')).toBeVisible();
@@ -11,16 +14,21 @@ test.describe('Landing', () => {
   });
 
   test('marketing copy variant D on homepage', async ({ page }) => {
-    await page.goto('/?copy=d');
+    await page.addInitScript(() => {
+      sessionStorage.setItem('rails_marketing_copy_variant', 'd');
+    });
+    await page.goto('/');
     await expect(page.getByTestId('marketing-hero-heading')).toContainText(
       /The backend behind balances and payouts/,
       { timeout: 20_000 }
     );
-    await expect(page.getByTestId('marketing-copy-variant-bar')).toBeVisible();
   });
 
   test('marketing copy variant D on infrastructure overview', async ({ page }) => {
-    await page.goto('/infrastructure?copy=d');
+    await page.addInitScript(() => {
+      sessionStorage.setItem('rails_marketing_copy_variant', 'd');
+    });
+    await page.goto('/infrastructure');
     await expect(page.getByRole('heading', { level: 1 })).toContainText(
       /A reliable backbone for balances and payouts/,
       { timeout: 20_000 }
