@@ -3,14 +3,14 @@ import { samplesFolderUrl, SDK_SAMPLE_FOLDERS } from '../lib/samplesRepo';
 
 describe('samplesRepo', () => {
   it('builds GitHub tree URL for a folder', () => {
-    expect(samplesFolderUrl('typescript', 'main', 'https://github.com/acme/rails-sdk-samples')).toBe(
-      'https://github.com/acme/rails-sdk-samples/tree/main/typescript'
+    expect(samplesFolderUrl('typescript', 'main', 'https://github.com/railsinfra/rails-sdk-samples')).toBe(
+      'https://github.com/railsinfra/rails-sdk-samples/tree/main/typescript'
     );
   });
 
   it('strips trailing slashes from base', () => {
-    expect(samplesFolderUrl('go', 'main', 'https://github.com/acme/rails-sdk-samples/')).toBe(
-      'https://github.com/acme/rails-sdk-samples/tree/main/go'
+    expect(samplesFolderUrl('go', 'main', 'https://github.com/railsinfra/rails-sdk-samples/')).toBe(
+      'https://github.com/railsinfra/rails-sdk-samples/tree/main/go'
     );
   });
 

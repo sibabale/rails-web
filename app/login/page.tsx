@@ -1,13 +1,10 @@
 'use client';
 
-import { useEffect } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAppDispatch } from '../../state/hooks';
 import { setEnvironment } from '../../state/slices/environmentSlice';
 import { isAuthViewsEnabled } from '../../lib/env';
-import { useTheme } from '../../lib/useTheme';
-import Navbar from '../../components/Navbar';
-import Footer from '../../components/Footer';
 import LoginPage from '../../components/LoginPage';
 
 interface EnvironmentInfo {
@@ -27,14 +24,26 @@ interface Session {
 export default function LoginRoute() {
   const router = useRouter();
   const dispatch = useAppDispatch();
-  const { theme, toggleTheme } = useTheme();
   const authEnabled = isAuthViewsEnabled();
 
-  useEffect(() => {
-    if (!authEnabled) router.replace('/');
-  }, [authEnabled, router]);
-
-  if (!authEnabled) return null;
+  if (!authEnabled) {
+    return (
+      <div className="w-full max-w-md mx-auto px-4 py-16 text-center" data-testid="auth-disabled-notice">
+        <h1 className="text-lg font-semibold text-black dark:text-white mb-3">Sign-in unavailable</h1>
+        <p className="text-sm text-zinc-600 dark:text-zinc-400 mb-6 leading-relaxed">
+          Authentication is turned off in this deployment. Set{' '}
+          <code className="font-mono text-xs text-black dark:text-white">NEXT_PUBLIC_ENABLE_AUTH_VIEWS=true</code> in
+          your environment to enable login and registration.
+        </p>
+        <Link
+          href="/"
+          className="text-sm font-medium text-emerald-700 dark:text-emerald-400 hover:underline"
+        >
+          Back to home
+        </Link>
+      </div>
+    );
+  }
 
   const handleAuthSuccess = (data: any) => {
     const envId =
@@ -64,15 +73,5 @@ export default function LoginRoute() {
     router.push('/dashboard');
   };
 
-  return (
-    <div className="min-h-screen bg-white text-zinc-800 dark:bg-black dark:text-white transition-colors duration-300">
-      <Navbar onLogin={() => router.push('/login')} onRegister={() => router.push('/register')} />
-      <LoginPage
-        onBack={() => router.push('/')}
-        onSuccess={handleAuthSuccess}
-        onForgotPassword={() => router.push('/forgot-password')}
-      />
-      <Footer onToggleTheme={toggleTheme} currentTheme={theme} />
-    </div>
-  );
+  return <LoginPage onSuccess={handleAuthSuccess} onForgotPassword={() => router.push('/forgot-password')} />;
 }

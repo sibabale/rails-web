@@ -6,6 +6,12 @@ vi.mock('posthog-js', () => ({
     capture: vi.fn(),
     identify: vi.fn(),
     reset: vi.fn(),
+    getFeatureFlag: vi.fn(),
+    onFeatureFlags: vi.fn((cb: () => void) => {
+      cb();
+      return vi.fn();
+    }),
+    register: vi.fn(),
   },
 }));
 
@@ -63,5 +69,68 @@ describe('analytics', () => {
         timestamp: expect.any(Number),
       })
     );
+  });
+
+  it('tracks marketing copy exposure once per variant per session', async () => {
+    sessionStorage.clear();
+    const posthog = (await import('posthog-js')).default as { capture: ReturnType<typeof vi.fn> };
+    posthog.capture.mockClear();
+    const { trackMarketingCopyExposure } = await import('../lib/analytics');
+
+    trackMarketingCopyExposure('a');
+    trackMarketingCopyExposure('a');
+    expect(posthog.capture).toHaveBeenCalledTimes(1);
+    expect(posthog.capture).toHaveBeenCalledWith(
+      'marketing_copy_exposure',
+      expect.objectContaining({ marketing_copy_variant: 'a' })
+    );
+
+    trackMarketingCopyExposure('d');
+    expect(posthog.capture).toHaveBeenCalledTimes(2);
+  });
+
+  it('getMarketingCopyExperimentVariant maps PostHog flag to a or d', async () => {
+    const posthog = (await import('posthog-js')).default as {
+      getFeatureFlag: ReturnType<typeof vi.fn>;
+    };
+    posthog.getFeatureFlag.mockReturnValue('d');
+    const { getMarketingCopyExperimentVariant } = await import('../lib/analytics');
+    expect(getMarketingCopyExperimentVariant()).toBe('d');
+  });
+
+  it('getMarketingCopyExperimentVariant maps control variant to a', async () => {
+    const posthog = (await import('posthog-js')).default as {
+      getFeatureFlag: ReturnType<typeof vi.fn>;
+    };
+    posthog.getFeatureFlag.mockReturnValue('control');
+    const { getMarketingCopyExperimentVariant } = await import('../lib/analytics');
+    expect(getMarketingCopyExperimentVariant()).toBe('a');
+  });
+
+  it('getMarketingCopyExperimentVariant returns null when flag is off', async () => {
+    const posthog = (await import('posthog-js')).default as {
+      getFeatureFlag: ReturnType<typeof vi.fn>;
+    };
+    posthog.getFeatureFlag.mockReturnValue(false);
+    const { getMarketingCopyExperimentVariant } = await import('../lib/analytics');
+    expect(getMarketingCopyExperimentVariant()).toBe(null);
+  });
+
+  it('onMarketingCopyFlagsReady invokes callback when analytics disabled', async () => {
+    vi.stubEnv('NEXT_PUBLIC_POSTHOG_KEY', '');
+    vi.resetModules();
+    vi.stubEnv('NEXT_PUBLIC_ENABLE_ANALYTICS', 'true');
+    const { onMarketingCopyFlagsReady, isAnalyticsEnabled } = await import('../lib/analytics');
+    expect(isAnalyticsEnabled()).toBe(false);
+    const cb = vi.fn();
+    onMarketingCopyFlagsReady(cb);
+    expect(cb).toHaveBeenCalled();
+  });
+
+  it('registerMarketingCopyVariant calls posthog.register', async () => {
+    const posthog = (await import('posthog-js')).default as { register: ReturnType<typeof vi.fn> };
+    const { registerMarketingCopyVariant } = await import('../lib/analytics');
+    registerMarketingCopyVariant('a');
+    expect(posthog.register).toHaveBeenCalledWith({ marketing_copy_variant: 'a' });
   });
 });
