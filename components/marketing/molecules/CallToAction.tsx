@@ -5,7 +5,7 @@ import React from 'react';
 import { Section } from '../atoms/Section';
 import { Container } from '../atoms/Container';
 import { Heading } from '../atoms/Heading';
-import { getMarketingDocsHref } from '@/lib/env';
+import { getMarketingDocsHref, isAuthButtonsEnabled } from '@/lib/env';
 import { theme } from '@/lib/marketingTheme';
 import { useMarketingSiteCopy } from '@/components/marketing/MarketingCopyVariantProvider';
 
@@ -19,6 +19,7 @@ export function CallToAction({
   const rawDocs = getMarketingDocsHref();
   const docsHref = rawDocs.startsWith('/') ? withCopy(rawDocs) : rawDocs;
   const title = titleOverride ?? copy.cta.title;
+  const showAuthButtons = isAuthButtonsEnabled();
   return (
     <Section>
       <Container className="px-8 py-24 text-center flex flex-col items-center">
@@ -26,16 +27,18 @@ export function CallToAction({
           {title}
         </Heading>
         <div className="flex flex-wrap items-center justify-center gap-4">
-          <Link
-            href="/login"
-            data-testid="marketing-get-started-cta"
-            className={`px-8 py-3 text-sm inline-flex items-center justify-center gap-2 rounded-none ${theme.buttons.primary}`}
-          >
-            {copy.cta.primaryLabel}{' '}
-            <span className="material-symbols-sharp ml-2" style={{ fontSize: '1rem' }}>
-              arrow_forward
-            </span>
-          </Link>
+          {showAuthButtons ? (
+            <Link
+              href="/login"
+              data-testid="marketing-get-started-cta"
+              className={`px-8 py-3 text-sm inline-flex items-center justify-center gap-2 rounded-none ${theme.buttons.primary}`}
+            >
+              {copy.cta.primaryLabel}{' '}
+              <span className="material-symbols-sharp ml-2" style={{ fontSize: '1rem' }}>
+                arrow_forward
+              </span>
+            </Link>
+          ) : null}
           <Link
             href={docsHref}
             data-testid="marketing-read-docs-cta"

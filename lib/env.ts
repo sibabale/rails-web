@@ -11,12 +11,17 @@ export const getClientServerUrl = (): string | undefined => {
   return undefined;
 };
 
+/** When false, `/login`, `/register`, `/forgot-password`, and `/reset-password` render the disabled notice instead of real forms. */
 export const isAuthViewsEnabled = (): boolean => {
   if (nonEmpty(process.env.NEXT_PUBLIC_ENABLE_AUTH_VIEWS))
     return process.env.NEXT_PUBLIC_ENABLE_AUTH_VIEWS === 'true';
   return false;
 };
 
+/**
+ * When true, show every **Get Started** / auth entry CTA (marketing header, hero, bottom CTA, auth shell header, legacy `Navbar`).
+ * Does not enable auth forms by itself—pair with `isAuthViewsEnabled()` for end-to-end sign-up flows.
+ */
 export const isAuthButtonsEnabled = (): boolean => {
   if (nonEmpty(process.env.NEXT_PUBLIC_SHOW_AUTH_BUTTONS))
     return process.env.NEXT_PUBLIC_SHOW_AUTH_BUTTONS === 'true';

@@ -4,7 +4,7 @@ import { SiGithub } from '@icons-pack/react-simple-icons';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import React, { useState } from 'react';
-import { getMarketingDocsHref } from '@/lib/env';
+import { getMarketingDocsHref, isAuthButtonsEnabled } from '@/lib/env';
 import { useMarketingSiteCopy } from '@/components/marketing/MarketingCopyVariantProvider';
 import { MarketingThemeToggle } from './ThemeToggle';
 import { RailsTrackMark } from './atoms/RailsTrackMark';
@@ -24,6 +24,7 @@ export default function SiteLayout({ children }: SiteLayoutProps) {
     : ({} as const);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const closeMobileMenu = () => setMobileMenuOpen(false);
+  const showAuthButtons = isAuthButtonsEnabled();
 
   return (
     <div className="min-h-screen bg-white dark:bg-black text-zinc-600 dark:text-zinc-300 selection:bg-zinc-200 dark:selection:bg-zinc-800 selection:text-black dark:selection:text-white flex flex-col transition-colors duration-200">
@@ -71,13 +72,15 @@ export default function SiteLayout({ children }: SiteLayoutProps) {
               <SiGithub className="w-4 h-4" />
               <span className="hidden lg:inline">GitHub</span>
             </a>
-            <Link
-              href="/login"
-              data-testid="marketing-header-get-started"
-              className="hidden sm:block bg-black text-white dark:bg-white dark:text-black px-4 py-1.5 text-xs font-semibold hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-colors text-center"
-            >
-              Get Started
-            </Link>
+            {showAuthButtons ? (
+              <Link
+                href="/login"
+                data-testid="marketing-header-get-started"
+                className="hidden sm:block bg-black text-white dark:bg-white dark:text-black px-4 py-1.5 text-xs font-semibold hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-colors text-center"
+              >
+                Get Started
+              </Link>
+            ) : null}
             <Link
               href={docsHref}
               data-testid="marketing-header-read-docs"
@@ -128,13 +131,16 @@ export default function SiteLayout({ children }: SiteLayoutProps) {
               Documentation
             </Link>
             <div className="h-px bg-zinc-200 dark:bg-zinc-800 my-2 w-full"></div>
-            <Link
-              href="/login"
-              className="bg-black text-white dark:bg-white dark:text-black px-4 py-2 text-xs font-semibold hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-colors w-full text-center"
-              onClick={closeMobileMenu}
-            >
-              Get Started
-            </Link>
+            {showAuthButtons ? (
+              <Link
+                href="/login"
+                data-testid="marketing-header-get-started-mobile"
+                className="bg-black text-white dark:bg-white dark:text-black px-4 py-2 text-xs font-semibold hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-colors w-full text-center"
+                onClick={closeMobileMenu}
+              >
+                Get Started
+              </Link>
+            ) : null}
             <Link
               href={docsHref}
               className="border structural-border text-black dark:text-white px-4 py-2 text-xs font-medium hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors w-full text-center"

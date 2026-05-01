@@ -14,7 +14,7 @@ import { Section } from '../atoms/Section';
 import { Heading } from '../atoms/Heading';
 import { Text } from '../atoms/Text';
 import { startLandingTracking } from '@/lib/analytics';
-import { getMarketingDocsHref } from '@/lib/env';
+import { getMarketingDocsHref, isAuthButtonsEnabled } from '@/lib/env';
 import { CodeScrollPane } from '../atoms/CodeScrollPane';
 import { theme } from '@/lib/marketingTheme';
 import { useMarketingSiteCopy } from '@/components/marketing/MarketingCopyVariantProvider';
@@ -23,6 +23,7 @@ export default function MarketingHome() {
   const { copy, withCopy } = useMarketingSiteCopy();
   const rawDocs = getMarketingDocsHref();
   const docsHref = rawDocs.startsWith('/') ? withCopy(rawDocs) : rawDocs;
+  const showAuthButtons = isAuthButtonsEnabled();
   const [activeSdk, setActiveSdk] = useState<HeroSdkLabel>('TypeScript');
   const [sdkMenuOpen, setSdkMenuOpen] = useState(false);
   const sdkMenuRef = useRef<HTMLDivElement>(null);
@@ -78,14 +79,16 @@ export default function MarketingHome() {
               </h1>
               <p className={`${theme.typography.p} mb-10 max-w-md`}>{copy.home.heroSubtitle}</p>
               <div className="flex flex-wrap items-center gap-4">
-                <Link
-                  href="/login"
-                  data-testid="marketing-get-started-hero"
-                  className={`px-6 py-3 text-sm inline-flex items-center gap-2 rounded-none ${theme.buttons.primary}`}
-                >
-                  {copy.home.heroPrimaryCta}
-                  <ArrowRight className="w-4 h-4 shrink-0" aria-hidden />
-                </Link>
+                {showAuthButtons ? (
+                  <Link
+                    href="/login"
+                    data-testid="marketing-get-started-hero"
+                    className={`px-6 py-3 text-sm inline-flex items-center gap-2 rounded-none ${theme.buttons.primary}`}
+                  >
+                    {copy.home.heroPrimaryCta}
+                    <ArrowRight className="w-4 h-4 shrink-0" aria-hidden />
+                  </Link>
+                ) : null}
                 <Link
                   href={docsHref}
                   data-testid="marketing-read-docs-hero"
