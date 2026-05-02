@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { MarketingAuthShell } from '@/components/marketing/MarketingAuthShell';
 
 export const metadata: Metadata = {
-  title: 'Reset Password | Rails',
+  title: 'Reset Password | Rails Infra',
   description: 'Set a new password for your Rails account.',
   alternates: {
     canonical: '/reset-password',

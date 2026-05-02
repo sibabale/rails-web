@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { MarketingAuthShell } from '@/components/marketing/MarketingAuthShell';
 
 export const metadata: Metadata = {
-  title: 'Login | Rails',
+  title: 'Login | Rails Infra',
   description: 'Authenticate to your Rails infrastructure account.',
   alternates: {
     canonical: '/login',

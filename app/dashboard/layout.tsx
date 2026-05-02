@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Dashboard | Rails',
+  title: 'Dashboard | Rails Infra',
   description: 'Rails operations dashboard.',
   robots: {
     index: false,
