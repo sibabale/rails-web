@@ -23,27 +23,28 @@ const notoSansMono = Noto_Sans_Mono({
   display: 'swap',
 });
 
+const defaultTitle = 'Rails Infra — Ledger infrastructure and APIs';
+const defaultDescription =
+  'Rails Infra provides ledger infrastructure, APIs, and SDKs to build financial and accounting workflows with confidence.';
+
 export const metadata: Metadata = {
   metadataBase: new URL(getSiteUrl()),
-  title: 'Rails | Banking Infrastructure for Developers',
-  description:
-    'Developer-focused banking-as-a-service infrastructure with programmable accounts, payments, and ledger APIs.',
+  title: defaultTitle,
+  description: defaultDescription,
   alternates: {
     canonical: '/',
   },
   openGraph: {
-    title: 'Rails | Banking Infrastructure for Developers',
-    description:
-      'Developer-focused banking-as-a-service infrastructure with programmable accounts, payments, and ledger APIs.',
+    title: defaultTitle,
+    description: defaultDescription,
     url: '/',
-    siteName: 'Rails',
+    siteName: 'Rails Infra',
     type: 'website',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Rails | Banking Infrastructure for Developers',
-    description:
-      'Developer-focused banking-as-a-service infrastructure with programmable accounts, payments, and ledger APIs.',
+    title: defaultTitle,
+    description: defaultDescription,
   },
 };
 
