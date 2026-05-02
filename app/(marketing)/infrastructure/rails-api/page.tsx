@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import RailsApiPage from '@/components/marketing/pages/infrastructure/RailsApiPage';
 
 export const metadata: Metadata = {
-  title: 'Rails API | Rails Infrastructure',
+  title: 'Rails API | Rails Infra',
   description:
     'Microservices architecture for accounts, users, ledger, and safe money movement at scale.',
   alternates: {
