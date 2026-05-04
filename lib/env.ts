@@ -20,7 +20,7 @@ export const isAuthViewsEnabled = (): boolean => {
 
 /**
  * When true, show every **Get Started** / auth entry CTA (marketing header, hero, bottom CTA, auth shell header, legacy `Navbar`).
- * **Read Documentation** / Read Docs use the same primary (filled black/white) button treatment whether or not Get Started is shown.
+ * **Read Documentation** / Read Docs use **primary** (filled) when Get Started is hidden, and **secondary** (outline) when both show.
  * Does not enable auth forms by itself—pair with `isAuthViewsEnabled()` for end-to-end sign-up flows.
  */
 export const isAuthButtonsEnabled = (): boolean => {
