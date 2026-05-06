@@ -48,7 +48,7 @@ export default defineConfig({
       NEXT_PUBLIC_ENABLE_AUTH_VIEWS: 'true',
       NEXT_PUBLIC_SHOW_AUTH_BUTTONS: 'true',
       NEXT_PUBLIC_ENABLE_ANALYTICS: 'false',
-      NEXT_PUBLIC_DOCS_URL: `${baseURL}/docs`,
+      NEXT_PUBLIC_DOCS_URL: process.env.NEXT_PUBLIC_DOCS_URL ?? '/docs',
     },
   },
 });
