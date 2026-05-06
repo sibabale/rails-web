@@ -41,6 +41,15 @@ export const getMarketingDocsCtaUrl = (): string => {
   return MARKETING_DOCS_CTA_FALLBACK;
 };
 
+/** GitHub repo for the dashboard header link (no trailing slash). */
+const DEFAULT_WEB_GITHUB_REPO_URL = 'https://github.com/railsinfra/rails-web';
+
+export const getWebGithubRepoUrl = (): string => {
+  const raw = process.env.NEXT_PUBLIC_GITHUB_REPO_URL?.trim();
+  const url = raw && raw.length > 0 ? raw : DEFAULT_WEB_GITHUB_REPO_URL;
+  return url.replace(/\/$/, '');
+};
+
 /** @alias {@link getMarketingDocsCtaUrl} */
 export const getMarketingDocsHref = (): string => getMarketingDocsCtaUrl();
 

@@ -19,6 +19,7 @@ const publicClientEnv = (): Record<string, string> => {
   );
   set('NEXT_PUBLIC_SAMPLES_REPO_URL', process.env.NEXT_PUBLIC_SAMPLES_REPO_URL);
   set('NEXT_PUBLIC_DOCS_URL', process.env.NEXT_PUBLIC_DOCS_URL);
+  set('NEXT_PUBLIC_GITHUB_REPO_URL', process.env.NEXT_PUBLIC_GITHUB_REPO_URL);
   return out;
 };
 
