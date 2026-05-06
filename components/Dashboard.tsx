@@ -8,9 +8,11 @@ import { setEnvironment } from '../state/slices/environmentSlice';
 import ApiKeyManager from './ApiKeyManager';
 import Pagination from './Pagination';
 import DashboardOverviewV2 from './DashboardOverviewV2';
+import { SiGithub } from '@icons-pack/react-simple-icons';
 import { RailsTrackMark } from '@/components/marketing/atoms/RailsTrackMark';
 import { DashboardMaterialThemeToggle } from './DashboardMaterialThemeToggle';
 import { accountsApi, transactionsApi, ledgerApi, type Account as ApiAccount, type Transaction, type LedgerEntry, type PaginationMeta } from '../lib/api';
+import { getWebGithubRepoUrl } from '../lib/env';
 
 function dashboardTabFromPathname(pathname: string | null): string {
   if (!pathname) return 'Overview';
@@ -1518,15 +1520,6 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, session, profile }) => 
               >
                 {profile?.name || 'James Stork'}
               </span>
-              <span
-                className={`mt-0.5 truncate font-mono text-[10px] ${
-                  activeTab === 'Identity'
-                    ? 'text-zinc-300 dark:text-zinc-600'
-                    : 'text-zinc-500 dark:text-zinc-500'
-                }`}
-              >
-                {isProduction ? 'node_live_9221' : 'node_dev_4410'}
-              </span>
             </div>
           </Link>
           <button
@@ -1567,12 +1560,16 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, session, profile }) => 
           <header className="h-16 shrink-0 px-8 flex items-center justify-between border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50/90 dark:bg-[#0a0a0a]/90 backdrop-blur-sm transition-colors z-10">
             <h1 className="text-xl font-medium tracking-tight text-black dark:text-white">{activeTab}</h1>
             <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2 px-3 py-1 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900 rounded-full">
-                <div className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
-                <span className="text-[10px] font-mono font-semibold text-emerald-700 dark:text-emerald-500 uppercase tracking-widest">
-                  Nominal
-                </span>
-              </div>
+              <a
+                href={getWebGithubRepoUrl()}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 px-3 py-1 rounded-full border border-zinc-200 dark:border-zinc-700 bg-zinc-100/90 dark:bg-zinc-900/50 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-400"
+                data-testid="dashboard-header-github"
+              >
+                <SiGithub className="w-[14px] h-[14px] shrink-0" aria-hidden />
+                <span className="text-[10px] font-mono font-semibold uppercase tracking-widest">GitHub</span>
+              </a>
               <DashboardMaterialThemeToggle />
             </div>
           </header>
