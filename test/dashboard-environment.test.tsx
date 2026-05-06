@@ -119,32 +119,32 @@ describe('Dashboard environment selector', () => {
     );
   });
 
-  it('counts posted transactions for the overview tile', async () => {
+  it('counts completed transactions for the overview tile', async () => {
     listTransactionsMock.mockResolvedValue({
       data: [
         {
           id: 'tx-posted',
           organization_id: 'org-1',
-          from_account_id: 'acc-1',
-          to_account_id: 'acc-2',
+          account_id: 'acc-1',
+          recipient_account_id: 'acc-2',
           amount: 1000,
+          balance_after: 1000,
           currency: 'USD',
-          transaction_kind: 'transfer',
-          status: 'posted',
-          idempotency_key: 'key-1',
+          transaction_type: 'transfer',
+          status: 'completed',
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         },
         {
           id: 'tx-pending',
           organization_id: 'org-1',
-          from_account_id: 'acc-1',
-          to_account_id: 'acc-2',
+          account_id: 'acc-1',
+          recipient_account_id: 'acc-2',
           amount: 1000,
+          balance_after: 0,
           currency: 'USD',
-          transaction_kind: 'transfer',
+          transaction_type: 'transfer',
           status: 'pending',
-          idempotency_key: 'key-2',
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         },
@@ -158,11 +158,11 @@ describe('Dashboard environment selector', () => {
       environments: [{ id: 'env-1', type: 'sandbox' }],
     });
 
-    await screen.findByText('Posted Transactions');
+    await screen.findByText('Completed Transactions');
     await waitFor(
       () => {
         expect(
-          within(screen.getByTestId('dashboard-overview-stat-posted-transactions')).getByText('1')
+          within(screen.getByTestId('dashboard-overview-stat-completed-transactions')).getByText('1')
         ).toBeInTheDocument();
       },
       { timeout: 5000 }

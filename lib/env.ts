@@ -3,6 +3,8 @@
  * Next/Webpack/Turbopack inlines `NEXT_PUBLIC_*` at compile time; dynamic
  * `process.env[variable]` is never replaced and is always undefined in the browser.
  */
+import { RAILSINFRA_GITHUB_ORG_REPOSITORIES_URL } from './railsinfraGithub';
+
 const nonEmpty = (value: string | undefined): value is string =>
   typeof value === 'string' && value.length > 0;
 
@@ -30,7 +32,7 @@ export const isAuthButtonsEnabled = (): boolean => {
 };
 
 /**
- * Public documentation URL for marketing CTAs (`Read Documentation`, `Read Docs`) and the header nav **Documentation** link.
+ * Public documentation URL for marketing CTAs (`Read Documentation`, `Read Docs`), the header nav **Documentation** link, and the dashboard sidebar **Docs** link.
  * Set `NEXT_PUBLIC_DOCS_URL` in each environment (e.g. `https://docs.example.com`). When unset, fall back to
  * an internal docs route so we do not redirect docs CTAs to unrelated external destinations.
  */
@@ -39,6 +41,13 @@ const MARKETING_DOCS_CTA_FALLBACK = '/docs';
 export const getMarketingDocsCtaUrl = (): string => {
   if (nonEmpty(process.env.NEXT_PUBLIC_DOCS_URL)) return process.env.NEXT_PUBLIC_DOCS_URL.trim();
   return MARKETING_DOCS_CTA_FALLBACK;
+};
+
+/** Default GitHub destination for the dashboard header link (org repositories; no trailing slash). */
+export const getWebGithubRepoUrl = (): string => {
+  const raw = process.env.NEXT_PUBLIC_GITHUB_REPO_URL?.trim();
+  const url = raw && raw.length > 0 ? raw : RAILSINFRA_GITHUB_ORG_REPOSITORIES_URL;
+  return url.replace(/\/$/, '');
 };
 
 /** @alias {@link getMarketingDocsCtaUrl} */
