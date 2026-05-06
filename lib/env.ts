@@ -31,10 +31,10 @@ export const isAuthButtonsEnabled = (): boolean => {
 
 /**
  * Public documentation URL for marketing CTAs (`Read Documentation`, `Read Docs`) and the header nav **Documentation** link.
- * Set `NEXT_PUBLIC_DOCS_URL` in each environment (e.g. `https://docs.example.com`). When unset, a stable external
- * fallback is used so builds and local runs still produce valid absolute links.
+ * Set `NEXT_PUBLIC_DOCS_URL` in each environment (e.g. `https://docs.example.com`). When unset, fall back to
+ * an internal docs route so we do not redirect docs CTAs to unrelated external destinations.
  */
-const MARKETING_DOCS_CTA_FALLBACK = 'https://github.com/railsinfra';
+const MARKETING_DOCS_CTA_FALLBACK = '/docs';
 
 export const getMarketingDocsCtaUrl = (): string => {
   if (nonEmpty(process.env.NEXT_PUBLIC_DOCS_URL)) return process.env.NEXT_PUBLIC_DOCS_URL.trim();
