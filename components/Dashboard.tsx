@@ -911,7 +911,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, session, profile }) => 
                   <input 
                     type="text" 
                     readOnly 
-                    value={profile?.business_name || "Rails Institutional Bank"} 
+                    value={profile?.business_name?.trim() ?? ''}
                     className="w-full border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-black px-4 py-2 text-sm font-bold text-black dark:text-white outline-none transition-colors cursor-default" 
                   />
                 </div>
@@ -920,7 +920,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, session, profile }) => 
                   <input 
                     type="text" 
                     readOnly 
-                    value={profile?.id?.slice(0, 12).toUpperCase() || "RAILS_INST_001"} 
+                    value={profile?.id ? profile.id.slice(0, 12).toUpperCase() : ''}
                     className="w-full border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-black px-4 py-2 text-sm font-mono font-bold text-black dark:text-white outline-none transition-colors cursor-default" 
                   />
                 </div>
@@ -929,7 +929,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, session, profile }) => 
                   <input 
                     type="text" 
                     readOnly 
-                    value="https://rails.finance" 
+                    value=""
                     className="w-full border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-black px-4 py-2 text-sm font-bold text-zinc-600 dark:text-zinc-400 outline-none transition-colors cursor-default" 
                   />
                 </div>
@@ -944,7 +944,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, session, profile }) => 
                   <input 
                     type="text" 
                     readOnly 
-                    value={profile?.name?.split(' ')[0] || "James"} 
+                    value={profile?.name?.trim()?.split(/\s+/)?.[0] ?? ''}
                     className="w-full border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-black px-4 py-2 text-sm font-bold text-black dark:text-white outline-none transition-colors cursor-default" 
                   />
                 </div>
@@ -953,7 +953,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, session, profile }) => 
                   <input 
                     type="text" 
                     readOnly 
-                    value={profile?.name?.split(' ')[1] || "Stork"} 
+                    value={profile?.name?.trim()?.split(/\s+/)?.slice(1)?.join(' ') ?? ''}
                     className="w-full border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-black px-4 py-2 text-sm font-bold text-black dark:text-white outline-none transition-colors cursor-default" 
                   />
                 </div>
@@ -962,7 +962,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, session, profile }) => 
                   <input 
                     type="text" 
                     readOnly 
-                    value={profile?.email || 'james@rails.infra'} 
+                    value={profile?.email?.trim() ?? ''}
                     className="w-full border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-black px-4 py-2 text-sm font-mono font-bold text-black dark:text-white outline-none transition-colors cursor-default" 
                   />
                 </div>
@@ -1533,7 +1533,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, session, profile }) => 
             {profile?.avatar_url ? (
               <img
                 src={profile.avatar_url}
-                alt={profile.name ?? 'Profile'}
+                alt={profile.name?.trim() || ''}
                 className={`h-8 w-8 rounded-full object-cover ${
                   activeTab === 'Identity'
                     ? 'border border-white/30 dark:border-black/15'
@@ -1548,13 +1548,21 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, session, profile }) => 
                     : 'border border-transparent bg-zinc-200 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300'
                 }`}
               >
-                {profile?.name
-                  ? profile.name
-                      .split(' ')
-                      .map((n: string) => n[0])
-                      .join('')
-                      .toUpperCase()
-                  : 'JS'}
+                {(() => {
+                  const initials = profile?.name
+                    ?.trim()
+                    .split(/\s+/)
+                    .map((n: string) => n[0])
+                    .join('')
+                    .toUpperCase()
+                    .slice(0, 2);
+                  if (initials) return initials;
+                  return (
+                    <span className="material-symbols-sharp !text-[18px] leading-none opacity-70" aria-hidden>
+                      person
+                    </span>
+                  );
+                })()}
               </div>
             )}
             <div className="flex min-w-0 flex-col">
@@ -1563,7 +1571,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, session, profile }) => 
                   activeTab === 'Identity' ? 'text-white dark:text-black' : 'text-black dark:text-white'
                 }`}
               >
-                {profile?.name || 'James Stork'}
+                {profile?.name?.trim() ?? ''}
               </span>
             </div>
           </Link>
