@@ -90,7 +90,9 @@ export default function MarketingHome() {
                 ) : null}
                 <MarketingDocsCtaLink
                   data-testid="marketing-read-docs-hero"
-                  className={`px-6 py-3 text-sm inline-flex items-center gap-2 rounded-none ${theme.buttons.primary}`}
+                  className={`px-6 py-3 text-sm inline-flex items-center gap-2 rounded-none ${
+                    showAuthButtons ? theme.buttons.secondary : theme.buttons.primary
+                  }`}
                 >
                   <span className="material-symbols-sharp shrink-0" style={{ fontSize: '1rem' }} aria-hidden>
                     menu_book
