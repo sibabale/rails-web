@@ -37,7 +37,7 @@ const DashboardOverviewV2: React.FC<DashboardOverviewV2Props> = ({
       sublabel: 'accounts',
     },
     {
-      label: 'Posted Transactions',
+      label: 'Completed Transactions',
       value: isLoadingOverviewStats ? '—' : formatCount(overviewStats.postedEntries),
       sublabel: 'transactions',
     },

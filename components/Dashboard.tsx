@@ -30,6 +30,44 @@ const DASHBOARD_SIDEBAR_NAV_ITEMS: { name: string; icon: string; href: string }[
   { name: 'Ledger', icon: 'book', href: '/dashboard/ledger' },
 ];
 
+/** Accounts-service amounts are in minor units (e.g. cents). */
+function formatTransactionAmountMinor(amount: number, currency: string): string {
+  const major = amount / 100;
+  return `${major.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${currency}`;
+}
+
+function isTransactionCompletedStatus(status: string | undefined): boolean {
+  const s = status?.toLowerCase().trim();
+  return s === 'completed' || s === 'posted';
+}
+
+function isTransactionPendingStatus(status: string | undefined): boolean {
+  return status?.toLowerCase().trim() === 'pending';
+}
+
+function isTransactionFailedStatus(status: string | undefined): boolean {
+  return status?.toLowerCase().trim() === 'failed';
+}
+
+function transactionStatusBadgeClass(status: string | undefined): string {
+  if (isTransactionCompletedStatus(status)) {
+    return 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-500';
+  }
+  if (isTransactionPendingStatus(status)) {
+    return 'bg-amber-500/10 text-amber-600 dark:text-amber-500';
+  }
+  if (isTransactionFailedStatus(status)) {
+    return 'bg-red-500/10 text-red-600 dark:text-red-500';
+  }
+  return 'bg-zinc-500/10 text-zinc-600 dark:text-zinc-500';
+}
+
+function shortTransactionId(value: string | undefined): string {
+  const v = value?.trim();
+  if (!v) return '—';
+  return v.length <= 8 ? v : `${v.slice(0, 8)}...`;
+}
+
 const DashboardSidebarPrimaryNav = memo(function DashboardSidebarPrimaryNav({ activeTab }: { activeTab: string }) {
   return (
     <nav className="space-y-1 px-3 py-4">
@@ -359,8 +397,8 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, session, profile }) => 
         const activeAccountsCount = allAccounts.filter((account) => account.status?.toLowerCase() === 'active').length;
 
         const allTransactions = await fetchAllTransactions();
-        const postedTransactions = allTransactions.filter((tx) => tx.status?.toLowerCase() === 'posted');
-        const postedTransactionsCount = postedTransactions.length;
+        const postedTransactionsCount = allTransactions.filter((tx) => isTransactionCompletedStatus(tx.status))
+          .length;
 
         return {
           activeAccountsCount,
@@ -416,7 +454,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, session, profile }) => 
       sublabel: 'accounts',
     },
     {
-      label: 'Posted Transactions',
+      label: 'Completed Transactions',
       value: isLoadingOverviewStats ? '—' : formatCount(overviewStats.postedEntries),
       sublabel: 'transactions',
     },
@@ -514,16 +552,8 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, session, profile }) => 
                     {transactions.slice(0, 5).map((tx) => (
                       <div key={tx.id} className="border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-[#050505] p-4 transition-colors">
                         <div className="flex items-center justify-between mb-2">
-                          <span className="text-xs font-mono font-bold text-black dark:text-white">{tx.transaction_kind}</span>
-                          <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase ${
-                            tx.status?.toLowerCase() === 'posted' 
-                              ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-500'
-                              : tx.status?.toLowerCase() === 'pending'
-                              ? 'bg-amber-500/10 text-amber-600 dark:text-amber-500'
-                              : tx.status?.toLowerCase() === 'failed'
-                              ? 'bg-red-500/10 text-red-600 dark:text-red-500'
-                              : 'bg-zinc-500/10 text-zinc-600 dark:text-zinc-500'
-                          }`}>
+                          <span className="text-xs font-mono font-bold text-black dark:text-white">{tx.transaction_type}</span>
+                          <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase ${transactionStatusBadgeClass(tx.status)}`}>
                             {tx.status}
                           </span>
                         </div>
@@ -532,9 +562,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, session, profile }) => 
                             {new Date(tx.created_at).toLocaleString()}
                           </span>
                           <span className="text-xs font-mono font-bold text-black dark:text-white">
-                            {typeof tx.amount === 'number' 
-                              ? tx.amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-                              : tx.amount} {tx.currency}
+                            {formatTransactionAmountMinor(tx.amount, tx.currency)}
                           </span>
                         </div>
                       </div>
@@ -640,19 +668,11 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, session, profile }) => 
             </div>
             <div>
               <label className="text-[10px] font-mono font-semibold uppercase tracking-widest text-zinc-500 block mb-2">Type</label>
-              <p className="text-sm font-bold text-black dark:text-white uppercase">{transaction.transaction_kind}</p>
+              <p className="text-sm font-bold text-black dark:text-white uppercase">{transaction.transaction_type}</p>
             </div>
             <div>
               <label className="text-[10px] font-mono font-semibold uppercase tracking-widest text-zinc-500 block mb-2">Status</label>
-              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase inline-block ${
-                transaction.status?.toLowerCase().trim() === 'posted' 
-                  ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-500' 
-                  : transaction.status?.toLowerCase().trim() === 'pending'
-                  ? 'bg-amber-500/10 text-amber-600 dark:text-amber-500'
-                  : transaction.status?.toLowerCase().trim() === 'failed'
-                  ? 'bg-red-500/10 text-red-600 dark:text-red-500'
-                  : 'bg-zinc-500/10 text-zinc-600 dark:text-zinc-500'
-              }`}>
+              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase inline-block ${transactionStatusBadgeClass(transaction.status)}`}>
                 {transaction.status}
               </span>
             </div>
@@ -662,16 +682,18 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, session, profile }) => 
                 {formatAmount(transaction.amount)} {transaction.currency}
               </p>
             </div>
-            <div>
-              <label className="text-[10px] font-mono font-semibold uppercase tracking-widest text-zinc-500 block mb-2">Environment</label>
-              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase inline-block ${
-                transaction.environment === 'production'
-                  ? 'bg-purple-500/10 text-purple-600 dark:text-purple-500'
-                  : 'bg-blue-500/10 text-blue-600 dark:text-blue-500'
-              }`}>
-                {transaction.environment || 'sandbox'}
-              </span>
-            </div>
+            {transaction.environment != null && transaction.environment !== '' && (
+              <div>
+                <label className="text-[10px] font-mono font-semibold uppercase tracking-widest text-zinc-500 block mb-2">Environment</label>
+                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase inline-block ${
+                  transaction.environment === 'production'
+                    ? 'bg-purple-500/10 text-purple-600 dark:text-purple-500'
+                    : 'bg-blue-500/10 text-blue-600 dark:text-blue-500'
+                }`}>
+                  {transaction.environment}
+                </span>
+              </div>
+            )}
             <div>
               <label className="text-[10px] font-mono font-semibold uppercase tracking-widest text-zinc-500 block mb-2">Created At</label>
               <p className="text-sm font-mono text-black dark:text-white">{formatDate(transaction.created_at)}</p>
@@ -684,14 +706,14 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, session, profile }) => 
           <h3 className="text-[10px] font-mono font-semibold uppercase tracking-widest text-zinc-500">Parties Involved</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label className="text-[10px] font-mono font-semibold uppercase tracking-widest text-zinc-500 block mb-4">From Account</label>
+              <label className="text-[10px] font-mono font-semibold uppercase tracking-widest text-zinc-500 block mb-4">Account</label>
               <div className="space-y-3">
                 <div>
                   <label className="text-[9px] font-mono text-zinc-500 uppercase block mb-1">Account ID</label>
                   <div className="flex items-center gap-2">
-                    <p className="text-sm font-mono font-bold text-black dark:text-white break-all">{transaction.from_account_id}</p>
+                    <p className="text-sm font-mono font-bold text-black dark:text-white break-all">{transaction.account_id}</p>
                     <button
-                      onClick={() => copyToClipboard(transaction.from_account_id)}
+                      onClick={() => copyToClipboard(transaction.account_id)}
                       className="p-1 rounded hover:bg-zinc-100 dark:hover:bg-zinc-900 text-zinc-500 hover:text-zinc-800 dark:hover:text-white transition-colors flex-shrink-0"
                       title="Copy to clipboard"
                       type="button"
@@ -705,22 +727,33 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, session, profile }) => 
               </div>
             </div>
             <div>
-              <label className="text-[10px] font-mono font-semibold uppercase tracking-widest text-zinc-500 block mb-4">To Account</label>
+              <label className="text-[10px] font-mono font-semibold uppercase tracking-widest text-zinc-500 block mb-4">Recipient</label>
               <div className="space-y-3">
                 <div>
-                  <label className="text-[9px] font-mono text-zinc-500 uppercase block mb-1">Account ID</label>
+                  <label className="text-[9px] font-mono text-zinc-500 uppercase block mb-1">Recipient account / external</label>
                   <div className="flex items-center gap-2">
-                    <p className="text-sm font-mono font-bold text-black dark:text-white break-all">{transaction.to_account_id}</p>
-                    <button
-                      onClick={() => copyToClipboard(transaction.to_account_id)}
-                      className="p-1 rounded hover:bg-zinc-100 dark:hover:bg-zinc-900 text-zinc-500 hover:text-zinc-800 dark:hover:text-white transition-colors flex-shrink-0"
-                      title="Copy to clipboard"
-                      type="button"
-                    >
+                    <p className="text-sm font-mono font-bold text-black dark:text-white break-all">
+                      {[transaction.recipient_account_id, transaction.external_recipient_id].find((x) => x?.trim())
+                        ?? '—'}
+                    </p>
+                    {(transaction.recipient_account_id?.trim() || transaction.external_recipient_id?.trim()) && (
+                      <button
+                        onClick={() =>
+                          copyToClipboard(
+                            transaction.recipient_account_id?.trim() ||
+                              transaction.external_recipient_id?.trim() ||
+                              ''
+                          )
+                        }
+                        className="p-1 rounded hover:bg-zinc-100 dark:hover:bg-zinc-900 text-zinc-500 hover:text-zinc-800 dark:hover:text-white transition-colors flex-shrink-0"
+                        title="Copy to clipboard"
+                        type="button"
+                      >
                       <span className="material-symbols-sharp !text-[16px] leading-none" aria-hidden>
                     content_copy
                   </span>
-                    </button>
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>
@@ -772,6 +805,34 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, session, profile }) => 
               <div className="md:col-span-2">
                 <label className="text-[9px] font-mono text-zinc-500 uppercase block mb-1">Failure Reason</label>
                 <p className="text-sm font-mono text-red-600 dark:text-red-500 break-all">{transaction.failure_reason}</p>
+              </div>
+            )}
+            <div>
+              <label className="text-[9px] font-mono text-zinc-500 uppercase block mb-1">Balance after</label>
+              <p className="text-sm font-mono text-black dark:text-white">{formatAmount(transaction.balance_after)}</p>
+            </div>
+            {transaction.reference_id?.trim() && (
+              <div>
+                <label className="text-[9px] font-mono text-zinc-500 uppercase block mb-1">Reference ID</label>
+                <div className="flex items-center gap-2">
+                  <p className="text-sm font-mono font-bold text-black dark:text-white break-all">{transaction.reference_id}</p>
+                  <button
+                    onClick={() => copyToClipboard(transaction.reference_id || '')}
+                    className="p-1 rounded hover:bg-zinc-100 dark:hover:bg-zinc-900 text-zinc-500 hover:text-zinc-800 dark:hover:text-white transition-colors flex-shrink-0"
+                    title="Copy to clipboard"
+                    type="button"
+                  >
+                    <span className="material-symbols-sharp !text-[16px] leading-none" aria-hidden>
+                    content_copy
+                  </span>
+                  </button>
+                </div>
+              </div>
+            )}
+            {transaction.description?.trim() && (
+              <div className="md:col-span-2">
+                <label className="text-[9px] font-mono text-zinc-500 uppercase block mb-1">Description</label>
+                <p className="text-sm font-mono text-black dark:text-white break-all">{transaction.description}</p>
               </div>
             )}
             <div>
@@ -919,8 +980,8 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, session, profile }) => 
                 <th className="px-6 py-4">Type</th>
                 <th className="px-6 py-4">Amount</th>
                 <th className="px-6 py-4">Status</th>
-                <th className="px-6 py-4">From Account</th>
-                <th className="px-6 py-4">To Account</th>
+                <th className="px-6 py-4">Account</th>
+                <th className="px-6 py-4">Recipient</th>
                 <th className="px-6 py-4">Created</th>
               </tr>
             </thead>
@@ -959,8 +1020,8 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, session, profile }) => 
                 <th className="px-6 py-4">Type</th>
                 <th className="px-6 py-4">Amount</th>
                 <th className="px-6 py-4">Status</th>
-                <th className="px-6 py-4">From Account</th>
-                <th className="px-6 py-4">To Account</th>
+                <th className="px-6 py-4">Account</th>
+                <th className="px-6 py-4">Recipient</th>
                 <th className="px-6 py-4">Created</th>
               </tr>
             </thead>
@@ -975,31 +1036,27 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, session, profile }) => 
                     <span className="font-bold text-black dark:text-white">{tx.id.slice(0, 8)}...</span>
                   </td>
                   <td className="px-6 py-5">
-                    <span className="text-zinc-500 dark:text-zinc-300 uppercase">{tx.transaction_kind}</span>
+                    <span className="text-zinc-500 dark:text-zinc-300 uppercase">{tx.transaction_type}</span>
                   </td>
                   <td className="px-6 py-5">
                     <span className="text-black dark:text-white font-bold">
-                      {(tx.amount / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {tx.currency}
+                      {formatTransactionAmountMinor(tx.amount, tx.currency)}
                     </span>
                   </td>
                   <td className="px-6 py-5">
-                    <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase ${
-                      (tx.status?.toLowerCase().trim() === 'posted') 
-                        ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-500' 
-                        : (tx.status?.toLowerCase().trim() === 'pending')
-                        ? 'bg-amber-500/10 text-amber-600 dark:text-amber-500'
-                        : (tx.status?.toLowerCase().trim() === 'failed')
-                        ? 'bg-red-500/10 text-red-600 dark:text-red-500'
-                        : 'bg-zinc-500/10 text-zinc-600 dark:text-zinc-500'
-                    }`}>
+                    <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase ${transactionStatusBadgeClass(tx.status)}`}>
                       {tx.status}
                     </span>
                   </td>
                   <td className="px-6 py-5">
-                    <span className="text-zinc-500 dark:text-zinc-300">{tx.from_account_id.slice(0, 8)}...</span>
+                    <span className="text-zinc-500 dark:text-zinc-300">{shortTransactionId(tx.account_id)}</span>
                   </td>
                   <td className="px-6 py-5">
-                    <span className="text-zinc-500 dark:text-zinc-300">{tx.to_account_id.slice(0, 8)}...</span>
+                    <span className="text-zinc-500 dark:text-zinc-300">
+                      {shortTransactionId(
+                        tx.recipient_account_id?.trim() ? tx.recipient_account_id : tx.external_recipient_id
+                      )}
+                    </span>
                   </td>
                   <td className="px-6 py-5 text-zinc-500 dark:text-zinc-400">
                     {new Date(tx.created_at).toLocaleDateString()}
