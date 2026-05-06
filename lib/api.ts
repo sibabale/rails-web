@@ -37,6 +37,31 @@ const getClientServerBaseUrl = (): string => {
   return clientServer.replace(/\/$/, '');
 };
 
+/** Best-effort message from JSON error bodies (BFF, Rails, Axum shapes). */
+function pickErrorMessageFromJson(parsed: unknown): string | null {
+  if (!parsed || typeof parsed !== 'object') return null;
+  const o = parsed as Record<string, unknown>;
+  const str = (v: unknown) => (typeof v === 'string' && v.trim().length > 0 ? v.trim() : null);
+  const fromMessage = str(o.message) ?? str(o.detail) ?? str(o.title);
+  if (fromMessage) return fromMessage;
+  if (typeof o.error === 'string') return str(o.error);
+  if (o.error && typeof o.error === 'object') {
+    const inner = o.error as Record<string, unknown>;
+    const nested = str(inner.message) ?? str(inner.detail);
+    if (nested) return nested;
+  }
+  const errs = o.errors;
+  if (errs && typeof errs === 'object' && !Array.isArray(errs)) {
+    const entries = Object.entries(errs as Record<string, unknown>);
+    if (entries.length) {
+      const [k, v] = entries[0];
+      if (Array.isArray(v) && typeof v[0] === 'string') return `${k}: ${v[0]}`;
+      if (typeof v === 'string') return `${k}: ${v}`;
+    }
+  }
+  return null;
+}
+
 // Make API request with proper headers and error handling
 // All requests go through rails-client-server proxy
 export async function apiRequest<T>(
@@ -94,8 +119,9 @@ export async function apiRequest<T>(
 
     if (!response.ok) {
       const errorText = await response.text();
+      const status = response.status;
       let errorMessage = 'An error occurred while processing your request.';
-      
+
       // Check if response is HTML (like Express default error pages)
       if (errorText.trim().startsWith('<!DOCTYPE') || errorText.trim().startsWith('<html')) {
         // Log the HTML error for debugging
@@ -104,14 +130,19 @@ export async function apiRequest<T>(
         errorMessage = 'The requested resource was not found or is unavailable.';
       } else {
         try {
-          const errorJson = JSON.parse(errorText);
-          // Prefer user-friendly message from API
-          errorMessage = errorJson.message || errorJson.error || errorMessage;
+          const errorJson = JSON.parse(errorText) as unknown;
+          errorMessage = pickErrorMessageFromJson(errorJson) ?? errorMessage;
         } catch {
-          // If response isn't JSON, use generic message
-          // Log the actual error for debugging
-          console.error('API error response (not shown to user):', errorText);
+          const t = errorText.trim();
+          if (t.length > 0 && t.length < 400 && !t.includes('<')) {
+            errorMessage = t;
+          } else {
+            console.error('API error response (not shown to user):', errorText.substring(0, 500));
+          }
         }
+      }
+      if (errorMessage === 'An error occurred while processing your request.') {
+        errorMessage = `Request failed (HTTP ${status}).`;
       }
       throw new Error(errorMessage);
     }
@@ -309,7 +340,13 @@ export interface LedgerTransaction {
 
 // Ledger Service API - REST endpoints now available
 export const ledgerApi = {
-  listEntries: (session: Session | null, filters?: { account_id?: string }, page?: number, perPage?: number): Promise<PaginatedResponse<LedgerEntry>> => {
+  listEntries: (
+    session: Session | null,
+    filters?: { account_id?: string },
+    page?: number,
+    perPage?: number,
+    environment?: Environment
+  ): Promise<PaginatedResponse<LedgerEntry>> => {
     const params = new URLSearchParams();
     if (filters?.account_id) {
       params.append('account_id', filters.account_id);
@@ -319,7 +356,7 @@ export const ledgerApi = {
     const query = params.toString();
     return apiRequest<PaginatedResponse<LedgerEntry>>(
       `/api/v1/ledger/entries${query ? `?${query}` : ''}`,
-      { method: 'GET' },
+      { method: 'GET', ...(environment ? { environment } : {}) },
       session
     );
   },

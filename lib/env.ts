@@ -3,6 +3,8 @@
  * Next/Webpack/Turbopack inlines `NEXT_PUBLIC_*` at compile time; dynamic
  * `process.env[variable]` is never replaced and is always undefined in the browser.
  */
+import { RAILSINFRA_GITHUB_ORG_REPOSITORIES_URL } from './railsinfraGithub';
+
 const nonEmpty = (value: string | undefined): value is string =>
   typeof value === 'string' && value.length > 0;
 
@@ -41,12 +43,10 @@ export const getMarketingDocsCtaUrl = (): string => {
   return MARKETING_DOCS_CTA_FALLBACK;
 };
 
-/** GitHub repo for the dashboard header link (no trailing slash). */
-const DEFAULT_WEB_GITHUB_REPO_URL = 'https://github.com/railsinfra/rails-web';
-
+/** Default GitHub destination for the dashboard header link (org repositories; no trailing slash). */
 export const getWebGithubRepoUrl = (): string => {
   const raw = process.env.NEXT_PUBLIC_GITHUB_REPO_URL?.trim();
-  const url = raw && raw.length > 0 ? raw : DEFAULT_WEB_GITHUB_REPO_URL;
+  const url = raw && raw.length > 0 ? raw : RAILSINFRA_GITHUB_ORG_REPOSITORIES_URL;
   return url.replace(/\/$/, '');
 };
 

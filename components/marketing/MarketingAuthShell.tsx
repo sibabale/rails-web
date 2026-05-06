@@ -1,6 +1,7 @@
 'use client';
 
 import { SiGithub } from '@icons-pack/react-simple-icons';
+import { RAILSINFRA_GITHUB_ORG_REPOSITORIES_URL } from '@/lib/railsinfraGithub';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import React, { useState } from 'react';
@@ -57,7 +58,7 @@ export function MarketingAuthShell({ children }: MarketingAuthShellProps) {
           <div className="flex items-center gap-4">
             <MarketingThemeToggle />
             <a
-              href="https://github.com/railsinfra"
+              href={RAILSINFRA_GITHUB_ORG_REPOSITORIES_URL}
               target="_blank"
               rel="noopener noreferrer"
               className="hidden sm:flex items-center gap-2 text-sm text-zinc-500 dark:text-zinc-400 hover:text-black dark:hover:text-white transition-colors"
@@ -161,7 +162,7 @@ export function MarketingAuthShell({ children }: MarketingAuthShellProps) {
           </div>
           <div className="flex gap-6 text-[11px] font-mono text-zinc-500 dark:text-zinc-600 uppercase tracking-widest">
             <a
-              href="https://github.com/railsinfra"
+              href={RAILSINFRA_GITHUB_ORG_REPOSITORIES_URL}
               target="_blank"
               rel="noopener noreferrer"
               className="hover:text-zinc-900 dark:hover:text-zinc-300 transition-colors"

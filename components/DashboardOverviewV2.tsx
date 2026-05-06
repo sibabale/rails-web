@@ -1,9 +1,8 @@
 import React from 'react';
+import { MarketingDocsCtaLink } from '@/components/marketing/atoms/MarketingDocsCtaLink';
 import { SDK_SAMPLE_FOLDERS, samplesFolderUrl } from '../lib/samplesRepo';
-import { getMarketingDocsCtaUrl } from '../lib/env';
 
 interface DashboardOverviewV2Props {
-  onGetStarted: () => void;
   overviewStats?: {
     activeAccounts: number;
     postedEntries: number;
@@ -25,7 +24,6 @@ const formatCurrency = (amount: number, currency: string) => {
 };
 
 const DashboardOverviewV2: React.FC<DashboardOverviewV2Props> = ({
-  onGetStarted,
   overviewStats = { activeAccounts: 0, postedEntries: 0, settledVolume: 0 },
   isLoadingOverviewStats = false,
   overviewCurrency = 'USD',
@@ -49,8 +47,6 @@ const DashboardOverviewV2: React.FC<DashboardOverviewV2Props> = ({
       sublabel: 'ledger',
     },
   ];
-
-  const docsHref = getMarketingDocsCtaUrl();
 
   return (
     <div className="space-y-8 w-full" data-testid="dashboard-overview-v2">
@@ -92,21 +88,12 @@ const DashboardOverviewV2: React.FC<DashboardOverviewV2Props> = ({
           compliant financial products with confidence.
         </p>
         <div className="flex flex-wrap items-center gap-4">
-          <button
-            type="button"
-            onClick={onGetStarted}
-            className="bg-black text-white dark:bg-white dark:text-black px-6 py-2.5 font-semibold hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-colors"
-          >
-            Create Your First Account
-          </button>
-          <a
-            href={docsHref}
-            target="_blank"
-            rel="noreferrer"
+          <MarketingDocsCtaLink
+            data-testid="dashboard-overview-read-docs"
             className="inline-flex items-center justify-center bg-transparent border border-zinc-300 dark:border-zinc-700 text-black dark:text-white px-6 py-2.5 font-semibold hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-colors"
           >
             Read Docs
-          </a>
+          </MarketingDocsCtaLink>
         </div>
       </div>
 
@@ -142,14 +129,12 @@ const DashboardOverviewV2: React.FC<DashboardOverviewV2Props> = ({
             Explore the onboarding guide, API reference, and integration checklist.
           </p>
           <div className="mt-auto">
-            <a
-              href={docsHref}
-              target="_blank"
-              rel="noreferrer"
+            <MarketingDocsCtaLink
+              data-testid="dashboard-overview-go-to-docs"
               className="text-sm font-semibold text-black dark:text-white hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors inline-flex items-center gap-2"
             >
               Go to Docs →
-            </a>
+            </MarketingDocsCtaLink>
           </div>
         </div>
 
