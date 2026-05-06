@@ -3,7 +3,6 @@ import { SDK_SAMPLE_FOLDERS, samplesFolderUrl } from '../lib/samplesRepo';
 import { getMarketingDocsCtaUrl } from '../lib/env';
 
 interface DashboardOverviewV2Props {
-  onGetStarted: () => void;
   overviewStats?: {
     activeAccounts: number;
     postedEntries: number;
@@ -25,7 +24,6 @@ const formatCurrency = (amount: number, currency: string) => {
 };
 
 const DashboardOverviewV2: React.FC<DashboardOverviewV2Props> = ({
-  onGetStarted,
   overviewStats = { activeAccounts: 0, postedEntries: 0, settledVolume: 0 },
   isLoadingOverviewStats = false,
   overviewCurrency = 'USD',
@@ -92,13 +90,6 @@ const DashboardOverviewV2: React.FC<DashboardOverviewV2Props> = ({
           compliant financial products with confidence.
         </p>
         <div className="flex flex-wrap items-center gap-4">
-          <button
-            type="button"
-            onClick={onGetStarted}
-            className="bg-black text-white dark:bg-white dark:text-black px-6 py-2.5 font-semibold hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-colors"
-          >
-            Create Your First Account
-          </button>
           <a
             href={docsHref}
             target="_blank"
