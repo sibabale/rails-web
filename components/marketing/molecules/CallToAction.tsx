@@ -40,7 +40,9 @@ export function CallToAction({
           ) : null}
           <MarketingDocsCtaLink
             data-testid="marketing-read-docs-cta"
-            className={`px-8 py-3 text-sm inline-flex items-center justify-center gap-2 rounded-none ${theme.buttons.primary}`}
+            className={`px-8 py-3 text-sm inline-flex items-center justify-center gap-2 rounded-none ${
+              showAuthButtons ? theme.buttons.secondary : theme.buttons.primary
+            }`}
           >
             <span className="material-symbols-sharp shrink-0" style={{ fontSize: '1rem' }}>
               menu_book
