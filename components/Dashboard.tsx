@@ -340,7 +340,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, session, profile }) => 
     if (activeTab === 'Ledger' && session) {
       setIsLoadingLedger(true);
       setLedgerError(null);
-      ledgerApi.listEntries(session, undefined, ledgerPage, 10)
+      ledgerApi.listEntries(session, undefined, ledgerPage, 10, environment)
         .then((response) => {
           setLedgerEntries(response.data || []);
           setLedgerPagination(response.pagination);
