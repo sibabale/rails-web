@@ -12,7 +12,11 @@ import { SiGithub } from '@icons-pack/react-simple-icons';
 import { RailsTrackMark } from '@/components/marketing/atoms/RailsTrackMark';
 import { DashboardMaterialThemeToggle } from './DashboardMaterialThemeToggle';
 import { accountsApi, transactionsApi, ledgerApi, type Account as ApiAccount, type Transaction, type LedgerEntry, type PaginationMeta } from '../lib/api';
-import { getWebGithubRepoUrl } from '../lib/env';
+import { getMarketingDocsCtaUrl, getWebGithubRepoUrl } from '../lib/env';
+
+function isDocsExternalHref(href: string): boolean {
+  return /^https?:\/\//i.test(href) || href.startsWith('//');
+}
 
 function dashboardTabFromPathname(pathname: string | null): string {
   if (!pathname) return 'Overview';
@@ -70,7 +74,28 @@ function shortTransactionId(value: string | undefined): string {
   return v.length <= 8 ? v : `${v.slice(0, 8)}...`;
 }
 
+const sidebarNavInactiveClass =
+  'text-zinc-600 hover:bg-zinc-100 hover:text-black dark:text-zinc-400 dark:hover:bg-zinc-900/50 dark:hover:text-white';
+
 const DashboardSidebarPrimaryNav = memo(function DashboardSidebarPrimaryNav({ activeTab }: { activeTab: string }) {
+  const docsHref = getMarketingDocsCtaUrl();
+  const docsExternal = isDocsExternalHref(docsHref);
+  const docsLinkClass = `flex items-center gap-3 px-3 py-2.5 text-sm font-medium transition-colors outline-none ${sidebarNavInactiveClass}`;
+
+  const docsRow = (
+    <>
+      <span className="material-symbols-sharp shrink-0 !text-[16px] leading-none text-zinc-500" aria-hidden>
+        menu_book
+      </span>
+      <span className="min-w-0 flex-1">Docs</span>
+      {docsExternal ? (
+        <span className="material-symbols-sharp shrink-0 !text-[14px] leading-none text-zinc-400" aria-hidden>
+          open_in_new
+        </span>
+      ) : null}
+    </>
+  );
+
   return (
     <nav className="space-y-1 px-3 py-4">
       {DASHBOARD_SIDEBAR_NAV_ITEMS.map((item) => {
@@ -83,7 +108,7 @@ const DashboardSidebarPrimaryNav = memo(function DashboardSidebarPrimaryNav({ ac
             className={`flex items-center gap-3 px-3 py-2.5 text-sm font-medium transition-colors outline-none ${
               isActive
                 ? 'bg-black text-white shadow-sm dark:bg-white dark:text-black'
-                : 'text-zinc-600 hover:bg-zinc-100 hover:text-black dark:text-zinc-400 dark:hover:bg-zinc-900/50 dark:hover:text-white'
+                : sidebarNavInactiveClass
             }`}
           >
             <span
@@ -98,6 +123,27 @@ const DashboardSidebarPrimaryNav = memo(function DashboardSidebarPrimaryNav({ ac
           </Link>
         );
       })}
+      <div
+        className="mx-0 my-2 border-t border-zinc-200 dark:border-zinc-800"
+        aria-hidden
+        data-testid="dashboard-nav-divider-docs"
+      />
+      {docsExternal ? (
+        <a
+          href={docsHref}
+          target="_blank"
+          rel="noopener noreferrer"
+          data-testid="dashboard-nav-docs"
+          className={docsLinkClass}
+        >
+          {docsRow}
+          <span className="sr-only"> (opens in a new tab)</span>
+        </a>
+      ) : (
+        <Link href={docsHref} data-testid="dashboard-nav-docs" className={docsLinkClass}>
+          {docsRow}
+        </Link>
+      )}
     </nav>
   );
 });
