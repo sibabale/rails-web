@@ -11,6 +11,7 @@ import { Container } from '../../atoms/Container';
 import { Heading } from '../../atoms/Heading';
 import { Text } from '../../atoms/Text';
 import { useMarketingSiteCopy } from '@/components/marketing/MarketingCopyVariantProvider';
+import { RAILSINFRA_GITHUB_ORG_REPOSITORIES_URL } from '@/lib/railsinfraGithub';
 
 const FLOW_ICONS = ['ads_click', 'smartphone', 'settings', 'terminal', 'gpp_good', 'database'] as const;
 
@@ -24,12 +25,12 @@ export default function ClientsBackend() {
   }));
 
   const sdks = [
-    { name: 'TypeScript', Icon: SiTypescript, link: 'https://github.com/railsinfra/rails-node' },
-    { name: 'Go', Icon: SiGo, link: 'https://github.com/railsinfra/rails-go' },
-    { name: 'Kotlin', Icon: SiKotlin, link: 'https://github.com/railsinfra/rails-kotlin' },
-    { name: 'Java', Icon: SiOpenjdk, link: 'https://github.com/railsinfra/rails-java' },
-    { name: '.NET', Icon: SiDotnet, link: 'https://github.com/railsinfra/rails-dotnet' },
-  ];
+    { name: 'TypeScript', Icon: SiTypescript },
+    { name: 'Go', Icon: SiGo },
+    { name: 'Kotlin', Icon: SiKotlin },
+    { name: 'Java', Icon: SiOpenjdk },
+    { name: '.NET', Icon: SiDotnet },
+  ].map((sdk) => ({ ...sdk, link: RAILSINFRA_GITHUB_ORG_REPOSITORIES_URL }));
 
   const [animationStep, setAnimationStep] = useState(0);
 
