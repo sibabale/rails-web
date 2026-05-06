@@ -146,20 +146,26 @@ export interface Account {
   metadata?: Record<string, string>;
 }
 
+/** Accounts-service transaction (list/detail) — amounts in minor units (e.g. cents). */
 export interface Transaction {
   id: string;
-  organization_id: string;
-  from_account_id: string;
-  to_account_id: string;
+  account_id: string;
+  transaction_type: string;
   amount: number;
+  balance_after: number;
   currency: string;
-  transaction_kind: 'deposit' | 'withdraw' | 'transfer';
-  status: 'pending' | 'posted' | 'failed';
-  failure_reason?: string | null;
-  idempotency_key: string;
-  environment?: string | null;
+  status: string;
   created_at: string;
   updated_at: string;
+  description?: string;
+  external_recipient_id?: string;
+  recipient_account_id?: string;
+  reference_id?: string;
+  /** Included on some responses only */
+  organization_id?: string;
+  failure_reason?: string | null;
+  idempotency_key?: string;
+  environment?: string | null;
 }
 
 export const accountsApi = {

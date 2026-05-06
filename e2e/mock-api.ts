@@ -119,16 +119,19 @@ export async function handleMockApi(route: Route) {
     await fulfillJson(route, {
       id: 'tx-1',
       organization_id: 'org-1',
-      from_account_id: 'acc-from',
-      to_account_id: 'acc-to',
+      account_id: 'acc-from',
+      recipient_account_id: 'acc-to',
+      external_recipient_id: '',
+      transaction_type: 'transfer',
       amount: 1000,
+      balance_after: 1000,
       currency: 'USD',
-      transaction_kind: 'transfer',
-      status: 'posted',
-      idempotency_key: 'idem-1',
-      environment: 'sandbox',
+      status: 'completed',
+      description: '',
+      reference_id: '',
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
+      environment: 'sandbox',
     });
     return;
   }
