@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation';
 import React, { useState } from 'react';
 import { isAuthButtonsEnabled } from '@/lib/env';
 import { MarketingDocsCtaLink } from '@/components/marketing/atoms/MarketingDocsCtaLink';
+import { theme } from '@/lib/marketingTheme';
 import { MarketingThemeToggle } from './ThemeToggle';
 import { RailsTrackMark } from './atoms/RailsTrackMark';
 
@@ -73,7 +74,12 @@ export function MarketingAuthShell({ children }: MarketingAuthShellProps) {
                 Get Started
               </Link>
             ) : null}
-            <MarketingDocsCtaLink className="hidden sm:block bg-black text-white dark:bg-white dark:text-black px-4 py-1.5 text-xs font-semibold hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-colors text-center">
+            <MarketingDocsCtaLink
+              data-testid="marketing-auth-shell-header-read-docs"
+              className={`hidden sm:block px-4 py-1.5 text-xs text-center transition-colors ${
+                showAuthButtons ? theme.buttons.secondary : theme.buttons.primary
+              }`}
+            >
               Read Docs
             </MarketingDocsCtaLink>
             <button
@@ -129,7 +135,10 @@ export function MarketingAuthShell({ children }: MarketingAuthShellProps) {
               </Link>
             ) : null}
             <MarketingDocsCtaLink
-              className="bg-black text-white dark:bg-white dark:text-black px-4 py-2 text-xs font-semibold hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-colors w-full text-center"
+              data-testid="marketing-auth-shell-header-read-docs-mobile"
+              className={`px-4 py-2 text-xs w-full text-center transition-colors ${
+                showAuthButtons ? theme.buttons.secondary : theme.buttons.primary
+              }`}
               onClick={closeMobileMenu}
             >
               Read Docs
