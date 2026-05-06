@@ -1579,6 +1579,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, session, profile }) => 
                 <SiGithub className="w-[14px] h-[14px] shrink-0" aria-hidden />
                 <span className="text-[10px] font-mono font-semibold uppercase tracking-widest">GitHub</span>
               </a>
+              <DashboardMaterialThemeToggle />
               <Link
                 href="/dashboard/identity"
                 data-testid="dashboard-nav-identity"
@@ -1630,7 +1631,6 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, session, profile }) => 
                   </div>
                 )}
               </Link>
-              <DashboardMaterialThemeToggle />
             </div>
           </header>
 
