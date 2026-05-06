@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef, memo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, memo } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAppDispatch, useAppSelector } from '../state/hooks';
@@ -12,17 +12,30 @@ import { SiGithub } from '@icons-pack/react-simple-icons';
 import { RailsTrackMark } from '@/components/marketing/atoms/RailsTrackMark';
 import { DashboardMaterialThemeToggle } from './DashboardMaterialThemeToggle';
 import { accountsApi, transactionsApi, ledgerApi, type Account as ApiAccount, type Transaction, type LedgerEntry, type PaginationMeta } from '../lib/api';
-import { getWebGithubRepoUrl } from '../lib/env';
+import { getMarketingDocsCtaUrl, getWebGithubRepoUrl } from '../lib/env';
+
+function isDocsExternalHref(href: string): boolean {
+  return /^https?:\/\//i.test(href) || href.startsWith('//');
+}
 
 function dashboardTabFromPathname(pathname: string | null): string {
   if (!pathname) return 'Overview';
-  const base = pathname.replace(/\/$/, '');
-  if (base === '/dashboard') return 'Overview';
-  if (base.endsWith('/accounts')) return 'Accounts';
-  if (base.endsWith('/transactions')) return 'Transactions';
-  if (base.endsWith('/ledger')) return 'Ledger';
-  if (base.endsWith('/identity')) return 'Identity';
-  return 'Overview';
+  const parts = pathname.replace(/\/$/, '').split('/').filter(Boolean);
+  if (parts[0] !== 'dashboard') return 'Overview';
+  if (parts.length < 2) return 'Overview';
+
+  switch (parts[1]) {
+    case 'accounts':
+      return 'Accounts';
+    case 'transactions':
+      return 'Transactions';
+    case 'ledger':
+      return 'Ledger';
+    case 'identity':
+      return 'Identity';
+    default:
+      return 'Overview';
+  }
 }
 
 const DASHBOARD_SIDEBAR_NAV_ITEMS: { name: string; icon: string; href: string }[] = [
@@ -70,6 +83,9 @@ function shortTransactionId(value: string | undefined): string {
   return v.length <= 8 ? v : `${v.slice(0, 8)}...`;
 }
 
+const sidebarNavInactiveClass =
+  'text-zinc-600 hover:bg-zinc-100 hover:text-black dark:text-zinc-400 dark:hover:bg-zinc-900/50 dark:hover:text-white';
+
 const DashboardSidebarPrimaryNav = memo(function DashboardSidebarPrimaryNav({ activeTab }: { activeTab: string }) {
   return (
     <nav className="space-y-1 px-3 py-4">
@@ -83,7 +99,7 @@ const DashboardSidebarPrimaryNav = memo(function DashboardSidebarPrimaryNav({ ac
             className={`flex items-center gap-3 px-3 py-2.5 text-sm font-medium transition-colors outline-none ${
               isActive
                 ? 'bg-black text-white shadow-sm dark:bg-white dark:text-black'
-                : 'text-zinc-600 hover:bg-zinc-100 hover:text-black dark:text-zinc-400 dark:hover:bg-zinc-900/50 dark:hover:text-white'
+                : sidebarNavInactiveClass
             }`}
           >
             <span
@@ -99,6 +115,79 @@ const DashboardSidebarPrimaryNav = memo(function DashboardSidebarPrimaryNav({ ac
         );
       })}
     </nav>
+  );
+});
+
+const DashboardSidebarFooterTools = memo(function DashboardSidebarFooterTools() {
+  const dispatch = useAppDispatch();
+  const environment = useAppSelector((state) => state.environment.current);
+  const isProduction = environment === 'production';
+  const docsHref = getMarketingDocsCtaUrl();
+  const docsExternal = isDocsExternalHref(docsHref);
+  const docsLinkClass = `flex items-center gap-3 px-3 py-2.5 text-sm font-medium transition-colors outline-none ${sidebarNavInactiveClass}`;
+
+  const docsRow = (
+    <>
+      <span className="material-symbols-sharp shrink-0 !text-[16px] leading-none text-zinc-500" aria-hidden>
+        menu_book
+      </span>
+      <span className="min-w-0 flex-1">Docs</span>
+      {docsExternal ? (
+        <span className="material-symbols-sharp shrink-0 !text-[14px] leading-none text-zinc-400" aria-hidden>
+          open_in_new
+        </span>
+      ) : null}
+    </>
+  );
+
+  return (
+    <div className="space-y-5">
+      <div>
+        {docsExternal ? (
+          <a
+            href={docsHref}
+            target="_blank"
+            rel="noopener noreferrer"
+            data-testid="dashboard-nav-docs"
+            className={docsLinkClass}
+          >
+            {docsRow}
+            <span className="sr-only"> (opens in a new tab)</span>
+          </a>
+        ) : (
+          <Link href={docsHref} data-testid="dashboard-nav-docs" className={docsLinkClass}>
+            {docsRow}
+          </Link>
+        )}
+      </div>
+      <div>
+        <div className="mb-2 text-[10px] font-mono font-semibold uppercase tracking-widest text-zinc-500">Environment</div>
+        <div className="flex bg-zinc-100 dark:bg-black p-1 border border-zinc-200 dark:border-zinc-800 transition-colors">
+          <button
+            type="button"
+            onClick={() => dispatch(setEnvironment('sandbox'))}
+            className={`flex-1 cursor-pointer border py-1.5 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:ring-offset-zinc-100 dark:focus-visible:ring-offset-black ${
+              !isProduction
+                ? 'border-zinc-200 bg-white text-black shadow-sm focus-visible:ring-zinc-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:focus-visible:ring-zinc-500'
+                : 'border-transparent text-zinc-500 hover:text-zinc-700 focus-visible:ring-amber-400/60 dark:hover:text-zinc-300 dark:focus-visible:ring-amber-600/50'
+            }`}
+          >
+            SANDBOX
+          </button>
+          <button
+            type="button"
+            onClick={() => dispatch(setEnvironment('production'))}
+            className={`flex-1 cursor-pointer border py-1.5 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:ring-offset-zinc-100 dark:focus-visible:ring-offset-black ${
+              isProduction
+                ? 'border-amber-300 bg-amber-100 text-amber-950 focus-visible:ring-amber-500 dark:border-amber-700 dark:bg-amber-950/50 dark:text-amber-100 dark:focus-visible:ring-amber-400'
+                : 'border-transparent text-zinc-500 hover:text-amber-800 focus-visible:ring-amber-400/50 dark:hover:text-amber-200/90 dark:focus-visible:ring-amber-600/50'
+            }`}
+          >
+            PROD
+          </button>
+        </div>
+      </div>
+    </div>
   );
 });
 
@@ -128,7 +217,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, session, profile }) => 
   const router = useRouter();
   const prevPathnameRef = useRef<string | null>(null);
 
-  const [activeTab, setActiveTab] = useState('Overview');
+  const activeTab = useMemo(() => dashboardTabFromPathname(pathname), [pathname]);
   const [timeLeft, setTimeLeft] = useState<string>('');
   const [isLoadingAccounts, setIsLoadingAccounts] = useState(false);
   const [isLoadingTransactions, setIsLoadingTransactions] = useState(false);
@@ -167,10 +256,6 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, session, profile }) => 
   const [transactionsPagination, setTransactionsPagination] = useState<PaginationMeta | null>(null);
   const [ledgerPage, setLedgerPage] = useState(1);
   const [ledgerPagination, setLedgerPagination] = useState<PaginationMeta | null>(null);
-
-  useEffect(() => {
-    setActiveTab(dashboardTabFromPathname(pathname));
-  }, [pathname]);
 
   useEffect(() => {
     if (prevPathnameRef.current !== null && prevPathnameRef.current !== pathname) {
@@ -865,7 +950,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, session, profile }) => 
                   <input 
                     type="text" 
                     readOnly 
-                    value={profile?.business_name || "Rails Institutional Bank"} 
+                    value={profile?.business_name?.trim() ?? ''}
                     className="w-full border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-black px-4 py-2 text-sm font-bold text-black dark:text-white outline-none transition-colors cursor-default" 
                   />
                 </div>
@@ -874,7 +959,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, session, profile }) => 
                   <input 
                     type="text" 
                     readOnly 
-                    value={profile?.id?.slice(0, 12).toUpperCase() || "RAILS_INST_001"} 
+                    value={profile?.id ? profile.id.slice(0, 12).toUpperCase() : ''}
                     className="w-full border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-black px-4 py-2 text-sm font-mono font-bold text-black dark:text-white outline-none transition-colors cursor-default" 
                   />
                 </div>
@@ -883,7 +968,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, session, profile }) => 
                   <input 
                     type="text" 
                     readOnly 
-                    value="https://rails.finance" 
+                    value=""
                     className="w-full border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-black px-4 py-2 text-sm font-bold text-zinc-600 dark:text-zinc-400 outline-none transition-colors cursor-default" 
                   />
                 </div>
@@ -898,7 +983,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, session, profile }) => 
                   <input 
                     type="text" 
                     readOnly 
-                    value={profile?.name?.split(' ')[0] || "James"} 
+                    value={profile?.name?.trim()?.split(/\s+/)?.[0] ?? ''}
                     className="w-full border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-black px-4 py-2 text-sm font-bold text-black dark:text-white outline-none transition-colors cursor-default" 
                   />
                 </div>
@@ -907,7 +992,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, session, profile }) => 
                   <input 
                     type="text" 
                     readOnly 
-                    value={profile?.name?.split(' ')[1] || "Stork"} 
+                    value={profile?.name?.trim()?.split(/\s+/)?.slice(1)?.join(' ') ?? ''}
                     className="w-full border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-black px-4 py-2 text-sm font-bold text-black dark:text-white outline-none transition-colors cursor-default" 
                   />
                 </div>
@@ -916,7 +1001,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, session, profile }) => 
                   <input 
                     type="text" 
                     readOnly 
-                    value={profile?.email || 'james@rails.infra'} 
+                    value={profile?.email?.trim() ?? ''}
                     className="w-full border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-black px-4 py-2 text-sm font-mono font-bold text-black dark:text-white outline-none transition-colors cursor-default" 
                   />
                 </div>
@@ -1316,7 +1401,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, session, profile }) => 
             
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <div className="border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#050505] transition-colors p-6">
-                <h3 className="mb-4 text-sm font-medium text-black dark:text-white">Recent Transactions</h3>
+                <h3 className="mb-4 text-sm font-medium text-black dark:text-white">Recent ledger entries</h3>
                 {isLoadingLedger ? (
                   <div className="space-y-3">
                     {Array.from({ length: 10 }).map((_, i) => (
@@ -1331,7 +1416,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, session, profile }) => 
                     >
                       receipt_long
                     </span>
-                    <p className="text-xs font-mono text-zinc-500 dark:text-zinc-400">No transactions found</p>
+                    <p className="text-xs font-mono text-zinc-500 dark:text-zinc-400">No ledger entries found</p>
                   </div>
                 ) : (
                   <>
@@ -1444,88 +1529,13 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, session, profile }) => 
 
         <DashboardSidebarPrimaryNav activeTab={activeTab} />
 
-        <div className="mt-8 px-6 pb-2">
-          <div className="mb-4 text-[10px] font-mono font-semibold uppercase tracking-widest text-zinc-500">Environment</div>
-        </div>
-        <div className="px-4">
-          <div className="flex bg-zinc-100 dark:bg-black p-1 border border-zinc-200 dark:border-zinc-800 transition-colors">
-            <button
-              type="button"
-              onClick={() => dispatch(setEnvironment('sandbox'))}
-              className={`flex-1 cursor-pointer border py-1.5 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:ring-offset-zinc-100 dark:focus-visible:ring-offset-black ${
-                !isProduction
-                  ? 'border-zinc-200 bg-white text-black shadow-sm focus-visible:ring-zinc-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:focus-visible:ring-zinc-500'
-                  : 'border-transparent text-zinc-500 hover:text-zinc-700 focus-visible:ring-amber-400/60 dark:hover:text-zinc-300 dark:focus-visible:ring-amber-600/50'
-              }`}
-            >
-              SANDBOX
-            </button>
-            <button
-              type="button"
-              onClick={() => dispatch(setEnvironment('production'))}
-              className={`flex-1 cursor-pointer border py-1.5 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:ring-offset-zinc-100 dark:focus-visible:ring-offset-black ${
-                isProduction
-                  ? 'border-amber-300 bg-amber-100 text-amber-950 focus-visible:ring-amber-500 dark:border-amber-700 dark:bg-amber-950/50 dark:text-amber-100 dark:focus-visible:ring-amber-400'
-                  : 'border-transparent text-zinc-500 hover:text-amber-800 focus-visible:ring-amber-400/50 dark:hover:text-amber-200/90 dark:focus-visible:ring-amber-600/50'
-              }`}
-            >
-              PROD
-            </button>
-          </div>
-        </div>
-
-        <div className="mt-auto px-4 py-6 border-t border-zinc-200 dark:border-zinc-900 transition-colors">
-          <Link
-            href="/dashboard/identity"
-            data-testid="dashboard-nav-identity"
-            className={`mb-6 flex items-center gap-3 px-3 py-2.5 text-left text-sm font-medium outline-none transition-colors ${
-              activeTab === 'Identity'
-                ? 'bg-black text-white shadow-sm dark:bg-white dark:text-black'
-                : 'text-zinc-600 hover:bg-zinc-100 hover:text-black dark:text-zinc-400 dark:hover:bg-zinc-900/50 dark:hover:text-white'
-            }`}
-          >
-            {profile?.avatar_url ? (
-              <img
-                src={profile.avatar_url}
-                alt={profile.name ?? 'Profile'}
-                className={`h-8 w-8 rounded-full object-cover ${
-                  activeTab === 'Identity'
-                    ? 'border border-white/30 dark:border-black/15'
-                    : 'border border-zinc-200 dark:border-zinc-700'
-                }`}
-              />
-            ) : (
-              <div
-                className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-medium transition-colors ${
-                  activeTab === 'Identity'
-                    ? 'border border-white/25 bg-white/15 text-white dark:border-black/10 dark:bg-black/5 dark:text-black'
-                    : 'border border-transparent bg-zinc-200 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300'
-                }`}
-              >
-                {profile?.name
-                  ? profile.name
-                      .split(' ')
-                      .map((n: string) => n[0])
-                      .join('')
-                      .toUpperCase()
-                  : 'JS'}
-              </div>
-            )}
-            <div className="flex min-w-0 flex-col">
-              <span
-                className={`truncate text-sm font-semibold leading-tight ${
-                  activeTab === 'Identity' ? 'text-white dark:text-black' : 'text-black dark:text-white'
-                }`}
-              >
-                {profile?.name || 'James Stork'}
-              </span>
-            </div>
-          </Link>
+        <div className="mt-auto px-3 py-6 border-t border-zinc-200 dark:border-zinc-900 transition-colors">
+          <DashboardSidebarFooterTools />
           <button
             type="button"
             onClick={onLogout}
             data-testid="dashboard-sign-out"
-            className="w-full flex items-center justify-center gap-2 py-2 px-4 border border-zinc-200 dark:border-zinc-800 text-sm font-medium text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-colors cursor-pointer"
+            className="mt-6 w-full flex items-center justify-center gap-2 py-2 px-4 border border-zinc-200 dark:border-zinc-800 text-sm font-medium text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-colors cursor-pointer"
           >
             <span className="material-symbols-sharp shrink-0 !text-[16px] leading-none" aria-hidden>
               logout
@@ -1558,7 +1568,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, session, profile }) => 
         <main className="flex-1 flex flex-col min-h-0 min-w-0 overflow-hidden transition-colors">
           <header className="h-16 shrink-0 px-8 flex items-center justify-between border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50/90 dark:bg-[#0a0a0a]/90 backdrop-blur-sm transition-colors z-10">
             <h1 className="text-xl font-medium tracking-tight text-black dark:text-white">{activeTab}</h1>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3 sm:gap-4">
               <a
                 href={getWebGithubRepoUrl()}
                 target="_blank"
@@ -1570,6 +1580,57 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, session, profile }) => 
                 <span className="text-[10px] font-mono font-semibold uppercase tracking-widest">GitHub</span>
               </a>
               <DashboardMaterialThemeToggle />
+              <Link
+                href="/dashboard/identity"
+                data-testid="dashboard-nav-identity"
+                title={profile?.name?.trim() || undefined}
+                aria-label={
+                  profile?.name?.trim()
+                    ? `Identity and profile — ${profile.name.trim()}`
+                    : 'Identity and profile'
+                }
+                className={`inline-flex shrink-0 rounded-full outline-none transition-shadow focus-visible:ring-2 focus-visible:ring-zinc-400 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-50 dark:focus-visible:ring-offset-[#0a0a0a] ${
+                  activeTab === 'Identity'
+                    ? 'ring-2 ring-black ring-offset-2 ring-offset-zinc-50 dark:ring-white dark:ring-offset-[#0a0a0a]'
+                    : 'ring-1 ring-transparent hover:ring-zinc-300 dark:hover:ring-zinc-600'
+                }`}
+              >
+                {profile?.avatar_url ? (
+                  <img
+                    src={profile.avatar_url}
+                    alt=""
+                    className={`h-9 w-9 rounded-full object-cover ${
+                      activeTab === 'Identity'
+                        ? 'border border-white/30 dark:border-black/20'
+                        : 'border border-zinc-200 dark:border-zinc-700'
+                    }`}
+                  />
+                ) : (
+                  <div
+                    className={`flex h-9 w-9 items-center justify-center rounded-full text-xs font-medium transition-colors ${
+                      activeTab === 'Identity'
+                        ? 'border border-zinc-300 bg-zinc-900 text-white dark:border-zinc-600 dark:bg-zinc-100 dark:text-black'
+                        : 'border border-zinc-200 bg-zinc-200 text-zinc-700 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200'
+                    }`}
+                  >
+                    {(() => {
+                      const initials = profile?.name
+                        ?.trim()
+                        .split(/\s+/)
+                        .map((n: string) => n[0])
+                        .join('')
+                        .toUpperCase()
+                        .slice(0, 2);
+                      if (initials) return initials;
+                      return (
+                        <span className="material-symbols-sharp !text-[20px] leading-none opacity-80" aria-hidden>
+                          person
+                        </span>
+                      );
+                    })()}
+                  </div>
+                )}
+              </Link>
             </div>
           </header>
 

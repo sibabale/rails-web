@@ -32,7 +32,7 @@ export const isAuthButtonsEnabled = (): boolean => {
 };
 
 /**
- * Public documentation URL for marketing CTAs (`Read Documentation`, `Read Docs`) and the header nav **Documentation** link.
+ * Public documentation URL for marketing CTAs (`Read Documentation`, `Read Docs`), the header nav **Documentation** link, and the dashboard sidebar **Docs** link.
  * Set `NEXT_PUBLIC_DOCS_URL` in each environment (e.g. `https://docs.example.com`). When unset, fall back to
  * an internal docs route so we do not redirect docs CTAs to unrelated external destinations.
  */
