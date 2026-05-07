@@ -97,8 +97,8 @@ export type MarketingSiteCopy = {
 const variantA: MarketingSiteCopy = {
   home: {
     heroEyebrow: 'Open source · beta',
-    heroTitle: 'open source banking',
-    heroSubtitle: 'bank without building the rails yourself, focus on your business.',
+    heroTitle: 'spin up a banking core in seconds',
+    heroSubtitle: 'move money without building the rails yourself.',
     heroPrimaryCta: 'Get Started',
     heroSupportedSdksLabel: 'Supported SDKs',
     problemTitle: 'Most teams underestimate how much work the money side really is.',
@@ -321,7 +321,7 @@ const variantA: MarketingSiteCopy = {
 const variantD: MarketingSiteCopy = {
   home: {
     heroEyebrow: 'Open source · beta',
-    heroTitle: 'open source banking',
+    heroTitle: 'spin up a banking core in seconds',
     heroSubtitle: 'The backend behind balances and payouts.',
     heroPrimaryCta: 'Get Started',
     heroSupportedSdksLabel: 'Supported SDKs',
