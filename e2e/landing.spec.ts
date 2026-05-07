@@ -6,11 +6,11 @@ test.describe('Landing', () => {
       sessionStorage.setItem('rails_marketing_copy_variant', 'a');
     });
     await page.goto('/');
-    await expect(page.getByTestId('marketing-hero-heading')).toContainText(/open source banking/i, {
+    await expect(page.getByTestId('marketing-hero-heading')).toContainText(/spin up a banking core in seconds/i, {
       timeout: 20_000,
     });
     await expect(page.getByTestId('marketing-hero-section')).toContainText(
-      /bank without building the rails yourself, focus on your business/i
+      /bank without building the rails yourself/i
     );
     await page.locator('#infrastructure').scrollIntoViewIfNeeded();
     await expect(page.locator('#infrastructure')).toBeVisible();
@@ -23,7 +23,7 @@ test.describe('Landing', () => {
       sessionStorage.setItem('rails_marketing_copy_variant', 'd');
     });
     await page.goto('/');
-    await expect(page.getByTestId('marketing-hero-heading')).toContainText(/open source banking/i, {
+    await expect(page.getByTestId('marketing-hero-heading')).toContainText(/spin up a banking core in seconds/i, {
       timeout: 20_000,
     });
     await expect(page.getByTestId('marketing-hero-section')).toContainText(
