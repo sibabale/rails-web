@@ -170,15 +170,6 @@ export default function SiteLayout({ children }: SiteLayoutProps) {
             >
               GitHub
             </a>
-            <a href="#" className="hover:text-zinc-900 dark:hover:text-zinc-300 transition-colors">
-              Twitter
-            </a>
-            <a href="#" className="hover:text-zinc-900 dark:hover:text-zinc-300 transition-colors">
-              Discord
-            </a>
-            <a href="#" className="hover:text-zinc-900 dark:hover:text-zinc-300 transition-colors">
-              Privacy
-            </a>
           </div>
         </div>
       </footer>

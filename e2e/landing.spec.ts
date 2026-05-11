@@ -10,12 +10,20 @@ test.describe('Landing', () => {
       timeout: 20_000,
     });
     await expect(page.getByTestId('marketing-hero-section')).toContainText(
-      /bank without building the rails yourself/i
+      /iterate faster without legacy concerns/i
     );
     await page.locator('#infrastructure').scrollIntoViewIfNeeded();
     await expect(page.locator('#infrastructure')).toBeVisible();
     await page.locator('#beta').scrollIntoViewIfNeeded();
     await expect(page.getByTestId('marketing-cta-heading')).toContainText(/Ship accounts and transfers faster/);
+    const footer = page.locator('footer');
+    await expect(footer.getByRole('link', { name: 'GitHub' })).toHaveAttribute(
+      'href',
+      'https://github.com/orgs/railsinfra/repositories'
+    );
+    await expect(footer.getByRole('link', { name: 'Twitter' })).toHaveCount(0);
+    await expect(footer.getByRole('link', { name: 'Discord' })).toHaveCount(0);
+    await expect(footer.getByRole('link', { name: 'Privacy' })).toHaveCount(0);
   });
 
   test('marketing copy variant D on homepage', async ({ page }) => {
