@@ -98,10 +98,10 @@ const variantA: MarketingSiteCopy = {
   home: {
     heroEyebrow: 'Open source · beta',
     heroTitle: 'spin up a banking core in seconds',
-    heroSubtitle: 'move money without building the rails yourself.',
+    heroSubtitle: 'iterate faster without legacy concerns.',
     heroPrimaryCta: 'Get Started',
     heroSupportedSdksLabel: 'Supported SDKs',
-    problemTitle: 'Most teams underestimate how much work the money side really is.',
+    problemTitle: 'move money without building the rails yourself.',
     problemLead:
       'Rebuilding accounts, transfers, reconciliation, and audit trails from scratch costs time you do not get back.',
     problemEmphasis: ' Rails gives you a working place to start—end to end.',
