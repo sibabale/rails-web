@@ -1,0 +1,43 @@
+version = 1
+
+test_patterns = [
+  "test/**",
+  "e2e/**",
+  "**/*.test.ts",
+  "**/*.test.tsx",
+  "**/*.spec.ts",
+  "**/*.spec.tsx",
+]
+
+exclude_patterns = [
+  ".codex/**",
+  ".next/**",
+  "dist/**",
+  "node_modules/**",
+  "out/**",
+  "playwright-report/**",
+  "test-results/**",
+  "tsconfig.tsbuildinfo",
+]
+
+[[analyzers]]
+name = "javascript"
+enabled = true
+
+  [analyzers.meta]
+  plugins = ["react"]
+  environment = ["nodejs", "browser", "vitest"]
+  module_system = "es-modules"
+  dialect = "typescript"
+  dependency_file_paths = ["."]
+
+[[analyzers]]
+name = "docker"
+enabled = true
+
+  [analyzers.meta]
+  dockerfile_paths = ["Dockerfile"]
+
+[[analyzers]]
+name = "secrets"
+enabled = true
