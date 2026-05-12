@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import type { Dispatch, SetStateAction } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAppDispatch } from '../../../state/hooks';
 import { resetToSandbox } from '../../../state/slices/environmentSlice';
@@ -51,26 +52,27 @@ const firstPresentString = (values: Array<string | undefined>) => values.map(cle
 
 const getProfileNameParts = (user: MeUserProfile) => [user.first_name, user.last_name].map(cleanString).filter(Boolean);
 
-const getProfileName = (user: MeUserProfile) =>
-  firstPresentString([user.name, getProfileNameParts(user).join(' '), user.email]);
+const getProfileNameCandidates = (user: MeUserProfile) => [user.name, getProfileNameParts(user).join(' '), user.email];
 
-const getProfileWebsite = (data: MeResponse, user: MeUserProfile) =>
-  firstPresentString([data.business?.website, data.business?.website_url, user.business_website, user.website]);
+const getProfileWebsite = (business: MeBusinessProfile | undefined, user: MeUserProfile) =>
+  firstPresentString([business?.website, business?.website_url, user.business_website, user.website]);
 
-const getBusinessName = (data: MeResponse, user: MeUserProfile) =>
-  firstPresentString([data.business?.name, user.business_name]);
+const getBusinessName = (business: MeBusinessProfile | undefined, user: MeUserProfile) =>
+  firstPresentString([business?.name, user.business_name]);
 
 const getMeUser = (data: MeResponse) => data.user ?? data;
 
-const mapMeResponseToProfile = (data: MeResponse): UserProfile => ({
-  id: cleanString(getMeUser(data).id),
-  name: getProfileName(getMeUser(data)),
-  email: cleanString(getMeUser(data).email),
-  role: cleanString(getMeUser(data).role),
-  avatar_url: getMeUser(data).avatar_url,
-  business_name: getBusinessName(data, getMeUser(data)),
-  website: getProfileWebsite(data, getMeUser(data)),
+const buildUserProfile = (user: MeUserProfile, business: MeBusinessProfile | undefined): UserProfile => ({
+  id: cleanString(user.id),
+  name: firstPresentString(getProfileNameCandidates(user)),
+  email: cleanString(user.email),
+  role: cleanString(user.role),
+  avatar_url: user.avatar_url,
+  business_name: getBusinessName(business, user),
+  website: getProfileWebsite(business, user),
 });
+
+const mapMeResponseToProfile = (data: MeResponse): UserProfile => buildUserProfile(getMeUser(data), data.business);
 
 const fetchIdentityProfile = async (clientServerUrl: string, session: RailsSession) => {
   const response = await fetch(`${clientServerUrl.replace(/\/$/, '')}/api/v1/me`, {
@@ -85,6 +87,33 @@ const fetchIdentityProfile = async (clientServerUrl: string, session: RailsSessi
 
   if (!response.ok) return null;
   return mapMeResponseToProfile((await response.json()) as MeResponse);
+};
+
+const shouldLoadIdentityProfile = (session: RailsSession | null, clientServerUrl: string, pathname: string | null) =>
+  Boolean(session && clientServerUrl && isIdentityDashboardRoute(pathname));
+
+const loadIdentityProfile = async ({
+  clientServerUrl,
+  session,
+  setProfile,
+  setIsLoadingProfile,
+}: {
+  clientServerUrl: string;
+  session: RailsSession;
+  setProfile: Dispatch<SetStateAction<UserProfile | null>>;
+  setIsLoadingProfile: Dispatch<SetStateAction<boolean>>;
+}) => {
+  setIsLoadingProfile(true);
+  try {
+    const nextProfile = await fetchIdentityProfile(clientServerUrl, session);
+    if (nextProfile) {
+      setProfile(nextProfile);
+    }
+  } catch {
+    // Keep dashboard usable even if profile hydration fails.
+  } finally {
+    setIsLoadingProfile(false);
+  }
 };
 
 const DashboardRoute = () => {
@@ -107,29 +136,9 @@ const DashboardRoute = () => {
   }, [router]);
 
   useEffect(() => {
-    let isMounted = true;
-
-    if (session && clientServerUrl && isIdentityDashboardRoute(pathname)) {
-      setIsLoadingProfile(true);
-      fetchIdentityProfile(clientServerUrl, session)
-        .then((nextProfile) => {
-          if (isMounted && nextProfile) {
-            setProfile(nextProfile);
-          }
-        })
-        .catch(() => {
-          // Keep dashboard usable even if profile hydration fails.
-        })
-        .finally(() => {
-          if (isMounted) {
-            setIsLoadingProfile(false);
-          }
-        });
+    if (shouldLoadIdentityProfile(session, clientServerUrl, pathname) && session) {
+      void loadIdentityProfile({ clientServerUrl, session, setProfile, setIsLoadingProfile });
     }
-
-    return () => {
-      isMounted = false;
-    };
   }, [clientServerUrl, pathname, session]);
 
   const handleLogout = () => {
