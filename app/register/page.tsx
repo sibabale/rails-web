@@ -8,17 +8,14 @@ import { setEnvironment } from '../../state/slices/environmentSlice';
 import { isAuthViewsEnabled } from '../../lib/env';
 import {
   RAILS_SESSION_STORAGE_KEY,
+  buildRailsSession,
+  getAuthSuccessEnvironmentId,
   getSessionEnvironmentType,
   readValidRailsSession,
   writeRailsSessionCookie,
 } from '../../lib/authSession';
-import type { RailsSession } from '../../lib/authSession';
+import type { AuthSuccessResponse } from '../../lib/authSession';
 import RegisterPage from '../../components/RegisterPage';
-
-interface EnvironmentInfo {
-  id: string;
-  type: string;
-}
 
 export default function RegisterRoute() {
   const router = useRouter();
@@ -59,30 +56,17 @@ export default function RegisterRoute() {
     );
   }
 
-  const handleAuthSuccess = async (data: any) => {
-    const envId =
-      data.selected_environment_id ||
-      data.environment?.id ||
-      data.user?.environment_id ||
-      data.environment_id;
+  const handleAuthSuccess = async (data: AuthSuccessResponse) => {
+    const envId = getAuthSuccessEnvironmentId(data);
 
     if (!envId) return;
 
-    const environments: EnvironmentInfo[] = data.environments || [];
+    const environments = data.environments || [];
     const selectedEnv = environments.find((e) => e.id === envId);
     const environmentType = (selectedEnv?.type || 'sandbox') as 'sandbox' | 'production';
     dispatch(setEnvironment(environmentType));
 
-    const sessionData: RailsSession = {
-      access_token: data.access_token,
-      refresh_token: data.refresh_token,
-      expires_in: data.expires_in,
-      timestamp: Date.now(),
-      environment_id: envId,
-      environments,
-    };
-
-    localStorage.setItem(RAILS_SESSION_STORAGE_KEY, JSON.stringify(sessionData));
+    localStorage.setItem(RAILS_SESSION_STORAGE_KEY, JSON.stringify(buildRailsSession(data, envId)));
     writeRailsSessionCookie();
     await new Promise((resolve) => window.setTimeout(resolve, 0));
     router.replace('/dashboard');

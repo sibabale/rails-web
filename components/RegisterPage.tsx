@@ -12,28 +12,367 @@ import {
   AUTH_SUCCESS_BOX,
 } from './marketing/marketingAuthUi';
 import { getClientServerUrl } from '../lib/env';
+import type { AuthSuccessResponse } from '../lib/authSession';
+
+interface RegisterFormData {
+  name: string;
+  website: string;
+  admin_first_name: string;
+  admin_last_name: string;
+  admin_email: string;
+  admin_password: string;
+}
 
 interface RegisterPageProps {
   isCheckingSession?: boolean;
-  onSuccess: (data: any) => void | Promise<void>;
+  onSuccess: (data: AuthSuccessResponse) => void | Promise<void>;
 }
+
+interface RegisterFieldConfig {
+  id: string;
+  name: keyof RegisterFormData;
+  label: React.ReactNode;
+  type: string;
+  placeholder: string;
+  autoComplete?: string;
+  required?: boolean;
+}
+
+interface RegistrationSubmitError extends Error {
+  code?: string;
+}
+
+const initialFormData: RegisterFormData = {
+  name: '',
+  website: '',
+  admin_first_name: '',
+  admin_last_name: '',
+  admin_email: '',
+  admin_password: '',
+};
+
+const businessFields: RegisterFieldConfig[] = [
+  {
+    id: 'reg-name',
+    name: 'name',
+    label: 'Company Name',
+    type: 'text',
+    placeholder: 'Acme Institutional',
+    required: true,
+  },
+  {
+    id: 'reg-website',
+    name: 'website',
+    label: (
+      <>
+        Website <span className="text-zinc-400 dark:text-zinc-600 font-normal">(Optional)</span>
+      </>
+    ),
+    type: 'url',
+    placeholder: 'https://acme.com',
+  },
+];
+
+const adminNameFields: RegisterFieldConfig[] = [
+  {
+    id: 'reg-fn',
+    name: 'admin_first_name',
+    label: 'Admin First Name',
+    type: 'text',
+    placeholder: 'Alice',
+    required: true,
+  },
+  {
+    id: 'reg-ln',
+    name: 'admin_last_name',
+    label: 'Admin Last Name',
+    type: 'text',
+    placeholder: 'Admin',
+    required: true,
+  },
+];
+
+const adminCredentialFields: RegisterFieldConfig[] = [
+  {
+    id: 'reg-email',
+    name: 'admin_email',
+    label: 'Admin Email',
+    type: 'email',
+    autoComplete: 'email',
+    placeholder: 'admin@acme.com',
+    required: true,
+  },
+  {
+    id: 'reg-password',
+    name: 'admin_password',
+    label: 'Password',
+    type: 'password',
+    autoComplete: 'new-password',
+    placeholder: '••••••••••••',
+    required: true,
+  },
+];
+
+const getRegistrationEndpoint = () => {
+  const clientServerUrl = getClientServerUrl();
+  if (!clientServerUrl) {
+    throw new Error('NEXT_PUBLIC_CLIENT_SERVER is not configured. All API calls must go through rails-client-server.');
+  }
+  return `${clientServerUrl.replace(/\/$/, '')}/api/v1/business/register`;
+};
+
+const createRegistrationError = (message: string, code?: string): RegistrationSubmitError => {
+  const error = new Error(message) as RegistrationSubmitError;
+  error.code = code;
+  return error;
+};
+
+const getRegistrationError = async (response: Response) => {
+  const fallbackMessage = 'Registration failed. Please try again.';
+  const responseForLogging = response.clone();
+  try {
+    const errorData = (await response.json()) as Partial<{ message: string; error: string; code: string }>;
+    return createRegistrationError(errorData.message || errorData.error || fallbackMessage, errorData.code);
+  } catch {
+    console.error('Registration error response (not shown to user):', await responseForLogging.text());
+    return createRegistrationError(fallbackMessage);
+  }
+};
+
+const submitRegistration = async (formData: RegisterFormData): Promise<AuthSuccessResponse> => {
+  const response = await fetch(getRegistrationEndpoint(), {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+    },
+    body: JSON.stringify(formData),
+  });
+
+  if (!response.ok) {
+    throw await getRegistrationError(response);
+  }
+
+  return (await response.json()) as AuthSuccessResponse;
+};
+
+const getRegistrationSubmitError = (error: unknown) => {
+  if (error instanceof TypeError && error.message === 'Failed to fetch') {
+    return {
+      title: null,
+      message: 'Unable to connect to the service. Please check your connection and try again.',
+    };
+  }
+
+  if (error instanceof Error) {
+    const errorCode = 'code' in error ? error.code : undefined;
+    return {
+      title: errorCode === 'conflict' ? 'Email already in use' : null,
+      message: error.message || 'An error occurred during registration. Please try again.',
+    };
+  }
+
+  return {
+    title: null,
+    message: 'An error occurred during registration. Please try again.',
+  };
+};
+
+const RegisterSessionCheck = () => (
+  <div className={AUTH_SUCCESS_BOX} data-testid="register-session-check">
+    <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center">
+      <span className="w-6 h-6 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+    </div>
+    <Heading level={3} className="!text-xl mb-2 text-emerald-800 dark:text-emerald-400">
+      Initializing node
+    </Heading>
+    <Text variant="p" className="!text-sm text-emerald-700 dark:text-emerald-500/90">
+      Preparing your dashboard…
+    </Text>
+  </div>
+);
+
+const RegisterBackLink = () => (
+  <Link href="/" data-testid="register-back-home" className={AUTH_LINK_BACK}>
+    <span className="material-symbols-sharp" style={{ fontSize: '1rem' }}>
+      arrow_back
+    </span>
+    <span>Back to landing</span>
+  </Link>
+);
+
+interface RegisterFieldProps {
+  field: RegisterFieldConfig;
+  value: string;
+  disabled: boolean;
+  onChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
+  inputRef?: React.Ref<HTMLInputElement>;
+}
+
+const RegisterField = ({ field, value, disabled, onChange, inputRef }: RegisterFieldProps) => (
+  <div className="flex flex-col gap-2">
+    <label htmlFor={field.id} className={AUTH_LABEL}>
+      {field.label}
+    </label>
+    <input
+      id={field.id}
+      ref={inputRef}
+      type={field.type}
+      name={field.name}
+      autoComplete={field.autoComplete}
+      required={field.required}
+      disabled={disabled}
+      placeholder={field.placeholder}
+      value={value}
+      onChange={onChange}
+      className={AUTH_INPUT}
+    />
+  </div>
+);
+
+interface RegisterFieldGroupProps {
+  fields: RegisterFieldConfig[];
+  formData: RegisterFormData;
+  isBusy: boolean;
+  className?: string;
+  onChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
+  passwordInputRef: React.RefObject<HTMLInputElement | null>;
+}
+
+const RegisterFieldGroup = ({
+  fields,
+  formData,
+  isBusy,
+  className = 'grid grid-cols-1 md:grid-cols-2 gap-6',
+  onChange,
+  passwordInputRef,
+}: RegisterFieldGroupProps) => (
+  <div className={className}>
+    {fields.map((field) => (
+      <RegisterField
+        key={field.name}
+        field={field}
+        value={formData[field.name]}
+        disabled={isBusy}
+        onChange={onChange}
+        inputRef={field.name === 'admin_password' ? passwordInputRef : undefined}
+      />
+    ))}
+  </div>
+);
+
+const RegisterError = ({ error, title }: { error: string | null; title: string | null }) => {
+  if (!error) return null;
+
+  return (
+    <div className={AUTH_ERROR_BOX} data-testid="register-error">
+      <span className="material-symbols-sharp shrink-0" style={{ fontSize: '1rem' }}>
+        error
+      </span>
+      <div className="flex-1 text-left">
+        <p className="font-mono font-semibold mb-1 text-[10px] uppercase tracking-wide">
+          {title ?? 'Infrastructure error'}
+        </p>
+        <p className="leading-relaxed">{error}</p>
+      </div>
+    </div>
+  );
+};
+
+const RegisterSubmitButton = ({ isBusy }: { isBusy: boolean }) => (
+  <Button
+    type="submit"
+    variant="primary"
+    disabled={isBusy}
+    className="w-full py-3.5 mt-2 flex justify-center items-center gap-2 disabled:opacity-60"
+    data-testid="register-submit"
+  >
+    {isBusy ? (
+      <>
+        <span className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin shrink-0" />
+        <span className="text-sm">Initializing node…</span>
+      </>
+    ) : (
+      <>
+        <span>Create My Account</span>
+        <span className="material-symbols-sharp" style={{ fontSize: '1rem' }}>
+          arrow_forward
+        </span>
+      </>
+    )}
+  </Button>
+);
+
+const RegisterFooter = () => (
+  <div className="mt-10 flex flex-col items-center gap-4 text-[10px] font-mono text-zinc-500 tracking-widest uppercase text-center">
+    <span className="text-zinc-500 dark:text-zinc-600">
+      By registering, you agree to the rails institutional terms of service.
+    </span>
+    <Link
+      href="/login"
+      data-testid="register-go-login"
+      className="mt-4 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors border-b border-dotted border-zinc-400 dark:border-zinc-700 pb-0.5"
+    >
+      Already have an account? Sign in
+    </Link>
+  </div>
+);
+
+interface RegisterFormProps {
+  formData: RegisterFormData;
+  isBusy: boolean;
+  error: string | null;
+  errorTitle: string | null;
+  onChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
+  onSubmit: (event: React.FormEvent) => void;
+  passwordInputRef: React.RefObject<HTMLInputElement | null>;
+}
+
+const RegisterForm = ({
+  formData,
+  isBusy,
+  error,
+  errorTitle,
+  onChange,
+  onSubmit,
+  passwordInputRef,
+}: RegisterFormProps) => (
+  <form onSubmit={onSubmit} className="flex flex-col gap-6">
+    <RegisterFieldGroup
+      fields={businessFields}
+      formData={formData}
+      isBusy={isBusy}
+      onChange={onChange}
+      passwordInputRef={passwordInputRef}
+    />
+    <RegisterFieldGroup
+      fields={adminNameFields}
+      formData={formData}
+      isBusy={isBusy}
+      onChange={onChange}
+      passwordInputRef={passwordInputRef}
+    />
+    <RegisterFieldGroup
+      fields={adminCredentialFields}
+      formData={formData}
+      isBusy={isBusy}
+      className="grid grid-cols-1 gap-6"
+      onChange={onChange}
+      passwordInputRef={passwordInputRef}
+    />
+    <RegisterError error={error} title={errorTitle} />
+    <RegisterSubmitButton isBusy={isBusy} />
+    <RegisterFooter />
+  </form>
+);
 
 const RegisterPage: React.FC<RegisterPageProps> = ({ isCheckingSession = false, onSuccess }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [errorTitle, setErrorTitle] = useState<string | null>(null);
   const passwordInputRef = useRef<HTMLInputElement>(null);
+  const [formData, setFormData] = useState<RegisterFormData>(initialFormData);
 
-  const [formData, setFormData] = useState({
-    name: '',
-    website: '',
-    admin_first_name: '',
-    admin_last_name: '',
-    admin_email: '',
-    admin_password: ''
-  });
-
-  // Clear password field when component unmounts (security measure)
   useEffect(() => {
     return () => {
       if (passwordInputRef.current) {
@@ -47,72 +386,33 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ isCheckingSession = false, 
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
+  const clearPassword = () => {
+    setFormData(prev => ({ ...prev, admin_password: '' }));
+    if (passwordInputRef.current) {
+      passwordInputRef.current.value = '';
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isCheckingSession) return;
+
     setLoading(true);
     setError(null);
     setErrorTitle(null);
     let shouldNavigate = false;
 
-    const CLIENT_SERVER_URL = getClientServerUrl() || '';
-    
-    if (!CLIENT_SERVER_URL) {
-      setError('NEXT_PUBLIC_CLIENT_SERVER is not configured. All API calls must go through rails-client-server.');
-      setLoading(false);
-      return;
-    }
-    
-    const endpoint = `${CLIENT_SERVER_URL.replace(/\/$/, '')}/api/v1/business/register`;
-
     try {
-      const response = await fetch(endpoint, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-        body: JSON.stringify(formData),
-      });
-
-      if (!response.ok) {
-        let errorMessage = 'Registration failed. Please try again.';
-        let errorCode: string | undefined;
-        try {
-          const errorData = await response.json();
-          errorMessage = errorData.message || errorData.error || errorMessage;
-          errorCode = errorData.code;
-        } catch (jsonErr) {
-          // Log the actual error for debugging
-          console.error('Registration error response (not shown to user):', await response.text());
-        }
-        throw { message: errorMessage, code: errorCode };
-      }
-
-      const data = await response.json();
-      
-      // SECURITY: Clear password immediately after successful registration
-      setFormData(prev => ({ ...prev, admin_password: '' }));
-      if (passwordInputRef.current) {
-        passwordInputRef.current.value = '';
-      }
-      
+      const data = await submitRegistration(formData);
+      clearPassword();
       shouldNavigate = true;
       await onSuccess(data);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Registration Error:', err);
-      if (err.name === 'TypeError' && err.message === 'Failed to fetch') {
-        setError('Unable to connect to the service. Please check your connection and try again.');
-      } else {
-        const message = err?.message || 'An error occurred during registration. Please try again.';
-        setError(message);
-        setErrorTitle(err?.code === 'conflict' ? 'Email already in use' : null);
-      }
-      // Clear password on error as well for security
-      setFormData(prev => ({ ...prev, admin_password: '' }));
-      if (passwordInputRef.current) {
-        passwordInputRef.current.value = '';
-      }
+      const submitError = getRegistrationSubmitError(err);
+      setError(submitError.message);
+      setErrorTitle(submitError.title);
+      clearPassword();
     } finally {
       if (!shouldNavigate) {
         setLoading(false);
@@ -126,178 +426,19 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ isCheckingSession = false, 
     <Container className="min-h-[70vh] flex flex-col py-16 !border-0 px-4 w-full">
       <div className="w-full max-w-2xl mx-auto">
         {isCheckingSession ? (
-          <div className={AUTH_SUCCESS_BOX} data-testid="register-session-check">
-            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center">
-              <span className="w-6 h-6 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
-            </div>
-            <Heading level={3} className="!text-xl mb-2 text-emerald-800 dark:text-emerald-400">
-              Initializing node
-            </Heading>
-            <Text variant="p" className="!text-sm text-emerald-700 dark:text-emerald-500/90">
-              Preparing your dashboard…
-            </Text>
-          </div>
+          <RegisterSessionCheck />
         ) : (
           <>
-            <Link href="/" data-testid="register-back-home" className={AUTH_LINK_BACK}>
-              <span className="material-symbols-sharp" style={{ fontSize: '1rem' }}>
-                arrow_back
-              </span>
-              <span>Back to landing</span>
-            </Link>
-
-            <form onSubmit={handleSubmit} className="flex flex-col gap-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="flex flex-col gap-2">
-                <label htmlFor="reg-name" className={AUTH_LABEL}>
-                  Company Name
-                </label>
-                <input
-                  id="reg-name"
-                  type="text"
-                  name="name"
-                  required
-                  disabled={isBusy}
-                  placeholder="Acme Institutional"
-                  value={formData.name}
-                  onChange={handleChange}
-                  className={AUTH_INPUT}
-                />
-              </div>
-              <div className="flex flex-col gap-2">
-                <label htmlFor="reg-website" className={AUTH_LABEL}>
-                  Website <span className="text-zinc-400 dark:text-zinc-600 font-normal">(Optional)</span>
-                </label>
-                <input
-                  id="reg-website"
-                  type="url"
-                  name="website"
-                  disabled={isBusy}
-                  placeholder="https://acme.com"
-                  value={formData.website}
-                  onChange={handleChange}
-                  className={AUTH_INPUT}
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="flex flex-col gap-2">
-                <label htmlFor="reg-fn" className={AUTH_LABEL}>
-                  Admin First Name
-                </label>
-                <input
-                  id="reg-fn"
-                  type="text"
-                  name="admin_first_name"
-                  required
-                  disabled={isBusy}
-                  placeholder="Alice"
-                  value={formData.admin_first_name}
-                  onChange={handleChange}
-                  className={AUTH_INPUT}
-                />
-              </div>
-              <div className="flex flex-col gap-2">
-                <label htmlFor="reg-ln" className={AUTH_LABEL}>
-                  Admin Last Name
-                </label>
-                <input
-                  id="reg-ln"
-                  type="text"
-                  name="admin_last_name"
-                  required
-                  disabled={isBusy}
-                  placeholder="Admin"
-                  value={formData.admin_last_name}
-                  onChange={handleChange}
-                  className={AUTH_INPUT}
-                />
-              </div>
-            </div>
-
-            <div className="flex flex-col gap-2">
-              <label htmlFor="reg-email" className={AUTH_LABEL}>
-                Admin Email
-              </label>
-              <input
-                id="reg-email"
-                type="email"
-                name="admin_email"
-                autoComplete="email"
-                required
-                disabled={isBusy}
-                placeholder="admin@acme.com"
-                value={formData.admin_email}
-                onChange={handleChange}
-                className={AUTH_INPUT}
-              />
-            </div>
-
-            <div className="flex flex-col gap-2">
-              <label htmlFor="reg-password" className={AUTH_LABEL}>
-                Password
-              </label>
-              <input
-                id="reg-password"
-                ref={passwordInputRef}
-                type="password"
-                name="admin_password"
-                autoComplete="new-password"
-                required
-                disabled={isBusy}
-                placeholder="••••••••••••"
-                value={formData.admin_password}
-                onChange={handleChange}
-                className={AUTH_INPUT}
-              />
-            </div>
-
-            {error && (
-              <div className={AUTH_ERROR_BOX} data-testid="register-error">
-                <span className="material-symbols-sharp shrink-0" style={{ fontSize: '1rem' }}>
-                  error
-                </span>
-                <div className="flex-1 text-left">
-                  <p className="font-mono font-semibold mb-1 text-[10px] uppercase tracking-wide">
-                    {errorTitle ?? 'Infrastructure error'}
-                  </p>
-                  <p className="leading-relaxed">{error}</p>
-                </div>
-              </div>
-            )}
-
-            <Button
-              type="submit"
-              variant="primary"
-              disabled={isBusy}
-              className="w-full py-3.5 mt-2 flex justify-center items-center gap-2 disabled:opacity-60"
-              data-testid="register-submit"
-            >
-              {isBusy ? (
-                <>
-                  <span className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin shrink-0" />
-                  <span className="text-sm">Initializing node…</span>
-                </>
-              ) : (
-                <>
-                  <span>Create My Account</span>
-                  <span className="material-symbols-sharp" style={{ fontSize: '1rem' }}>
-                    arrow_forward
-                  </span>
-                </>
-              )}
-            </Button>
-
-            <div className="mt-10 flex flex-col items-center gap-4 text-[10px] font-mono text-zinc-500 tracking-widest uppercase text-center">
-              <span className="text-zinc-500 dark:text-zinc-600">
-                By registering, you agree to the rails institutional terms of service.
-              </span>
-              <Link href="/login" data-testid="register-go-login" className="mt-4 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors border-b border-dotted border-zinc-400 dark:border-zinc-700 pb-0.5">
-                Already have an account? Sign in
-              </Link>
-            </div>
-            </form>
+            <RegisterBackLink />
+            <RegisterForm
+              formData={formData}
+              isBusy={isBusy}
+              error={error}
+              errorTitle={errorTitle}
+              onChange={handleChange}
+              onSubmit={handleSubmit}
+              passwordInputRef={passwordInputRef}
+            />
           </>
         )}
       </div>

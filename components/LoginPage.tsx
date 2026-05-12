@@ -13,12 +13,69 @@ import {
   AUTH_REGISTER_LINK,
 } from './marketing/marketingAuthUi';
 import { getClientServerUrl } from '../lib/env';
+import type { AuthSuccessResponse } from '../lib/authSession';
+
+interface LoginFormData {
+  email: string;
+  password: string;
+}
 
 interface LoginPageProps {
   isCheckingSession?: boolean;
-  onSuccess: (sessionData: any) => void | Promise<void>;
+  onSuccess: (sessionData: AuthSuccessResponse) => void | Promise<void>;
   onForgotPassword: () => void;
 }
+
+const getLoginEndpoint = () => {
+  const clientServerUrl = getClientServerUrl();
+  if (!clientServerUrl) {
+    throw new Error('NEXT_PUBLIC_CLIENT_SERVER is not configured. All API calls must go through rails-client-server.');
+  }
+  return `${clientServerUrl.replace(/\/$/, '')}/api/v1/auth/login`;
+};
+
+const getLoginErrorMessage = async (response: Response) => {
+  if (response.status === 401) {
+    return 'Invalid credentials. Please verify your email and password.';
+  }
+
+  const fallbackMessage = 'Authentication failed. Please try again.';
+  const responseForLogging = response.clone();
+  try {
+    const errorData = (await response.json()) as Partial<{ message: string; error: string }>;
+    return errorData.message || errorData.error || fallbackMessage;
+  } catch {
+    console.error('Login error response (not shown to user):', await responseForLogging.text());
+    return fallbackMessage;
+  }
+};
+
+const submitLogin = async (formData: LoginFormData): Promise<AuthSuccessResponse> => {
+  const response = await fetch(getLoginEndpoint(), {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+    },
+    body: JSON.stringify(formData),
+  });
+
+  if (!response.ok) {
+    throw new Error(await getLoginErrorMessage(response));
+  }
+
+  return (await response.json()) as AuthSuccessResponse;
+};
+
+const getSubmitErrorMessage = (error: unknown) => {
+  if (error instanceof TypeError && error.message === 'Failed to fetch') {
+    return 'Unable to connect to the service. Please check your connection and try again.';
+  }
+  if (error instanceof Error) {
+    return error.message || 'Authentication failed. Please try again.';
+  }
+  return 'Authentication failed. Please try again.';
+};
 
 const LoginPage: React.FC<LoginPageProps> = ({ isCheckingSession = false, onSuccess, onForgotPassword }) => {
   const [loading, setLoading] = useState(false);
@@ -71,6 +128,13 @@ const LoginPage: React.FC<LoginPageProps> = ({ isCheckingSession = false, onSucc
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
+  const clearPassword = () => {
+    setFormData(prev => ({ ...prev, password: '' }));
+    if (passwordInputRef.current) {
+      passwordInputRef.current.value = '';
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isCheckingSession) return;
@@ -78,66 +142,15 @@ const LoginPage: React.FC<LoginPageProps> = ({ isCheckingSession = false, onSucc
     setError(null);
     let shouldKeepLoading = false;
 
-    const CLIENT_SERVER_URL = getClientServerUrl() || '';
-    
-    if (!CLIENT_SERVER_URL) {
-      setError('NEXT_PUBLIC_CLIENT_SERVER is not configured. All API calls must go through rails-client-server.');
-      setLoading(false);
-      return;
-    }
-    
-    const endpoint = `${CLIENT_SERVER_URL.replace(/\/$/, '')}/api/v1/auth/login`;
-
     try {
-      const response = await fetch(endpoint, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-        body: JSON.stringify(formData),
-      });
-
-      if (!response.ok) {
-        if (response.status === 401) {
-          throw new Error("Invalid credentials. Please verify your email and password.");
-        }
-        
-        let errorMessage = 'Authentication failed. Please try again.';
-        try {
-          const errorData = await response.json();
-          errorMessage = errorData.message || errorData.error || errorMessage;
-        } catch (jsonErr) {
-          // Log the actual error for debugging
-          console.error('Login error response (not shown to user):', await response.text());
-        }
-        throw new Error(errorMessage);
-      }
-
-      const data = await response.json();
-      
-      // SECURITY: Clear password immediately after successful login
-      // This prevents password from remaining in DOM after authentication
-      setFormData(prev => ({ ...prev, password: '' }));
-      if (passwordInputRef.current) {
-        passwordInputRef.current.value = '';
-      }
-      
+      const data = await submitLogin(formData);
+      clearPassword();
       shouldKeepLoading = true;
       await onSuccess(data);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Login Error:', err);
-      if (err.name === 'TypeError' && err.message === 'Failed to fetch') {
-        setError('Unable to connect to the service. Please check your connection and try again.');
-      } else {
-        // Use the error message from the API (should be user-friendly now)
-        setError(err.message || 'Authentication failed. Please try again.');
-      }
-      // Clear password on error as well for security
-      setFormData(prev => ({ ...prev, password: '' }));
-      if (passwordInputRef.current) {
-        passwordInputRef.current.value = '';
-      }
+      setError(getSubmitErrorMessage(err));
+      clearPassword();
     } finally {
       if (!shouldKeepLoading) {
         setLoading(false);

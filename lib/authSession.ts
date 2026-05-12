@@ -12,6 +12,19 @@ export interface RailsSession {
   environments: EnvironmentInfo[];
 }
 
+export interface AuthSuccessResponse {
+  access_token: string;
+  refresh_token: string;
+  expires_in: number;
+  selected_environment_id?: string;
+  environment_id?: string;
+  environment?: Partial<EnvironmentInfo>;
+  user?: {
+    environment_id?: string;
+  };
+  environments?: EnvironmentInfo[];
+}
+
 export const RAILS_SESSION_STORAGE_KEY = 'rails_session';
 export const RAILS_SESSION_COOKIE_NAME = 'rails_session_present';
 
@@ -46,3 +59,15 @@ export const getSessionEnvironmentType = (session: RailsSession) => {
   const selectedEnv = session.environments.find((environment) => environment.id === session.environment_id);
   return (selectedEnv?.type || 'sandbox') as 'sandbox' | 'production';
 };
+
+export const getAuthSuccessEnvironmentId = (data: AuthSuccessResponse): string | undefined =>
+  data.selected_environment_id || data.environment?.id || data.user?.environment_id || data.environment_id;
+
+export const buildRailsSession = (data: AuthSuccessResponse, environmentId: string): RailsSession => ({
+  access_token: data.access_token,
+  refresh_token: data.refresh_token,
+  expires_in: data.expires_in,
+  timestamp: Date.now(),
+  environment_id: environmentId,
+  environments: data.environments || [],
+});
