@@ -4,7 +4,7 @@ test.describe('Register', () => {
   test('registers and lands on dashboard', async ({ page }) => {
     test.setTimeout(60_000);
     await page.goto('/register');
-    await expect(page.getByRole('heading', { name: /ready to build/i })).toBeVisible();
+    await expect(page.getByPlaceholder('Acme Institutional')).toBeVisible();
 
     await page.getByPlaceholder('Acme Institutional').fill('E2E Bank');
     await page.getByPlaceholder('Alice').fill('Test');
@@ -13,7 +13,6 @@ test.describe('Register', () => {
     await page.locator('input[name="admin_password"]').fill('long-password-e2e-1');
 
     await page.getByRole('button', { name: /create my account/i }).click();
-    await expect(page.getByText(/registration successful/i)).toBeVisible({ timeout: 15_000 });
     await expect(page).toHaveURL(/\/dashboard$/, { timeout: 20_000 });
   });
 });

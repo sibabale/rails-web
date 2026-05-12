@@ -13,13 +13,112 @@ import {
   AUTH_REGISTER_LINK,
 } from './marketing/marketingAuthUi';
 import { getClientServerUrl } from '../lib/env';
+import type { AuthSuccessResponse } from '../lib/authSession';
+
+interface LoginFormData {
+  email: string;
+  password: string;
+}
 
 interface LoginPageProps {
-  onSuccess: (sessionData: any) => void;
+  isCheckingSession?: boolean;
+  onSuccess: (sessionData: AuthSuccessResponse) => void | Promise<void>;
   onForgotPassword: () => void;
 }
 
-const LoginPage: React.FC<LoginPageProps> = ({ onSuccess, onForgotPassword }) => {
+const getLoginEndpoint = () => {
+  const clientServerUrl = getClientServerUrl();
+  if (!clientServerUrl) {
+    throw new Error('NEXT_PUBLIC_CLIENT_SERVER is not configured. All API calls must go through rails-client-server.');
+  }
+  return `${clientServerUrl.replace(/\/$/, '')}/api/v1/auth/login`;
+};
+
+const getLoginErrorMessage = async (response: Response) => {
+  if (response.status === 401) {
+    return 'Invalid credentials. Please verify your email and password.';
+  }
+
+  const fallbackMessage = 'Authentication failed. Please try again.';
+  const responseForLogging = response.clone();
+  try {
+    const errorData = (await response.json()) as Partial<{ message: string; error: string }>;
+    return errorData.message || errorData.error || fallbackMessage;
+  } catch {
+    console.error('Login error response (not shown to user):', await responseForLogging.text());
+    return fallbackMessage;
+  }
+};
+
+const submitLogin = async (formData: LoginFormData): Promise<AuthSuccessResponse> => {
+  const response = await fetch(getLoginEndpoint(), {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+    },
+    body: JSON.stringify(formData),
+  });
+
+  if (!response.ok) {
+    throw new Error(await getLoginErrorMessage(response));
+  }
+
+  return (await response.json()) as AuthSuccessResponse;
+};
+
+const getSubmitErrorMessage = (error: unknown) => {
+  if (error instanceof TypeError && error.message === 'Failed to fetch') {
+    return 'Unable to connect to the service. Please check your connection and try again.';
+  }
+  if (error instanceof Error) {
+    return error.message || 'Authentication failed. Please try again.';
+  }
+  return 'Authentication failed. Please try again.';
+};
+
+interface LoginSubmitRunnerOptions {
+  formData: LoginFormData;
+  onSuccess: (sessionData: AuthSuccessResponse) => void | Promise<void>;
+  clearPassword: () => void;
+  setError: React.Dispatch<React.SetStateAction<string | null>>;
+  setLoading: React.Dispatch<React.SetStateAction<boolean>>;
+}
+
+const finishLoginSubmit = (
+  setLoading: React.Dispatch<React.SetStateAction<boolean>>,
+  shouldKeepLoading: boolean
+) => {
+  if (!shouldKeepLoading) {
+    setLoading(false);
+  }
+};
+
+const completeLoginSubmit = async (data: AuthSuccessResponse, options: LoginSubmitRunnerOptions) => {
+  options.clearPassword();
+  await options.onSuccess(data);
+  return true;
+};
+
+const failLoginSubmit = (error: unknown, options: LoginSubmitRunnerOptions) => {
+  console.error('Login Error:', error);
+  options.setError(getSubmitErrorMessage(error));
+  options.clearPassword();
+  return false;
+};
+
+const runLoginSubmit = async (options: LoginSubmitRunnerOptions) => {
+  options.setLoading(true);
+  options.setError(null);
+
+  const shouldKeepLoading = await submitLogin(options.formData)
+    .then((data) => completeLoginSubmit(data, options))
+    .catch((error: unknown) => failLoginSubmit(error, options));
+
+  finishLoginSubmit(options.setLoading, shouldKeepLoading);
+};
+
+const LoginPage: React.FC<LoginPageProps> = ({ isCheckingSession = false, onSuccess, onForgotPassword }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
@@ -70,74 +169,20 @@ const LoginPage: React.FC<LoginPageProps> = ({ onSuccess, onForgotPassword }) =>
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError(null);
-
-    const CLIENT_SERVER_URL = getClientServerUrl() || '';
-    
-    if (!CLIENT_SERVER_URL) {
-      setError('NEXT_PUBLIC_CLIENT_SERVER is not configured. All API calls must go through rails-client-server.');
-      setLoading(false);
-      return;
-    }
-    
-    const endpoint = `${CLIENT_SERVER_URL.replace(/\/$/, '')}/api/v1/auth/login`;
-
-    try {
-      const response = await fetch(endpoint, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-        body: JSON.stringify(formData),
-      });
-
-      if (!response.ok) {
-        if (response.status === 401) {
-          throw new Error("Invalid credentials. Please verify your email and password.");
-        }
-        
-        let errorMessage = 'Authentication failed. Please try again.';
-        try {
-          const errorData = await response.json();
-          errorMessage = errorData.message || errorData.error || errorMessage;
-        } catch (jsonErr) {
-          // Log the actual error for debugging
-          console.error('Login error response (not shown to user):', await response.text());
-        }
-        throw new Error(errorMessage);
-      }
-
-      const data = await response.json();
-      
-      // SECURITY: Clear password immediately after successful login
-      // This prevents password from remaining in DOM after authentication
-      setFormData(prev => ({ ...prev, password: '' }));
-      if (passwordInputRef.current) {
-        passwordInputRef.current.value = '';
-      }
-      
-      onSuccess(data);
-    } catch (err: any) {
-      console.error('Login Error:', err);
-      if (err.name === 'TypeError' && err.message === 'Failed to fetch') {
-        setError('Unable to connect to the service. Please check your connection and try again.');
-      } else {
-        // Use the error message from the API (should be user-friendly now)
-        setError(err.message || 'Authentication failed. Please try again.');
-      }
-      // Clear password on error as well for security
-      setFormData(prev => ({ ...prev, password: '' }));
-      if (passwordInputRef.current) {
-        passwordInputRef.current.value = '';
-      }
-    } finally {
-      setLoading(false);
+  const clearPassword = () => {
+    setFormData(prev => ({ ...prev, password: '' }));
+    if (passwordInputRef.current) {
+      passwordInputRef.current.value = '';
     }
   };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (isCheckingSession) return;
+    await runLoginSubmit({ formData, onSuccess, clearPassword, setError, setLoading });
+  };
+
+  const isBusy = loading || isCheckingSession;
 
   return (
     <Container className="min-h-[70vh] flex flex-col justify-center items-center py-16 !border-0 px-4 w-full">
@@ -169,6 +214,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onSuccess, onForgotPassword }) =>
               name="email"
               autoComplete="email"
               required
+              disabled={isBusy}
               placeholder="admin@example.com"
               value={formData.email}
               onChange={handleChange}
@@ -187,6 +233,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onSuccess, onForgotPassword }) =>
               name="password"
               autoComplete="current-password"
               required
+              disabled={isBusy}
               placeholder="••••••••••••"
               value={formData.password}
               onChange={handleChange}
@@ -209,11 +256,11 @@ const LoginPage: React.FC<LoginPageProps> = ({ onSuccess, onForgotPassword }) =>
           <Button
             type="submit"
             variant="primary"
-            disabled={loading}
+            disabled={isBusy}
             className="w-full py-3.5 mt-2 flex justify-center items-center gap-2 disabled:opacity-60"
             data-testid="login-submit"
           >
-            {loading ? (
+            {isBusy ? (
               <>
                 <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin shrink-0" />
                 <span className="text-sm">Authenticating…</span>
@@ -232,6 +279,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onSuccess, onForgotPassword }) =>
             <button
               type="button"
               onClick={onForgotPassword}
+              disabled={isBusy}
               className="hover:text-black dark:hover:text-white transition-colors"
             >
               Forgot security credentials?
