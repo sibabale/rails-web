@@ -23,6 +23,25 @@ const formatCurrency = (amount: number, currency: string) => {
   }
 };
 
+const OverviewMetricLoader = ({
+  valueWidth,
+  sublabelWidth,
+}: {
+  valueWidth: string;
+  sublabelWidth: string;
+}) => (
+  <div className="contents" aria-hidden="true">
+    <span
+      className="inline-block h-9 animate-pulse bg-zinc-200 align-bottom dark:bg-zinc-800"
+      style={{ width: valueWidth }}
+    />
+    <span
+      className="mb-1 inline-block h-3 animate-pulse bg-zinc-200 align-bottom dark:bg-zinc-800"
+      style={{ width: sublabelWidth }}
+    />
+  </div>
+);
+
 const DashboardOverviewV2: React.FC<DashboardOverviewV2Props> = ({
   overviewStats = { activeAccounts: 0, postedEntries: 0, settledVolume: 0 },
   isLoadingOverviewStats = false,
@@ -32,20 +51,24 @@ const DashboardOverviewV2: React.FC<DashboardOverviewV2Props> = ({
   const overviewTiles = [
     {
       label: 'Active Accounts',
-      value: isLoadingOverviewStats ? '—' : formatCount(overviewStats.activeAccounts),
+      value: formatCount(overviewStats.activeAccounts),
       sublabel: 'accounts',
+      loaderValueWidth: '4ch',
+      loaderSublabelWidth: '7ch',
     },
     {
       label: 'Completed Transactions',
-      value: isLoadingOverviewStats ? '—' : formatCount(overviewStats.postedEntries),
+      value: formatCount(overviewStats.postedEntries),
       sublabel: 'transactions',
+      loaderValueWidth: '4ch',
+      loaderSublabelWidth: '10ch',
     },
     {
       label: 'Settled Volume',
-      value: isLoadingOverviewStats
-        ? '—'
-        : formatCurrency(overviewStats.settledVolume, overviewCurrency),
+      value: formatCurrency(overviewStats.settledVolume, overviewCurrency),
       sublabel: 'ledger',
+      loaderValueWidth: '9ch',
+      loaderSublabelWidth: '5ch',
     },
   ];
 
@@ -63,15 +86,28 @@ const DashboardOverviewV2: React.FC<DashboardOverviewV2Props> = ({
                 {tile.label}
               </span>
             </div>
-            <div className="flex items-end justify-between">
-              <span
-                className={`text-3xl font-medium tracking-tight text-black dark:text-white ${
-                  isLoadingOverviewStats ? 'animate-pulse' : ''
-                }`}
-              >
-                {tile.value}
-              </span>
-              <span className="text-xs font-mono text-zinc-500">{tile.sublabel}</span>
+            <div
+              className="flex items-end justify-between"
+              aria-busy={isLoadingOverviewStats}
+              aria-label={isLoadingOverviewStats ? `Loading ${tile.label}` : undefined}
+              role={isLoadingOverviewStats ? 'status' : undefined}
+            >
+              {isLoadingOverviewStats ? (
+                <>
+                  <span className="sr-only">Loading {tile.label}</span>
+                  <OverviewMetricLoader
+                    valueWidth={tile.loaderValueWidth}
+                    sublabelWidth={tile.loaderSublabelWidth}
+                  />
+                </>
+              ) : (
+                <>
+                  <span className="text-3xl font-medium tracking-tight text-black dark:text-white">
+                    {tile.value}
+                  </span>
+                  <span className="text-xs font-mono text-zinc-500">{tile.sublabel}</span>
+                </>
+              )}
             </div>
           </div>
         ))}

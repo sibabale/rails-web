@@ -192,9 +192,222 @@ const DashboardSidebarFooterTools = memo(function DashboardSidebarFooterTools() 
 
 interface DashboardProps {
   onLogout: () => void;
-  session?: any;
-  profile?: any;
+  session?: DashboardSession | null;
+  profile?: DashboardProfile | null;
+  isLoadingProfile?: boolean;
 }
+
+interface DashboardEnvironmentInfo {
+  id: string;
+  type: string;
+}
+
+interface DashboardSession {
+  access_token: string;
+  refresh_token?: string;
+  expires_in?: number;
+  timestamp?: number;
+  environment_id: string;
+  environments?: DashboardEnvironmentInfo[];
+}
+
+interface DashboardProfile {
+  id?: string;
+  name?: string;
+  email?: string;
+  role?: string;
+  avatar_url?: string;
+  business_name?: string;
+  website?: string;
+}
+
+const identityBusinessLoaderFields = [
+  { id: 'legal-entity-name', labelWidthClass: 'w-28' },
+  { id: 'official-website', labelWidthClass: 'w-24' },
+];
+
+const identityAdminLoaderFields = [
+  { id: 'first-name', labelWidthClass: 'w-24' },
+  { id: 'last-name', labelWidthClass: 'w-20' },
+];
+
+const identityPolicyItems = [
+  { label: 'JWT Enforcement', value: 'ENABLED', valueClassName: 'text-emerald-500' },
+  { label: 'MFA Policy', value: 'STRICT', valueClassName: 'text-emerald-500' },
+  { label: 'Node Compliance', value: 'PASSING', valueClassName: 'text-emerald-500', isSeparated: true },
+];
+
+const IdentityHeader = () => (
+  <div>
+    <h2 className="text-2xl font-medium tracking-tight text-black dark:text-white md:text-3xl mb-2">
+      Identity & Profile
+    </h2>
+    <p className="text-sm font-mono uppercase tracking-widest text-zinc-500 dark:text-zinc-400">
+      Business Information Node Context
+    </p>
+  </div>
+);
+
+const IdentityLoaderField = ({ labelWidthClass }: { labelWidthClass: string }) => (
+  <div className="space-y-1.5">
+    <div className={`h-2.5 ${labelWidthClass} animate-pulse bg-zinc-200 dark:bg-zinc-800`} />
+    <div className="h-9 w-full animate-pulse border border-zinc-200 bg-zinc-100 dark:border-zinc-800 dark:bg-zinc-900" />
+  </div>
+);
+
+const IdentityLoaderSection = ({
+  titleWidthClass,
+  fields,
+  withEmailField = false,
+}: {
+  titleWidthClass: string;
+  fields: { id: string; labelWidthClass: string }[];
+  withEmailField?: boolean;
+}) => (
+  <section className={withEmailField ? 'space-y-6 pt-8 border-t border-zinc-200 dark:border-zinc-800' : 'space-y-6'}>
+    <div className={`h-3 ${titleWidthClass} animate-pulse bg-zinc-200 dark:bg-zinc-800`} />
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      {fields.map((field) => (
+        <IdentityLoaderField key={field.id} labelWidthClass={field.labelWidthClass} />
+      ))}
+      {withEmailField ? (
+        <div className="col-span-1 md:col-span-2">
+          <IdentityLoaderField labelWidthClass="w-36" />
+        </div>
+      ) : null}
+    </div>
+  </section>
+);
+
+const IdentityProfileLoader = () => (
+  <div
+    className="border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#050505] transition-colors p-8 space-y-8"
+    aria-busy="true"
+    aria-label="Loading identity profile"
+    role="status"
+  >
+    <span className="sr-only">Loading identity profile</span>
+    <IdentityLoaderSection titleWidthClass="w-36" fields={identityBusinessLoaderFields} />
+    <IdentityLoaderSection titleWidthClass="w-44" fields={identityAdminLoaderFields} withEmailField />
+  </div>
+);
+
+const ReadOnlyIdentityField = ({
+  label,
+  value,
+  className = 'text-black dark:text-white',
+  isFullWidth = false,
+}: {
+  label: string;
+  value: string;
+  className?: string;
+  isFullWidth?: boolean;
+}) => (
+  <div className={`${isFullWidth ? 'col-span-1 md:col-span-2 ' : ''}space-y-1.5`}>
+    <label className="text-[10px] font-mono uppercase tracking-tight text-zinc-500">{label}</label>
+    <input
+      type="text"
+      readOnly
+      value={value}
+      className={`w-full border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-black px-4 py-2 text-sm font-bold outline-none transition-colors cursor-default ${className}`}
+    />
+  </div>
+);
+
+const IdentityProfileForm = ({ profile }: { profile?: DashboardProfile | null }) => {
+  const [firstName = '', ...lastNameParts] = profile?.name?.trim().split(/\s+/) ?? [];
+  const lastName = lastNameParts.join(' ');
+
+  return (
+    <div className="border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#050505] transition-colors p-8 space-y-8">
+      <section className="space-y-6">
+        <h4 className="mb-4 text-[10px] font-mono font-semibold uppercase tracking-widest text-zinc-500">
+          Business Profile
+        </h4>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <ReadOnlyIdentityField label="Legal Entity Name" value={profile?.business_name?.trim() ?? ''} />
+          <ReadOnlyIdentityField
+            label="Official Website"
+            value={profile?.website?.trim() ?? ''}
+            className="text-zinc-600 dark:text-zinc-400"
+          />
+        </div>
+      </section>
+
+      <section className="space-y-6 pt-8 border-t border-zinc-200 dark:border-zinc-800">
+        <h4 className="mb-4 text-[10px] font-mono font-semibold uppercase tracking-widest text-zinc-500">
+          Admin Identity Management
+        </h4>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <ReadOnlyIdentityField label="First Name" value={firstName} />
+          <ReadOnlyIdentityField label="Last Name" value={lastName} />
+          <ReadOnlyIdentityField
+            label="Administrative Email"
+            value={profile?.email?.trim() ?? ''}
+            className="font-mono text-black dark:text-white"
+            isFullWidth
+          />
+        </div>
+      </section>
+    </div>
+  );
+};
+
+const IdentityPolicyRow = ({
+  label,
+  value,
+  valueClassName,
+  isSeparated = false,
+}: {
+  label: string;
+  value: string;
+  valueClassName: string;
+  isSeparated?: boolean;
+}) => (
+  <li className={`flex items-center justify-between ${isSeparated ? 'pt-2 border-t border-zinc-200 dark:border-zinc-800' : ''}`}>
+    <span className="text-xs text-zinc-500">{label}</span>
+    <span className={`text-[10px] font-mono font-bold ${valueClassName}`}>{value}</span>
+  </li>
+);
+
+const IdentityPolicyCard = ({ timeLeft }: { timeLeft: string }) => (
+  <div className="lg:col-span-4 space-y-6">
+    <div className="border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#050505] p-6 transition-colors">
+      <h4 className="mb-4 text-[10px] font-mono font-semibold uppercase tracking-widest text-zinc-500">
+        Auth Service Policy
+      </h4>
+      <ul className="space-y-4">
+        {identityPolicyItems.slice(0, 2).map((item) => (
+          <IdentityPolicyRow key={item.label} {...item} />
+        ))}
+        <IdentityPolicyRow label="Session Remaining" value={timeLeft} valueClassName="text-amber-500 uppercase tracking-tighter" />
+        {identityPolicyItems.slice(2).map((item) => (
+          <IdentityPolicyRow key={item.label} {...item} />
+        ))}
+      </ul>
+    </div>
+  </div>
+);
+
+const IdentityView = ({
+  profile,
+  isLoadingProfile,
+  timeLeft,
+}: {
+  profile?: DashboardProfile | null;
+  isLoadingProfile: boolean;
+  timeLeft: string;
+}) => (
+  <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <IdentityHeader />
+    <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+      <div className="lg:col-span-8 space-y-6">
+        {isLoadingProfile ? <IdentityProfileLoader /> : <IdentityProfileForm profile={profile} />}
+      </div>
+      <IdentityPolicyCard timeLeft={timeLeft} />
+    </div>
+  </div>
+);
 
 interface Account {
   id: string;
@@ -208,7 +421,7 @@ interface Account {
   metadata?: Record<string, string>;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ onLogout, session, profile }) => {
+const Dashboard: React.FC<DashboardProps> = ({ onLogout, session, profile, isLoadingProfile = false }) => {
   const dispatch = useAppDispatch();
   const environment = useAppSelector((state) => state.environment.current);
   const isProduction = environment === 'production';
@@ -931,111 +1144,6 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, session, profile }) => 
     );
   };
 
-  const renderIdentityView = () => (
-    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div>
-        <h2 className="text-2xl font-medium tracking-tight text-black dark:text-white md:text-3xl mb-2">Identity & Profile</h2>
-        <p className="text-sm font-mono uppercase tracking-widest text-zinc-500 dark:text-zinc-400">Business Information Node Context</p>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        <div className="lg:col-span-8 space-y-6">
-          <div className="border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#050505] transition-colors p-8 space-y-8">
-            <section className="space-y-6">
-              <h4 className="mb-4 text-[10px] font-mono font-semibold uppercase tracking-widest text-zinc-500">Business Profile</h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-mono uppercase tracking-tight text-zinc-500">Legal Entity Name</label>
-                  <input 
-                    type="text" 
-                    readOnly 
-                    value={profile?.business_name?.trim() ?? ''}
-                    className="w-full border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-black px-4 py-2 text-sm font-bold text-black dark:text-white outline-none transition-colors cursor-default" 
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-mono uppercase tracking-tight text-zinc-500">Infrastructure ID</label>
-                  <input 
-                    type="text" 
-                    readOnly 
-                    value={profile?.id ? profile.id.slice(0, 12).toUpperCase() : ''}
-                    className="w-full border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-black px-4 py-2 text-sm font-mono font-bold text-black dark:text-white outline-none transition-colors cursor-default" 
-                  />
-                </div>
-                <div className="col-span-1 md:col-span-2 space-y-1.5">
-                  <label className="text-[10px] font-mono uppercase tracking-tight text-zinc-500">Official Website</label>
-                  <input 
-                    type="text" 
-                    readOnly 
-                    value=""
-                    className="w-full border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-black px-4 py-2 text-sm font-bold text-zinc-600 dark:text-zinc-400 outline-none transition-colors cursor-default" 
-                  />
-                </div>
-              </div>
-            </section>
-
-            <section className="space-y-6 pt-8 border-t border-zinc-200 dark:border-zinc-800">
-              <h4 className="mb-4 text-[10px] font-mono font-semibold uppercase tracking-widest text-zinc-500">Admin Identity Management</h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-mono text-zinc-500 uppercase">First Name</label>
-                  <input 
-                    type="text" 
-                    readOnly 
-                    value={profile?.name?.trim()?.split(/\s+/)?.[0] ?? ''}
-                    className="w-full border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-black px-4 py-2 text-sm font-bold text-black dark:text-white outline-none transition-colors cursor-default" 
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-mono text-zinc-500 uppercase">Last Name</label>
-                  <input 
-                    type="text" 
-                    readOnly 
-                    value={profile?.name?.trim()?.split(/\s+/)?.slice(1)?.join(' ') ?? ''}
-                    className="w-full border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-black px-4 py-2 text-sm font-bold text-black dark:text-white outline-none transition-colors cursor-default" 
-                  />
-                </div>
-                <div className="col-span-1 md:col-span-2 space-y-1.5">
-                  <label className="text-[10px] font-mono text-zinc-500 uppercase">Administrative Email</label>
-                  <input 
-                    type="text" 
-                    readOnly 
-                    value={profile?.email?.trim() ?? ''}
-                    className="w-full border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-black px-4 py-2 text-sm font-mono font-bold text-black dark:text-white outline-none transition-colors cursor-default" 
-                  />
-                </div>
-              </div>
-            </section>
-          </div>
-        </div>
-
-        <div className="lg:col-span-4 space-y-6">
-           <div className="border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#050505] p-6 transition-colors">
-             <h4 className="mb-4 text-[10px] font-mono font-semibold uppercase tracking-widest text-zinc-500">Auth Service Policy</h4>
-             <ul className="space-y-4">
-                <li className="flex items-center justify-between">
-                   <span className="text-xs text-zinc-500">JWT Enforcement</span>
-                   <span className="text-[10px] font-mono font-bold text-emerald-500">ENABLED</span>
-                </li>
-                <li className="flex items-center justify-between">
-                   <span className="text-xs text-zinc-500">MFA Policy</span>
-                   <span className="text-[10px] font-mono font-bold text-emerald-500">STRICT</span>
-                </li>
-                <li className="flex items-center justify-between">
-                   <span className="text-xs text-zinc-500">Session Remaining</span>
-                   <span className="text-[10px] font-mono font-bold text-amber-500 uppercase tracking-tighter">{timeLeft}</span>
-                </li>
-                <li className="flex items-center justify-between pt-2 border-t border-zinc-200 dark:border-zinc-800">
-                   <span className="text-xs text-zinc-500">Node Compliance</span>
-                   <span className="text-[10px] font-mono font-bold text-emerald-500">PASSING</span>
-                </li>
-             </ul>
-           </div>
-        </div>
-      </div>
-    </div>
-  );
-
   const renderTransactionsView = () => (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-500">
       <div className="flex justify-between items-center">
@@ -1163,7 +1271,9 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, session, profile }) => 
   );
 
   const renderContent = () => {
-    if (activeTab === 'Identity') return renderIdentityView();
+    if (activeTab === 'Identity') {
+      return <IdentityView profile={profile} isLoadingProfile={isLoadingProfile} timeLeft={timeLeft} />;
+    }
 
     switch (activeTab) {
       case 'Transactions':
