@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAppDispatch, useAppSelector } from '../state/hooks';
 import { setEnvironment } from '../state/slices/environmentSlice';
-import ApiKeyManager from './ApiKeyManager';
 import Pagination from './Pagination';
 import DashboardOverviewV2 from './DashboardOverviewV2';
 import { SiGithub } from '@icons-pack/react-simple-icons';
@@ -1007,8 +1006,6 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, session, profile }) => 
                 </div>
               </div>
             </section>
-
-            <ApiKeyManager session={session} />
           </div>
         </div>
 
@@ -1243,6 +1240,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, session, profile }) => 
               overviewStats={overviewStats}
               isLoadingOverviewStats={isLoadingOverviewStats}
               overviewCurrency={overviewCurrency}
+              session={session}
             />
           );
         }

@@ -1,6 +1,6 @@
 import React from 'react';
 import { MarketingDocsCtaLink } from '@/components/marketing/atoms/MarketingDocsCtaLink';
-import { SDK_SAMPLE_FOLDERS, samplesFolderUrl } from '../lib/samplesRepo';
+import ApiKeyManager from './ApiKeyManager';
 
 interface DashboardOverviewV2Props {
   overviewStats?: {
@@ -27,6 +27,7 @@ const DashboardOverviewV2: React.FC<DashboardOverviewV2Props> = ({
   overviewStats = { activeAccounts: 0, postedEntries: 0, settledVolume: 0 },
   isLoadingOverviewStats = false,
   overviewCurrency = 'USD',
+  session,
 }) => {
   const overviewTiles = [
     {
@@ -76,6 +77,8 @@ const DashboardOverviewV2: React.FC<DashboardOverviewV2Props> = ({
         ))}
       </div>
 
+      <ApiKeyManager session={session} />
+
       <div className="p-10 md:p-14 border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#050505] transition-colors">
         <span className="text-[10px] font-mono font-semibold text-zinc-500 tracking-widest uppercase mb-6 block">
           Rails Platform
@@ -97,83 +100,6 @@ const DashboardOverviewV2: React.FC<DashboardOverviewV2Props> = ({
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {[
-          {
-            title: 'Programmable Accounts',
-            description: 'Provision multi-currency accounts with policy controls and real-time balances.',
-          },
-          {
-            title: 'Immutable Ledger',
-            description: 'Double-entry ledger with audit-ready traces and cryptographic integrity.',
-          },
-          {
-            title: 'Payments Orchestration',
-            description: 'Initiate transfers, manage settlement states, and route funds efficiently.',
-          },
-        ].map((card) => (
-          <div
-            key={card.title}
-            className="p-8 border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#050505] transition-colors"
-          >
-            <h3 className="text-xl font-medium tracking-tight text-black dark:text-white mb-3">{card.title}</h3>
-            <p className="text-sm text-zinc-600 dark:text-zinc-400 leading-relaxed">{card.description}</p>
-          </div>
-        ))}
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6" data-testid="dashboard-overview-resources">
-        <div className="p-8 border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#050505] transition-colors flex flex-col">
-          <span className="text-[10px] font-mono text-zinc-500 tracking-widest uppercase mb-4">Documentation</span>
-          <p className="text-base text-black dark:text-white font-medium mb-8">
-            Explore the onboarding guide, API reference, and integration checklist.
-          </p>
-          <div className="mt-auto">
-            <MarketingDocsCtaLink
-              data-testid="dashboard-overview-go-to-docs"
-              className="text-sm font-semibold text-black dark:text-white hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors inline-flex items-center gap-2"
-            >
-              Go to Docs →
-            </MarketingDocsCtaLink>
-          </div>
-        </div>
-
-        <div className="p-8 border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#050505] transition-colors">
-          <span className="text-[10px] font-mono text-zinc-500 tracking-widest uppercase mb-4 block">SDKs</span>
-          <p className="text-base text-black dark:text-white font-medium mb-6">Choose your stack and integrate in minutes.</p>
-          <div className="flex flex-wrap gap-2">
-            {['TypeScript', 'Python', 'Go', 'Ruby', 'Java', 'Kotlin', 'CLI'].map((sdk) => (
-              <span
-                key={sdk}
-                className="px-3 py-1 rounded-full border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-black text-[11px] font-mono text-zinc-600 dark:text-zinc-400 transition-colors"
-              >
-                {sdk}
-              </span>
-            ))}
-          </div>
-        </div>
-
-        <div className="p-8 border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#050505] transition-colors" data-testid="dashboard-samples">
-          <span className="text-[10px] font-mono text-zinc-500 tracking-widest uppercase mb-4 block">Samples</span>
-          <p className="text-base text-black dark:text-white font-medium mb-6">
-            Clone a reference app for your stack: install, set base URL and API key, run locally with Swagger.
-          </p>
-          <div className="flex flex-wrap gap-2">
-            {SDK_SAMPLE_FOLDERS.map(({ id, label }) => (
-              <a
-                key={id}
-                href={samplesFolderUrl(id)}
-                target="_blank"
-                rel="noreferrer"
-                className="px-3 py-1 rounded-full border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-black text-[11px] font-mono font-semibold text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white transition-colors"
-                data-testid={`dashboard-sample-link-${id}`}
-              >
-                {label}
-              </a>
-            ))}
-          </div>
-        </div>
-      </div>
     </div>
   );
 };
