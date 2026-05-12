@@ -45,21 +45,32 @@ interface MeResponse extends MeUserProfile {
 
 const isIdentityDashboardRoute = (pathname: string | null) => pathname?.replace(/\/$/, '') === '/dashboard/identity';
 
-const getProfileName = (user: MeUserProfile) =>
-  user.name || `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.email || '';
+const cleanString = (value: string | undefined) => value?.trim() ?? '';
 
-const mapMeResponseToProfile = (data: MeResponse): UserProfile => {
-  const user = data.user ?? data;
-  return {
-    id: user.id || '',
-    name: getProfileName(user),
-    email: user.email || '',
-    role: user.role || '',
-    avatar_url: user.avatar_url,
-    business_name: data.business?.name || user.business_name,
-    website: data.business?.website || data.business?.website_url || user.business_website || user.website,
-  };
-};
+const firstPresentString = (values: Array<string | undefined>) => values.map(cleanString).find(Boolean) ?? '';
+
+const getProfileNameParts = (user: MeUserProfile) => [user.first_name, user.last_name].map(cleanString).filter(Boolean);
+
+const getProfileName = (user: MeUserProfile) =>
+  firstPresentString([user.name, getProfileNameParts(user).join(' '), user.email]);
+
+const getProfileWebsite = (data: MeResponse, user: MeUserProfile) =>
+  firstPresentString([data.business?.website, data.business?.website_url, user.business_website, user.website]);
+
+const getBusinessName = (data: MeResponse, user: MeUserProfile) =>
+  firstPresentString([data.business?.name, user.business_name]);
+
+const getMeUser = (data: MeResponse) => data.user ?? data;
+
+const mapMeResponseToProfile = (data: MeResponse): UserProfile => ({
+  id: cleanString(getMeUser(data).id),
+  name: getProfileName(getMeUser(data)),
+  email: cleanString(getMeUser(data).email),
+  role: cleanString(getMeUser(data).role),
+  avatar_url: getMeUser(data).avatar_url,
+  business_name: getBusinessName(data, getMeUser(data)),
+  website: getProfileWebsite(data, getMeUser(data)),
+});
 
 const fetchIdentityProfile = async (clientServerUrl: string, session: RailsSession) => {
   const response = await fetch(`${clientServerUrl.replace(/\/$/, '')}/api/v1/me`, {
@@ -76,7 +87,7 @@ const fetchIdentityProfile = async (clientServerUrl: string, session: RailsSessi
   return mapMeResponseToProfile((await response.json()) as MeResponse);
 };
 
-export default function DashboardRoute() {
+const DashboardRoute = () => {
   const router = useRouter();
   const pathname = usePathname();
   const dispatch = useAppDispatch();
@@ -96,25 +107,25 @@ export default function DashboardRoute() {
   }, [router]);
 
   useEffect(() => {
-    if (!session || !clientServerUrl) return;
-    if (!isIdentityDashboardRoute(pathname)) return;
-
     let isMounted = true;
-    setIsLoadingProfile(true);
-    fetchIdentityProfile(clientServerUrl, session)
-      .then((nextProfile) => {
-        if (isMounted && nextProfile) {
-          setProfile(nextProfile);
-        }
-      })
-      .catch(() => {
-        // Keep dashboard usable even if profile hydration fails.
-      })
-      .finally(() => {
-        if (isMounted) {
-          setIsLoadingProfile(false);
-        }
-      });
+
+    if (session && clientServerUrl && isIdentityDashboardRoute(pathname)) {
+      setIsLoadingProfile(true);
+      fetchIdentityProfile(clientServerUrl, session)
+        .then((nextProfile) => {
+          if (isMounted && nextProfile) {
+            setProfile(nextProfile);
+          }
+        })
+        .catch(() => {
+          // Keep dashboard usable even if profile hydration fails.
+        })
+        .finally(() => {
+          if (isMounted) {
+            setIsLoadingProfile(false);
+          }
+        });
+    }
 
     return () => {
       isMounted = false;
@@ -132,4 +143,6 @@ export default function DashboardRoute() {
   return (
     <Dashboard onLogout={handleLogout} session={session} profile={profile} isLoadingProfile={isLoadingProfile} />
   );
-}
+};
+
+export default DashboardRoute;
