@@ -1,5 +1,7 @@
 # rails-web (Next.js)
 
+[![DeepSource](https://app.deepsource.com/gh/sibabale/rails-web.svg/?label=active+issues&show_trend=true)](https://app.deepsource.com/gh/sibabale/rails-web/)
+
 `rails-web` is the frontend for Rails financial infrastructure, now running on Next.js App Router.
 
 ## Local development
@@ -33,6 +35,10 @@ Setup:
 
 - Production build: `npm run build`
 - Start production server: `npm run start`
+
+## Static analysis
+
+DeepSource is configured in `.deepsource.toml` with JavaScript/TypeScript React analysis, Dockerfile checks, and secrets scanning. The config marks `test/**` and `e2e/**` as test code and excludes generated build artifacts such as `.next/**`, `dist/**`, and Playwright reports.
 
 ## End-to-end tests (Playwright)
 
