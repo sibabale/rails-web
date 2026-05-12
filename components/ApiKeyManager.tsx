@@ -61,6 +61,7 @@ const ApiKeyManager: React.FC<ApiKeyManagerProps> = ({ session }) => {
     if (s === 'revoked') return 'revoked';
     return 'active';
   }, [currentKey]);
+  const isLoadingTokenRow = isLoadingKeys && !isRevoking;
 
   const maskedPlaceholder = useMemo(() => {
     if (!apiKeyId) return null;
@@ -246,14 +247,28 @@ const ApiKeyManager: React.FC<ApiKeyManagerProps> = ({ session }) => {
             )}
           </div>
 
-          <div className="flex items-center gap-3">
+          <div
+            className="flex items-center gap-3"
+            aria-busy={isLoadingTokenRow}
+            aria-label={isLoadingTokenRow ? 'Loading API token' : undefined}
+            role={isLoadingTokenRow ? 'status' : undefined}
+          >
             <div className="flex-1 min-w-0">
-              <p className="truncate text-xs font-mono text-zinc-600 dark:text-zinc-300">
-                {apiKeyId ? maskedPlaceholder : 'No API key has been generated for this environment.'}
-              </p>
+              {isLoadingTokenRow ? (
+                <>
+                  <span className="sr-only">Loading API token</span>
+                  <div className="h-3 w-full animate-pulse bg-zinc-200 dark:bg-zinc-800" />
+                </>
+              ) : (
+                <p className="truncate text-xs font-mono text-zinc-600 dark:text-zinc-300">
+                  {apiKeyId ? maskedPlaceholder : 'No API key has been generated for this environment.'}
+                </p>
+              )}
             </div>
 
-            {apiKeyStatus === 'active' && apiKeyId ? (
+            {isLoadingTokenRow ? (
+              <div className="h-7 w-20 shrink-0 animate-pulse border border-zinc-200 bg-zinc-100 dark:border-zinc-800 dark:bg-zinc-900" />
+            ) : apiKeyStatus === 'active' && apiKeyId ? (
               <button
                 className="h-7 border border-zinc-200 bg-white px-2.5 text-[10px] font-mono font-semibold uppercase tracking-widest text-zinc-600 transition-colors hover:bg-zinc-50 hover:text-black disabled:cursor-not-allowed disabled:opacity-60 dark:border-zinc-800 dark:bg-black dark:text-zinc-300 dark:hover:bg-zinc-900 dark:hover:text-white"
                 onClick={handleRevoke}
@@ -285,12 +300,6 @@ const ApiKeyManager: React.FC<ApiKeyManagerProps> = ({ session }) => {
           {error && (
             <div className="mt-3 text-[10px] font-mono text-red-500">
               {error}
-            </div>
-          )}
-
-          {isLoadingKeys && !isRevoking && (
-            <div className="mt-3 text-[10px] font-mono text-zinc-400">
-              Loading...
             </div>
           )}
         </div>

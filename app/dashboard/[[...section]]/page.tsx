@@ -1,25 +1,13 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useAppDispatch } from '../../../state/hooks';
 import { resetToSandbox } from '../../../state/slices/environmentSlice';
 import { getClientServerUrl } from '../../../lib/env';
+import { clearRailsSession, readValidRailsSession } from '../../../lib/authSession';
+import type { RailsSession } from '../../../lib/authSession';
 import Dashboard from '../../../components/Dashboard';
-
-interface EnvironmentInfo {
-  id: string;
-  type: string;
-}
-
-interface Session {
-  access_token: string;
-  refresh_token: string;
-  expires_in: number;
-  timestamp: number;
-  environment_id: string;
-  environments: EnvironmentInfo[];
-}
 
 interface UserProfile {
   id: string;
@@ -28,41 +16,35 @@ interface UserProfile {
   avatar_url?: string;
   role: string;
   business_name?: string;
+  website?: string;
 }
 
 export default function DashboardRoute() {
   const router = useRouter();
+  const pathname = usePathname();
   const dispatch = useAppDispatch();
-  const [session, setSession] = useState<Session | null>(null);
+  const [session, setSession] = useState<RailsSession | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [isLoadingProfile, setIsLoadingProfile] = useState(false);
   const clientServerUrl = getClientServerUrl() || '';
 
   useEffect(() => {
-    const rawSession = localStorage.getItem('rails_session');
-    if (!rawSession) {
+    const parsed = readValidRailsSession();
+    if (!parsed) {
       router.replace('/login');
       return;
     }
 
-    try {
-      const parsed = JSON.parse(rawSession) as Session;
-      const expiryTime = parsed.timestamp + parsed.expires_in * 1000;
-      if (Date.now() >= expiryTime) {
-        localStorage.removeItem('rails_session');
-        router.replace('/login');
-        return;
-      }
-      setSession(parsed);
-    } catch {
-      localStorage.removeItem('rails_session');
-      router.replace('/login');
-    }
+    setSession(parsed);
   }, [router]);
 
   useEffect(() => {
     if (!session || !clientServerUrl) return;
+    const isIdentityRoute = pathname?.replace(/\/$/, '') === '/dashboard/identity';
+    if (!isIdentityRoute) return;
 
     const fetchProfile = async () => {
+      setIsLoadingProfile(true);
       try {
         const response = await fetch(`${clientServerUrl.replace(/\/$/, '')}/api/v1/me`, {
           method: 'GET',
@@ -83,18 +65,20 @@ export default function DashboardRoute() {
           role: user.role,
           avatar_url: user.avatar_url,
           business_name: data.business?.name || user.business_name,
+          website: data.business?.website || data.business?.website_url || user.business_website || user.website,
         });
       } catch {
         // Keep dashboard usable even if profile hydration fails.
+      } finally {
+        setIsLoadingProfile(false);
       }
     };
 
     fetchProfile();
-  }, [clientServerUrl, session]);
+  }, [clientServerUrl, pathname, session]);
 
   const handleLogout = () => {
-    localStorage.removeItem('rails_session');
-    document.cookie = 'rails_session_present=; Path=/; Max-Age=0; SameSite=Lax';
+    clearRailsSession();
     dispatch(resetToSandbox());
     router.replace('/');
   };
@@ -102,6 +86,6 @@ export default function DashboardRoute() {
   if (!session) return null;
 
   return (
-    <Dashboard onLogout={handleLogout} session={session} profile={profile} />
+    <Dashboard onLogout={handleLogout} session={session} profile={profile} isLoadingProfile={isLoadingProfile} />
   );
 }

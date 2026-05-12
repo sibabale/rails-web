@@ -1,10 +1,18 @@
 'use client';
 
 import Link from 'next/link';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAppDispatch } from '../../state/hooks';
 import { setEnvironment } from '../../state/slices/environmentSlice';
 import { isAuthViewsEnabled } from '../../lib/env';
+import {
+  RAILS_SESSION_STORAGE_KEY,
+  getSessionEnvironmentType,
+  readValidRailsSession,
+  writeRailsSessionCookie,
+} from '../../lib/authSession';
+import type { RailsSession } from '../../lib/authSession';
 import RegisterPage from '../../components/RegisterPage';
 
 interface EnvironmentInfo {
@@ -12,19 +20,28 @@ interface EnvironmentInfo {
   type: string;
 }
 
-interface Session {
-  access_token: string;
-  refresh_token: string;
-  expires_in: number;
-  timestamp: number;
-  environment_id: string;
-  environments: EnvironmentInfo[];
-}
-
 export default function RegisterRoute() {
   const router = useRouter();
   const dispatch = useAppDispatch();
   const authEnabled = isAuthViewsEnabled();
+  const [isCheckingSession, setIsCheckingSession] = useState(true);
+
+  useEffect(() => {
+    if (!authEnabled) {
+      setIsCheckingSession(false);
+      return;
+    }
+
+    const existingSession = readValidRailsSession();
+    if (!existingSession) {
+      setIsCheckingSession(false);
+      return;
+    }
+
+    writeRailsSessionCookie();
+    dispatch(setEnvironment(getSessionEnvironmentType(existingSession)));
+    router.replace('/dashboard');
+  }, [authEnabled, dispatch, router]);
 
   if (!authEnabled) {
     return (
@@ -42,7 +59,7 @@ export default function RegisterRoute() {
     );
   }
 
-  const handleAuthSuccess = (data: any) => {
+  const handleAuthSuccess = async (data: any) => {
     const envId =
       data.selected_environment_id ||
       data.environment?.id ||
@@ -56,7 +73,7 @@ export default function RegisterRoute() {
     const environmentType = (selectedEnv?.type || 'sandbox') as 'sandbox' | 'production';
     dispatch(setEnvironment(environmentType));
 
-    const sessionData: Session = {
+    const sessionData: RailsSession = {
       access_token: data.access_token,
       refresh_token: data.refresh_token,
       expires_in: data.expires_in,
@@ -65,10 +82,11 @@ export default function RegisterRoute() {
       environments,
     };
 
-    localStorage.setItem('rails_session', JSON.stringify(sessionData));
-    document.cookie = 'rails_session_present=1; Path=/; SameSite=Lax';
-    router.push('/dashboard');
+    localStorage.setItem(RAILS_SESSION_STORAGE_KEY, JSON.stringify(sessionData));
+    writeRailsSessionCookie();
+    await new Promise((resolve) => window.setTimeout(resolve, 0));
+    router.replace('/dashboard');
   };
 
-  return <RegisterPage onSuccess={handleAuthSuccess} />;
+  return <RegisterPage isCheckingSession={isCheckingSession} onSuccess={handleAuthSuccess} />;
 }

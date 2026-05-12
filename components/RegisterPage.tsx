@@ -14,14 +14,14 @@ import {
 import { getClientServerUrl } from '../lib/env';
 
 interface RegisterPageProps {
-  onSuccess: (data: any) => void;
+  isCheckingSession?: boolean;
+  onSuccess: (data: any) => void | Promise<void>;
 }
 
-const RegisterPage: React.FC<RegisterPageProps> = ({ onSuccess }) => {
+const RegisterPage: React.FC<RegisterPageProps> = ({ isCheckingSession = false, onSuccess }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [errorTitle, setErrorTitle] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
   const passwordInputRef = useRef<HTMLInputElement>(null);
 
   const [formData, setFormData] = useState({
@@ -49,9 +49,11 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onSuccess }) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isCheckingSession) return;
     setLoading(true);
     setError(null);
     setErrorTitle(null);
+    let shouldNavigate = false;
 
     const CLIENT_SERVER_URL = getClientServerUrl() || '';
     
@@ -95,10 +97,8 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onSuccess }) => {
         passwordInputRef.current.value = '';
       }
       
-      setSuccess(true);
-      setTimeout(() => {
-        onSuccess(data);
-      }, 2000);
+      shouldNavigate = true;
+      await onSuccess(data);
     } catch (err: any) {
       console.error('Registration Error:', err);
       if (err.name === 'TypeError' && err.message === 'Failed to fetch') {
@@ -114,47 +114,40 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onSuccess }) => {
         passwordInputRef.current.value = '';
       }
     } finally {
-      setLoading(false);
+      if (!shouldNavigate) {
+        setLoading(false);
+      }
     }
   };
+
+  const isBusy = loading || isCheckingSession;
 
   return (
     <Container className="min-h-[70vh] flex flex-col py-16 !border-0 px-4 w-full">
       <div className="w-full max-w-2xl mx-auto">
-        <Link href="/" data-testid="register-back-home" className={AUTH_LINK_BACK}>
-          <span className="material-symbols-sharp" style={{ fontSize: '1rem' }}>
-            arrow_back
-          </span>
-          <span>Back to landing</span>
-        </Link>
-
-        <div className="mb-10">
-          <Heading level={2} className="!text-4xl mb-4">
-            Ready to build <br />
-            <span className="text-zinc-400 dark:text-zinc-500">on Rails?</span>
-          </Heading>
-          <Text variant="p" className="!text-sm max-w-md text-zinc-600 dark:text-zinc-400">
-            Create your institutional account and get instant access to our banking infrastructure.
-          </Text>
-        </div>
-
-        {success ? (
-          <div className={AUTH_SUCCESS_BOX} data-testid="register-success">
-            <div className="w-12 h-12 bg-emerald-500 rounded-full flex items-center justify-center mx-auto mb-4">
-              <span className="material-symbols-sharp text-white" style={{ fontSize: '1.5rem' }}>
-                check
-              </span>
+        {isCheckingSession ? (
+          <div className={AUTH_SUCCESS_BOX} data-testid="register-session-check">
+            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center">
+              <span className="w-6 h-6 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
             </div>
             <Heading level={3} className="!text-xl mb-2 text-emerald-800 dark:text-emerald-400">
-              Registration successful
+              Initializing node
             </Heading>
             <Text variant="p" className="!text-sm text-emerald-700 dark:text-emerald-500/90">
-              Your business node is being initialized. Redirecting to your dashboard…
+              Preparing your dashboard…
             </Text>
           </div>
         ) : (
-          <form onSubmit={handleSubmit} className="flex flex-col gap-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <>
+            <Link href="/" data-testid="register-back-home" className={AUTH_LINK_BACK}>
+              <span className="material-symbols-sharp" style={{ fontSize: '1rem' }}>
+                arrow_back
+              </span>
+              <span>Back to landing</span>
+            </Link>
+
+            <form onSubmit={handleSubmit} className="flex flex-col gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="flex flex-col gap-2">
                 <label htmlFor="reg-name" className={AUTH_LABEL}>
                   Company Name
@@ -164,6 +157,7 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onSuccess }) => {
                   type="text"
                   name="name"
                   required
+                  disabled={isBusy}
                   placeholder="Acme Institutional"
                   value={formData.name}
                   onChange={handleChange}
@@ -178,6 +172,7 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onSuccess }) => {
                   id="reg-website"
                   type="url"
                   name="website"
+                  disabled={isBusy}
                   placeholder="https://acme.com"
                   value={formData.website}
                   onChange={handleChange}
@@ -196,6 +191,7 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onSuccess }) => {
                   type="text"
                   name="admin_first_name"
                   required
+                  disabled={isBusy}
                   placeholder="Alice"
                   value={formData.admin_first_name}
                   onChange={handleChange}
@@ -211,6 +207,7 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onSuccess }) => {
                   type="text"
                   name="admin_last_name"
                   required
+                  disabled={isBusy}
                   placeholder="Admin"
                   value={formData.admin_last_name}
                   onChange={handleChange}
@@ -229,6 +226,7 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onSuccess }) => {
                 name="admin_email"
                 autoComplete="email"
                 required
+                disabled={isBusy}
                 placeholder="admin@acme.com"
                 value={formData.admin_email}
                 onChange={handleChange}
@@ -247,6 +245,7 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onSuccess }) => {
                 name="admin_password"
                 autoComplete="new-password"
                 required
+                disabled={isBusy}
                 placeholder="••••••••••••"
                 value={formData.admin_password}
                 onChange={handleChange}
@@ -271,11 +270,11 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onSuccess }) => {
             <Button
               type="submit"
               variant="primary"
-              disabled={loading}
+              disabled={isBusy}
               className="w-full py-3.5 mt-2 flex justify-center items-center gap-2 disabled:opacity-60"
               data-testid="register-submit"
             >
-              {loading ? (
+              {isBusy ? (
                 <>
                   <span className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin shrink-0" />
                   <span className="text-sm">Initializing node…</span>
@@ -298,7 +297,8 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onSuccess }) => {
                 Already have an account? Sign in
               </Link>
             </div>
-          </form>
+            </form>
+          </>
         )}
       </div>
     </Container>

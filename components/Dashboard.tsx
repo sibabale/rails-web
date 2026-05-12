@@ -194,6 +194,7 @@ interface DashboardProps {
   onLogout: () => void;
   session?: any;
   profile?: any;
+  isLoadingProfile?: boolean;
 }
 
 interface Account {
@@ -208,7 +209,7 @@ interface Account {
   metadata?: Record<string, string>;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ onLogout, session, profile }) => {
+const Dashboard: React.FC<DashboardProps> = ({ onLogout, session, profile, isLoadingProfile = false }) => {
   const dispatch = useAppDispatch();
   const environment = useAppSelector((state) => state.environment.current);
   const isProduction = environment === 'production';
@@ -931,6 +932,44 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, session, profile }) => 
     );
   };
 
+  const renderIdentityProfileLoader = () => (
+    <div
+      className="border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#050505] transition-colors p-8 space-y-8"
+      aria-busy="true"
+      aria-label="Loading identity profile"
+      role="status"
+    >
+      <span className="sr-only">Loading identity profile</span>
+      <section className="space-y-6">
+        <div className="h-3 w-36 animate-pulse bg-zinc-200 dark:bg-zinc-800" />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {Array.from({ length: 2 }).map((_, index) => (
+            <div key={index} className="space-y-1.5">
+              <div className="h-2.5 w-28 animate-pulse bg-zinc-200 dark:bg-zinc-800" />
+              <div className="h-9 w-full animate-pulse border border-zinc-200 bg-zinc-100 dark:border-zinc-800 dark:bg-zinc-900" />
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="space-y-6 pt-8 border-t border-zinc-200 dark:border-zinc-800">
+        <div className="h-3 w-44 animate-pulse bg-zinc-200 dark:bg-zinc-800" />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {Array.from({ length: 2 }).map((_, index) => (
+            <div key={index} className="space-y-1.5">
+              <div className="h-2.5 w-24 animate-pulse bg-zinc-200 dark:bg-zinc-800" />
+              <div className="h-9 w-full animate-pulse border border-zinc-200 bg-zinc-100 dark:border-zinc-800 dark:bg-zinc-900" />
+            </div>
+          ))}
+          <div className="col-span-1 md:col-span-2 space-y-1.5">
+            <div className="h-2.5 w-36 animate-pulse bg-zinc-200 dark:bg-zinc-800" />
+            <div className="h-9 w-full animate-pulse border border-zinc-200 bg-zinc-100 dark:border-zinc-800 dark:bg-zinc-900" />
+          </div>
+        </div>
+      </section>
+    </div>
+  );
+
   const renderIdentityView = () => (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div>
@@ -940,7 +979,8 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, session, profile }) => 
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         <div className="lg:col-span-8 space-y-6">
-          <div className="border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#050505] transition-colors p-8 space-y-8">
+          {isLoadingProfile ? renderIdentityProfileLoader() : (
+            <div className="border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#050505] transition-colors p-8 space-y-8">
             <section className="space-y-6">
               <h4 className="mb-4 text-[10px] font-mono font-semibold uppercase tracking-widest text-zinc-500">Business Profile</h4>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -954,20 +994,11 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, session, profile }) => 
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-mono uppercase tracking-tight text-zinc-500">Infrastructure ID</label>
-                  <input 
-                    type="text" 
-                    readOnly 
-                    value={profile?.id ? profile.id.slice(0, 12).toUpperCase() : ''}
-                    className="w-full border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-black px-4 py-2 text-sm font-mono font-bold text-black dark:text-white outline-none transition-colors cursor-default" 
-                  />
-                </div>
-                <div className="col-span-1 md:col-span-2 space-y-1.5">
                   <label className="text-[10px] font-mono uppercase tracking-tight text-zinc-500">Official Website</label>
                   <input 
                     type="text" 
                     readOnly 
-                    value=""
+                    value={profile?.website?.trim() ?? ''}
                     className="w-full border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-black px-4 py-2 text-sm font-bold text-zinc-600 dark:text-zinc-400 outline-none transition-colors cursor-default" 
                   />
                 </div>
@@ -1006,7 +1037,8 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, session, profile }) => 
                 </div>
               </div>
             </section>
-          </div>
+            </div>
+          )}
         </div>
 
         <div className="lg:col-span-4 space-y-6">

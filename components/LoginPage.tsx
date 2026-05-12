@@ -15,11 +15,12 @@ import {
 import { getClientServerUrl } from '../lib/env';
 
 interface LoginPageProps {
-  onSuccess: (sessionData: any) => void;
+  isCheckingSession?: boolean;
+  onSuccess: (sessionData: any) => void | Promise<void>;
   onForgotPassword: () => void;
 }
 
-const LoginPage: React.FC<LoginPageProps> = ({ onSuccess, onForgotPassword }) => {
+const LoginPage: React.FC<LoginPageProps> = ({ isCheckingSession = false, onSuccess, onForgotPassword }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
@@ -72,8 +73,10 @@ const LoginPage: React.FC<LoginPageProps> = ({ onSuccess, onForgotPassword }) =>
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isCheckingSession) return;
     setLoading(true);
     setError(null);
+    let shouldKeepLoading = false;
 
     const CLIENT_SERVER_URL = getClientServerUrl() || '';
     
@@ -120,7 +123,8 @@ const LoginPage: React.FC<LoginPageProps> = ({ onSuccess, onForgotPassword }) =>
         passwordInputRef.current.value = '';
       }
       
-      onSuccess(data);
+      shouldKeepLoading = true;
+      await onSuccess(data);
     } catch (err: any) {
       console.error('Login Error:', err);
       if (err.name === 'TypeError' && err.message === 'Failed to fetch') {
@@ -135,9 +139,13 @@ const LoginPage: React.FC<LoginPageProps> = ({ onSuccess, onForgotPassword }) =>
         passwordInputRef.current.value = '';
       }
     } finally {
-      setLoading(false);
+      if (!shouldKeepLoading) {
+        setLoading(false);
+      }
     }
   };
+
+  const isBusy = loading || isCheckingSession;
 
   return (
     <Container className="min-h-[70vh] flex flex-col justify-center items-center py-16 !border-0 px-4 w-full">
@@ -169,6 +177,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onSuccess, onForgotPassword }) =>
               name="email"
               autoComplete="email"
               required
+              disabled={isBusy}
               placeholder="admin@example.com"
               value={formData.email}
               onChange={handleChange}
@@ -187,6 +196,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onSuccess, onForgotPassword }) =>
               name="password"
               autoComplete="current-password"
               required
+              disabled={isBusy}
               placeholder="••••••••••••"
               value={formData.password}
               onChange={handleChange}
@@ -209,11 +219,11 @@ const LoginPage: React.FC<LoginPageProps> = ({ onSuccess, onForgotPassword }) =>
           <Button
             type="submit"
             variant="primary"
-            disabled={loading}
+            disabled={isBusy}
             className="w-full py-3.5 mt-2 flex justify-center items-center gap-2 disabled:opacity-60"
             data-testid="login-submit"
           >
-            {loading ? (
+            {isBusy ? (
               <>
                 <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin shrink-0" />
                 <span className="text-sm">Authenticating…</span>
@@ -232,6 +242,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onSuccess, onForgotPassword }) =>
             <button
               type="button"
               onClick={onForgotPassword}
+              disabled={isBusy}
               className="hover:text-black dark:hover:text-white transition-colors"
             >
               Forgot security credentials?

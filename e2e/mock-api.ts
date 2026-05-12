@@ -44,7 +44,7 @@ const meBody = () => ({
     email: 'e2e@example.com',
     role: 'admin',
   },
-  business: { name: 'E2E Corp' },
+  business: { name: 'E2E Corp', website: 'https://e2e.example.com' },
 });
 
 export async function handleMockApi(route: Route) {
