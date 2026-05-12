@@ -57,7 +57,7 @@ describe('analytics', () => {
   });
 
   it('captures events with landing metadata', async () => {
-    const posthog = (await import('posthog-js')).default as { capture: ReturnType<typeof vi.fn> };
+    const posthog = (await import('posthog-js')).default as unknown as { capture: ReturnType<typeof vi.fn> };
     const { trackEvent } = await import('../lib/analytics');
 
     trackEvent('landing_click', { label: 'Join the Waitlist' });
@@ -73,7 +73,7 @@ describe('analytics', () => {
 
   it('tracks marketing copy exposure once per variant per session', async () => {
     sessionStorage.clear();
-    const posthog = (await import('posthog-js')).default as { capture: ReturnType<typeof vi.fn> };
+    const posthog = (await import('posthog-js')).default as unknown as { capture: ReturnType<typeof vi.fn> };
     posthog.capture.mockClear();
     const { trackMarketingCopyExposure } = await import('../lib/analytics');
 
@@ -90,7 +90,7 @@ describe('analytics', () => {
   });
 
   it('getMarketingCopyExperimentVariant maps PostHog flag to a or d', async () => {
-    const posthog = (await import('posthog-js')).default as {
+    const posthog = (await import('posthog-js')).default as unknown as {
       getFeatureFlag: ReturnType<typeof vi.fn>;
     };
     posthog.getFeatureFlag.mockReturnValue('d');
@@ -99,7 +99,7 @@ describe('analytics', () => {
   });
 
   it('getMarketingCopyExperimentVariant maps control variant to a', async () => {
-    const posthog = (await import('posthog-js')).default as {
+    const posthog = (await import('posthog-js')).default as unknown as {
       getFeatureFlag: ReturnType<typeof vi.fn>;
     };
     posthog.getFeatureFlag.mockReturnValue('control');
@@ -108,7 +108,7 @@ describe('analytics', () => {
   });
 
   it('getMarketingCopyExperimentVariant returns null when flag is off', async () => {
-    const posthog = (await import('posthog-js')).default as {
+    const posthog = (await import('posthog-js')).default as unknown as {
       getFeatureFlag: ReturnType<typeof vi.fn>;
     };
     posthog.getFeatureFlag.mockReturnValue(false);
@@ -128,7 +128,7 @@ describe('analytics', () => {
   });
 
   it('registerMarketingCopyVariant calls posthog.register', async () => {
-    const posthog = (await import('posthog-js')).default as { register: ReturnType<typeof vi.fn> };
+    const posthog = (await import('posthog-js')).default as unknown as { register: ReturnType<typeof vi.fn> };
     const { registerMarketingCopyVariant } = await import('../lib/analytics');
     registerMarketingCopyVariant('a');
     expect(posthog.register).toHaveBeenCalledWith({ marketing_copy_variant: 'a' });
