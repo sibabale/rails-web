@@ -77,6 +77,47 @@ const getSubmitErrorMessage = (error: unknown) => {
   return 'Authentication failed. Please try again.';
 };
 
+interface LoginSubmitRunnerOptions {
+  formData: LoginFormData;
+  onSuccess: (sessionData: AuthSuccessResponse) => void | Promise<void>;
+  clearPassword: () => void;
+  setError: React.Dispatch<React.SetStateAction<string | null>>;
+  setLoading: React.Dispatch<React.SetStateAction<boolean>>;
+}
+
+const finishLoginSubmit = (
+  setLoading: React.Dispatch<React.SetStateAction<boolean>>,
+  shouldKeepLoading: boolean
+) => {
+  if (!shouldKeepLoading) {
+    setLoading(false);
+  }
+};
+
+const completeLoginSubmit = async (data: AuthSuccessResponse, options: LoginSubmitRunnerOptions) => {
+  options.clearPassword();
+  await options.onSuccess(data);
+  return true;
+};
+
+const failLoginSubmit = (error: unknown, options: LoginSubmitRunnerOptions) => {
+  console.error('Login Error:', error);
+  options.setError(getSubmitErrorMessage(error));
+  options.clearPassword();
+  return false;
+};
+
+const runLoginSubmit = async (options: LoginSubmitRunnerOptions) => {
+  options.setLoading(true);
+  options.setError(null);
+
+  const shouldKeepLoading = await submitLogin(options.formData)
+    .then((data) => completeLoginSubmit(data, options))
+    .catch((error: unknown) => failLoginSubmit(error, options));
+
+  finishLoginSubmit(options.setLoading, shouldKeepLoading);
+};
+
 const LoginPage: React.FC<LoginPageProps> = ({ isCheckingSession = false, onSuccess, onForgotPassword }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -138,24 +179,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ isCheckingSession = false, onSucc
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isCheckingSession) return;
-    setLoading(true);
-    setError(null);
-    let shouldKeepLoading = false;
-
-    try {
-      const data = await submitLogin(formData);
-      clearPassword();
-      shouldKeepLoading = true;
-      await onSuccess(data);
-    } catch (err: unknown) {
-      console.error('Login Error:', err);
-      setError(getSubmitErrorMessage(err));
-      clearPassword();
-    } finally {
-      if (!shouldKeepLoading) {
-        setLoading(false);
-      }
-    }
+    await runLoginSubmit({ formData, onSuccess, clearPassword, setError, setLoading });
   };
 
   const isBusy = loading || isCheckingSession;

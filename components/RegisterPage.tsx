@@ -42,6 +42,11 @@ interface RegistrationSubmitError extends Error {
   code?: string;
 }
 
+interface RegisterSubmitStatus {
+  title: string | null;
+  message: string;
+}
+
 const initialFormData: RegisterFormData = {
   name: '',
   website: '',
@@ -156,26 +161,85 @@ const submitRegistration = async (formData: RegisterFormData): Promise<AuthSucce
   return (await response.json()) as AuthSuccessResponse;
 };
 
-const getRegistrationSubmitError = (error: unknown) => {
-  if (error instanceof TypeError && error.message === 'Failed to fetch') {
-    return {
-      title: null,
-      message: 'Unable to connect to the service. Please check your connection and try again.',
-    };
-  }
+const registrationFallbackError: RegisterSubmitStatus = {
+  title: null,
+  message: 'An error occurred during registration. Please try again.',
+};
 
-  if (error instanceof Error) {
-    const errorCode = 'code' in error ? error.code : undefined;
-    return {
-      title: errorCode === 'conflict' ? 'Email already in use' : null,
-      message: error.message || 'An error occurred during registration. Please try again.',
-    };
-  }
+const registrationFetchError: RegisterSubmitStatus = {
+  title: null,
+  message: 'Unable to connect to the service. Please check your connection and try again.',
+};
 
-  return {
-    title: null,
-    message: 'An error occurred during registration. Please try again.',
-  };
+const isFetchFailure = (error: unknown) => error instanceof TypeError && error.message === 'Failed to fetch';
+
+const getRegistrationErrorCode = (error: Error) => {
+  const code = 'code' in error ? error.code : undefined;
+  return typeof code === 'string' ? code : undefined;
+};
+
+const getRegistrationErrorStatus = (error: Error): RegisterSubmitStatus => ({
+  title: getRegistrationErrorCode(error) === 'conflict' ? 'Email already in use' : null,
+  message: error.message || registrationFallbackError.message,
+});
+
+const registrationErrorResolvers = [
+  {
+    matches: isFetchFailure,
+    status: () => registrationFetchError,
+  },
+  {
+    matches: (error: unknown) => error instanceof Error,
+    status: (error: unknown) => getRegistrationErrorStatus(error as Error),
+  },
+];
+
+const getRegistrationSubmitError = (error: unknown): RegisterSubmitStatus =>
+  registrationErrorResolvers.find((resolver) => resolver.matches(error))?.status(error) ?? registrationFallbackError;
+
+interface RegisterSubmitRunnerOptions {
+  formData: RegisterFormData;
+  onSuccess: (data: AuthSuccessResponse) => void | Promise<void>;
+  clearPassword: () => void;
+  setError: React.Dispatch<React.SetStateAction<string | null>>;
+  setErrorTitle: React.Dispatch<React.SetStateAction<string | null>>;
+  setLoading: React.Dispatch<React.SetStateAction<boolean>>;
+}
+
+const finishRegisterSubmit = (
+  setLoading: React.Dispatch<React.SetStateAction<boolean>>,
+  shouldNavigate: boolean
+) => {
+  if (!shouldNavigate) {
+    setLoading(false);
+  }
+};
+
+const completeRegisterSubmit = async (data: AuthSuccessResponse, options: RegisterSubmitRunnerOptions) => {
+  options.clearPassword();
+  await options.onSuccess(data);
+  return true;
+};
+
+const failRegisterSubmit = (error: unknown, options: RegisterSubmitRunnerOptions) => {
+  console.error('Registration Error:', error);
+  const submitError = getRegistrationSubmitError(error);
+  options.setError(submitError.message);
+  options.setErrorTitle(submitError.title);
+  options.clearPassword();
+  return false;
+};
+
+const runRegisterSubmit = async (options: RegisterSubmitRunnerOptions) => {
+  options.setLoading(true);
+  options.setError(null);
+  options.setErrorTitle(null);
+
+  const shouldNavigate = await submitRegistration(options.formData)
+    .then((data) => completeRegisterSubmit(data, options))
+    .catch((error: unknown) => failRegisterSubmit(error, options));
+
+  finishRegisterSubmit(options.setLoading, shouldNavigate);
 };
 
 const RegisterSessionCheck = () => (
@@ -366,6 +430,39 @@ const RegisterForm = ({
   </form>
 );
 
+const RegisterReadyContent = ({
+  formData,
+  isBusy,
+  error,
+  errorTitle,
+  onChange,
+  onSubmit,
+  passwordInputRef,
+}: RegisterFormProps) => (
+  <>
+    <RegisterBackLink />
+    <RegisterForm
+      formData={formData}
+      isBusy={isBusy}
+      error={error}
+      errorTitle={errorTitle}
+      onChange={onChange}
+      onSubmit={onSubmit}
+      passwordInputRef={passwordInputRef}
+    />
+  </>
+);
+
+interface RegisterPageContentProps extends RegisterFormProps {
+  isCheckingSession: boolean;
+}
+
+const RegisterPageContent = ({ isCheckingSession, ...formProps }: RegisterPageContentProps) => (
+  <div className="w-full max-w-2xl mx-auto">
+    {isCheckingSession ? <RegisterSessionCheck /> : <RegisterReadyContent {...formProps} />}
+  </div>
+);
+
 const RegisterPage: React.FC<RegisterPageProps> = ({ isCheckingSession = false, onSuccess }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -396,52 +493,23 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ isCheckingSession = false, 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isCheckingSession) return;
-
-    setLoading(true);
-    setError(null);
-    setErrorTitle(null);
-    let shouldNavigate = false;
-
-    try {
-      const data = await submitRegistration(formData);
-      clearPassword();
-      shouldNavigate = true;
-      await onSuccess(data);
-    } catch (err: unknown) {
-      console.error('Registration Error:', err);
-      const submitError = getRegistrationSubmitError(err);
-      setError(submitError.message);
-      setErrorTitle(submitError.title);
-      clearPassword();
-    } finally {
-      if (!shouldNavigate) {
-        setLoading(false);
-      }
-    }
+    await runRegisterSubmit({ formData, onSuccess, clearPassword, setError, setErrorTitle, setLoading });
   };
 
   const isBusy = loading || isCheckingSession;
 
   return (
     <Container className="min-h-[70vh] flex flex-col py-16 !border-0 px-4 w-full">
-      <div className="w-full max-w-2xl mx-auto">
-        {isCheckingSession ? (
-          <RegisterSessionCheck />
-        ) : (
-          <>
-            <RegisterBackLink />
-            <RegisterForm
-              formData={formData}
-              isBusy={isBusy}
-              error={error}
-              errorTitle={errorTitle}
-              onChange={handleChange}
-              onSubmit={handleSubmit}
-              passwordInputRef={passwordInputRef}
-            />
-          </>
-        )}
-      </div>
+      <RegisterPageContent
+        isCheckingSession={isCheckingSession}
+        formData={formData}
+        isBusy={isBusy}
+        error={error}
+        errorTitle={errorTitle}
+        onChange={handleChange}
+        onSubmit={handleSubmit}
+        passwordInputRef={passwordInputRef}
+      />
     </Container>
   );
 };

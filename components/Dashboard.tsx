@@ -1144,10 +1144,6 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, session, profile, isLoa
     );
   };
 
-  const renderIdentityView = () => (
-    <IdentityView profile={profile} isLoadingProfile={isLoadingProfile} timeLeft={timeLeft} />
-  );
-
   const renderTransactionsView = () => (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-500">
       <div className="flex justify-between items-center">
@@ -1275,7 +1271,9 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, session, profile, isLoa
   );
 
   const renderContent = () => {
-    if (activeTab === 'Identity') return renderIdentityView();
+    if (activeTab === 'Identity') {
+      return <IdentityView profile={profile} isLoadingProfile={isLoadingProfile} timeLeft={timeLeft} />;
+    }
 
     switch (activeTab) {
       case 'Transactions':
