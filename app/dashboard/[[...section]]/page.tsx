@@ -137,7 +137,7 @@ const DashboardRoute = () => {
 
   useEffect(() => {
     if (shouldLoadIdentityProfile(session, clientServerUrl, pathname) && session) {
-      void loadIdentityProfile({ clientServerUrl, session, setProfile, setIsLoadingProfile });
+      loadIdentityProfile({ clientServerUrl, session, setProfile, setIsLoadingProfile });
     }
   }, [clientServerUrl, pathname, session]);
 
