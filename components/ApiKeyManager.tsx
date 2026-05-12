@@ -220,7 +220,7 @@ const ApiKeyManager: React.FC<ApiKeyManagerProps> = ({ session }) => {
   };
 
   return (
-    <section className="space-y-6 border-t border-zinc-200 pt-8 dark:border-zinc-800">
+    <section className="space-y-6 border border-zinc-200 bg-white p-8 transition-colors dark:border-zinc-800 dark:bg-[#050505]">
       <h4 className="mb-4 text-[10px] font-mono font-semibold uppercase tracking-widest text-zinc-500">Security Credentials</h4>
 
       <div className="space-y-4">
@@ -297,9 +297,9 @@ const ApiKeyManager: React.FC<ApiKeyManagerProps> = ({ session }) => {
       </div>
 
       {showPlaintextModal && plaintextKey && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-6">
-          <div className="w-full max-w-xl border border-zinc-200 bg-white shadow-2xl transition-colors dark:border-zinc-800 dark:bg-[#050505]">
-            <div className="flex items-center justify-between border-b border-zinc-200 p-6 dark:border-zinc-800">
+        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/70 p-4 sm:p-6">
+          <div className="flex max-h-[calc(100dvh-2rem)] w-full max-w-xl flex-col border border-zinc-200 bg-white shadow-2xl transition-colors dark:border-zinc-800 dark:bg-[#050505] sm:max-h-[calc(100dvh-3rem)]">
+            <div className="flex shrink-0 items-center justify-between border-b border-zinc-200 p-4 dark:border-zinc-800 sm:p-6">
               <div>
                 <h3 className="text-sm font-medium text-black dark:text-white">New API Key</h3>
               </div>
@@ -319,13 +319,13 @@ const ApiKeyManager: React.FC<ApiKeyManagerProps> = ({ session }) => {
               </button>
             </div>
 
-            <div className="p-6 space-y-4">
+            <div className="min-h-0 space-y-4 overflow-y-auto p-4 sm:p-6">
               <div className="border border-amber-200 bg-amber-50/90 p-4 text-xs text-amber-800 transition-colors dark:border-amber-900/40 dark:bg-amber-950/25 dark:text-amber-200">
                 You can only view API keys once. Make sure to store this in a safe place.
               </div>
 
-              <div className="border border-zinc-200 bg-zinc-50 p-4 text-zinc-900 transition-colors dark:border-zinc-800 dark:bg-black dark:text-zinc-100">
-                <pre className="whitespace-pre-wrap break-words text-[11px] font-mono leading-relaxed">
+              <div className="max-h-[40dvh] overflow-y-auto border border-zinc-200 bg-zinc-50 p-4 text-zinc-900 transition-colors dark:border-zinc-800 dark:bg-black dark:text-zinc-100">
+                <pre className="whitespace-pre-wrap break-all text-[11px] font-mono leading-relaxed">
                   {plaintextKey}
                 </pre>
               </div>

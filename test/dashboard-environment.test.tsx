@@ -119,6 +119,21 @@ describe('Dashboard environment selector', () => {
     );
   });
 
+  it('places API key management below the overview metrics', async () => {
+    renderDashboard({
+      access_token: 'token',
+      environment_id: 'env-1',
+      environments: [{ id: 'env-1', type: 'sandbox' }],
+    });
+
+    const metrics = await screen.findByTestId('dashboard-overview-stat-active-accounts');
+    const credentialsHeading = screen.getByText('Security Credentials');
+    const platformHeading = screen.getByText('Rails Platform');
+
+    expect(metrics.compareDocumentPosition(credentialsHeading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(credentialsHeading.compareDocumentPosition(platformHeading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
   it('counts completed transactions for the overview tile', async () => {
     listTransactionsMock.mockResolvedValue({
       data: [
