@@ -63,7 +63,11 @@ function AccountSnippet({ sdk }: { sdk: InfrastructureSdkLanguage }) {
           {'  '}
           {prop('account_type')}: {str(`'${acct.accountTypeChecking}'`)},<br />
           {'  '}
-          {prop('user_id')}: {str(`'${acct.userId}'`)},<br />
+          {prop('email')}: {str(`'${acct.email}'`)},<br />
+          {'  '}
+          {prop('first_name')}: {str(`'${acct.firstName}'`)},<br />
+          {'  '}
+          {prop('last_name')}: {str(`'${acct.lastName}'`)},<br />
           {'  '}
           {prop('currency')}: {str(`'${acct.currency}'`)},<br />
           {'  }'}<br />
@@ -83,7 +87,11 @@ function AccountSnippet({ sdk }: { sdk: InfrastructureSdkLanguage }) {
           {'  '}
           {prop('AccountType')}: rails.AccountNewParamsAccountTypeChecking,<br />
           {'  '}
-          {prop('UserID')}: rails.{typ('String')}({str(`"${acct.userId}"`)}),<br />
+          {prop('Email')}: rails.{typ('String')}({str(`"${acct.email}"`)}),<br />
+          {'  '}
+          {prop('FirstName')}: rails.{typ('String')}({str(`"${acct.firstName}"`)}),<br />
+          {'  '}
+          {prop('LastName')}: rails.{typ('String')}({str(`"${acct.lastName}"`)}),<br />
           {'  '}
           {prop('Currency')}: rails.{typ('String')}({str(`"${acct.currency}"`)}),<br />
           {'}'})<br />
@@ -102,7 +110,9 @@ function AccountSnippet({ sdk }: { sdk: InfrastructureSdkLanguage }) {
           AccountCreateResponse account = client.accounts().{typ('create')}(<br />
           {'    '}AccountCreateParams.{typ('builder')}()<br />
           {'        .'}{prop('accountType')}(AccountCreateParams.AccountType.{typ('CHECKING')})<br />
-          {'        .'}{prop('userId')}({str(`"${acct.userId}"`)})<br />
+          {'        .'}{prop('email')}({str(`"${acct.email}"`)})<br />
+          {'        .'}{prop('firstName')}({str(`"${acct.firstName}"`)})<br />
+          {'        .'}{prop('lastName')}({str(`"${acct.lastName}"`)})<br />
           {'        .'}{prop('currency')}({str(`"${acct.currency}"`)})<br />
           {'        .'}{typ('build')}()<br />
           );
@@ -121,7 +131,9 @@ function AccountSnippet({ sdk }: { sdk: InfrastructureSdkLanguage }) {
           {kw('val')} account: AccountCreateResponse = client.accounts().{typ('create')}(<br />
           {'    '}AccountCreateParams.{typ('builder')}()<br />
           {'        .'}{prop('accountType')}(AccountCreateParams.AccountType.{typ('CHECKING')})<br />
-          {'        .'}{prop('userId')}({str(`"${acct.userId}"`)})<br />
+          {'        .'}{prop('email')}({str(`"${acct.email}"`)})<br />
+          {'        .'}{prop('firstName')}({str(`"${acct.firstName}"`)})<br />
+          {'        .'}{prop('lastName')}({str(`"${acct.lastName}"`)})<br />
           {'        .'}{prop('currency')}({str(`"${acct.currency}"`)})<br />
           {'        .'}{typ('build')}()<br />
           )<br />
@@ -140,7 +152,11 @@ function AccountSnippet({ sdk }: { sdk: InfrastructureSdkLanguage }) {
           {'        '}
           {prop('AccountType')} = AccountType.Checking,<br />
           {'        '}
-          {prop('UserID')} = {str(`"${acct.userId}"`)},<br />
+          {prop('Email')} = {str(`"${acct.email}"`)},<br />
+          {'        '}
+          {prop('FirstName')} = {str(`"${acct.firstName}"`)},<br />
+          {'        '}
+          {prop('LastName')} = {str(`"${acct.lastName}"`)},<br />
           {'        '}
           {prop('Currency')} = {str(`"${acct.currency}"`)},<br />
           {'    }'});<br />

@@ -17,7 +17,9 @@ export const MARKETING_SAMPLE_TRANSFER = {
 
 /** Reserved for account-create samples (infra block, future snippets). */
 export const MARKETING_SAMPLE_ACCOUNT = {
-  userId: '182bd5e5-6e1a-4fe4-a799-aa6d9a6ab26e',
+  email: 'ada@example.com',
+  firstName: 'Ada',
+  lastName: 'Lovelace',
   currency: 'USD',
   accountTypeChecking: 'checking',
 } as const;
