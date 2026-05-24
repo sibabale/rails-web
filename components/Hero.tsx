@@ -145,9 +145,10 @@ const Hero: React.FC<HeroProps> = ({ isLoading = false }) => {
                 {terminalLines.map((line, i) => (
                   <div 
                     key={i} 
-                    className="animate-in slide-in-from-bottom-1 fade-in duration-500 flex gap-1 items-start" 
-                    dangerouslySetInnerHTML={{ __html: line }} 
-                  />
+                    className="animate-in slide-in-from-bottom-1 fade-in duration-500 flex gap-1 items-start"
+                  >
+                    {line}
+                  </div>
                 ))}
                 <div className="flex gap-2 mt-2">
                   <span className="text-zinc-300 dark:text-zinc-500 font-mono">$</span>
