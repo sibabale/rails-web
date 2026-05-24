@@ -8,7 +8,8 @@ import { setEnvironment } from '../state/slices/environmentSlice';
 import Pagination from './Pagination';
 import DashboardOverviewV2 from './DashboardOverviewV2';
 import DashboardIntegrations from './DashboardIntegrations';
-import { SiGithub } from '@icons-pack/react-simple-icons';
+import LedgerEntryListSkeleton from '@/components/molecules/LedgerEntryListSkeleton';
+import LedgerSummarySkeleton from '@/components/molecules/LedgerSummarySkeleton';
 import { RailsTrackMark } from '@/components/marketing/atoms/RailsTrackMark';
 import { DashboardMaterialThemeToggle } from './DashboardMaterialThemeToggle';
 import {
@@ -32,7 +33,7 @@ import {
   type DatabaseConnectionMigrationStatusResponse,
   type DatabaseConnectionsResponse,
 } from '../lib/api';
-import { getMarketingDocsCtaUrl, getWebGithubRepoUrl } from '../lib/env';
+import { getMarketingDocsCtaUrl } from '../lib/env';
 
 function isDocsExternalHref(href: string): boolean {
   return /^https?:\/\//i.test(href) || href.startsWith('//');
@@ -128,7 +129,13 @@ function shortTransactionId(value: string | undefined): string {
 const sidebarNavInactiveClass =
   'text-zinc-600 hover:bg-zinc-100 hover:text-black dark:text-zinc-400 dark:hover:bg-zinc-900/50 dark:hover:text-white';
 
-const DashboardSidebarPrimaryNav = memo(function DashboardSidebarPrimaryNav({ activeTab }: { activeTab: string }) {
+const DashboardSidebarPrimaryNav = memo(function DashboardSidebarPrimaryNav({
+  activeTab,
+  onNavigate,
+}: {
+  activeTab: string;
+  onNavigate?: () => void;
+}) {
   return (
     <nav className="space-y-1 px-3 py-4">
       {DASHBOARD_SIDEBAR_NAV_ITEMS.map((item) => {
@@ -138,6 +145,7 @@ const DashboardSidebarPrimaryNav = memo(function DashboardSidebarPrimaryNav({ ac
             key={item.name}
             href={item.href}
             data-testid={`dashboard-nav-${item.name.toLowerCase()}`}
+            onClick={onNavigate}
             className={`flex items-center gap-3 px-3 py-2.5 text-sm font-medium transition-colors outline-none ${
               isActive
                 ? 'bg-black text-white shadow-sm dark:bg-white dark:text-black'
@@ -475,6 +483,29 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, session, profile, isLoa
     session?.environments?.find((item) => item.type === environment)?.id ?? session?.environment_id;
 
   const activeTab = useMemo(() => dashboardTabFromPathname(pathname), [pathname]);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  const closeMobileSidebar = () => setIsMobileSidebarOpen(false);
+  const openMobileSidebar = () => setIsMobileSidebarOpen(true);
+
+  useEffect(() => {
+    closeMobileSidebar();
+  }, [pathname]);
+
+  useEffect(() => {
+    if (!isMobileSidebarOpen) return undefined;
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') closeMobileSidebar();
+    };
+
+    document.body.style.overflow = 'hidden';
+    window.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.body.style.overflow = '';
+      window.removeEventListener('keydown', onKeyDown);
+    };
+  }, [isMobileSidebarOpen]);
+
   const [timeLeft, setTimeLeft] = useState<string>('');
   const [isLoadingAccounts, setIsLoadingAccounts] = useState(false);
   const [isLoadingTransactions, setIsLoadingTransactions] = useState(false);
@@ -499,6 +530,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, session, profile, isLoa
   const [transactionsList, setTransactionsList] = useState<Transaction[]>([]);
   const [ledgerEntries, setLedgerEntries] = useState<LedgerEntry[]>([]);
   const [isLoadingLedger, setIsLoadingLedger] = useState(false);
+  const [ledgerReadyKey, setLedgerReadyKey] = useState<string | null>(null);
   const [ledgerError, setLedgerError] = useState<string | null>(null);
   const [overviewStats, setOverviewStats] = useState({
     activeAccounts: 0,
@@ -738,25 +770,48 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, session, profile, isLoa
     return () => clearInterval(interval);
   }, []);
 
+  const ledgerLoadKey = useMemo(
+    () => (activeTab === 'Ledger' && session ? `${environment}:${ledgerPage}` : null),
+    [activeTab, session, environment, ledgerPage]
+  );
+
+  const showLedgerContentLoading =
+    ledgerLoadKey !== null && (isLoadingLedger || ledgerReadyKey !== ledgerLoadKey);
+
   // Fetch ledger entries when Ledger tab is active or environment changes
   useEffect(() => {
-    if (activeTab === 'Ledger' && session) {
-      setIsLoadingLedger(true);
-      setLedgerError(null);
-      ledgerApi.listEntries(session, undefined, ledgerPage, 10, environment)
-        .then((response) => {
-          setLedgerEntries(response.data || []);
-          setLedgerPagination(response.pagination);
-        })
-        .catch((err) => {
-          console.error('Failed to fetch ledger entries:', err);
-          setLedgerError(err.message || 'Failed to load ledger data');
-        })
-        .finally(() => {
-          setIsLoadingLedger(false);
-        });
+    if (activeTab !== 'Ledger' || !session || !ledgerLoadKey) {
+      return undefined;
     }
-  }, [activeTab, session, ledgerPage, environment]);
+
+    let cancelled = false;
+    setIsLoadingLedger(true);
+    setLedgerError(null);
+
+    ledgerApi
+      .listEntries(session, undefined, ledgerPage, 10, environment)
+      .then((response) => {
+        if (cancelled) return;
+        setLedgerEntries(response.data || []);
+        setLedgerPagination(response.pagination);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        console.error('Failed to fetch ledger entries:', err);
+        setLedgerError(err.message || 'Failed to load ledger data');
+        setLedgerEntries([]);
+        setLedgerPagination(null);
+      })
+      .finally(() => {
+        if (cancelled) return;
+        setIsLoadingLedger(false);
+        setLedgerReadyKey(ledgerLoadKey);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeTab, session, ledgerPage, environment, ledgerLoadKey]);
 
   const databaseHealthIssues = useMemo(() => {
     if (!databaseHealth) return [];
@@ -1700,12 +1755,8 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, session, profile, isLoa
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <div className="border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#050505] transition-colors p-6">
                 <h3 className="mb-4 text-sm font-medium text-black dark:text-white">Recent ledger entries</h3>
-                {isLoadingLedger ? (
-                  <div className="space-y-3">
-                    {Array.from({ length: 10 }).map((_, i) => (
-                      <div key={i} className="h-16 animate-pulse border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-black" />
-                    ))}
-                  </div>
+                {showLedgerContentLoading ? (
+                  <LedgerEntryListSkeleton />
                 ) : ledgerEntries.length === 0 ? (
                   <div className="text-center py-8">
                     <span
@@ -1762,28 +1813,32 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, session, profile, isLoa
               
               <div className="border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#050505] transition-colors p-6">
                 <h3 className="mb-4 text-sm font-medium text-black dark:text-white">Ledger Summary</h3>
-                <div className="space-y-4">
-                  <div className="border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-black p-4 transition-colors">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs font-mono text-zinc-500 dark:text-zinc-400">Total Entries</span>
-                      <span className="text-lg font-bold text-black dark:text-white">
-                        {ledgerPagination?.total_count ?? ledgerEntries.length}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-mono text-zinc-500 dark:text-zinc-400">Debits</span>
-                      <span className="text-sm font-mono font-bold text-red-600 dark:text-red-500">
-                        {ledgerEntries.filter(e => e.entry_type === 'debit').length}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-mono text-zinc-500 dark:text-zinc-400">Credits</span>
-                      <span className="text-sm font-mono font-bold text-emerald-600 dark:text-emerald-500">
-                        {ledgerEntries.filter(e => e.entry_type === 'credit').length}
-                      </span>
+                {showLedgerContentLoading ? (
+                  <LedgerSummarySkeleton />
+                ) : (
+                  <div className="space-y-4">
+                    <div className="border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-black p-4 transition-colors">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-xs font-mono text-zinc-500 dark:text-zinc-400">Total Entries</span>
+                        <span className="text-lg font-bold text-black dark:text-white">
+                          {ledgerPagination?.total_count ?? ledgerEntries.length}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-mono text-zinc-500 dark:text-zinc-400">Debits</span>
+                        <span className="text-sm font-mono font-bold text-red-600 dark:text-red-500">
+                          {ledgerEntries.filter((e) => e.entry_type === 'debit').length}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-mono text-zinc-500 dark:text-zinc-400">Credits</span>
+                        <span className="text-sm font-mono font-bold text-emerald-600 dark:text-emerald-500">
+                          {ledgerEntries.filter((e) => e.entry_type === 'credit').length}
+                        </span>
+                      </div>
                     </div>
                   </div>
-                </div>
+                )}
               </div>
             </div>
           </div>
@@ -1821,32 +1876,64 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, session, profile, isLoa
     <div
       className={`flex h-screen min-h-0 bg-zinc-50 dark:bg-[#0a0a0a] text-zinc-900 dark:text-zinc-100 overflow-hidden transition-colors duration-200 ${isProduction ? 'shadow-[inset_0_0_100px_rgba(217,119,6,0.05)]' : ''}`}
     >
-      <aside className="w-64 border-r border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#050505] flex flex-col transition-colors z-20 relative">
-        <div className="h-16 flex items-center px-6 justify-between border-b border-transparent shrink-0">
-          <Link href="/" className="flex items-center gap-3 outline-none">
-            <div className="w-5 h-5 bg-black dark:bg-white flex items-center justify-center">
+      {isMobileSidebarOpen ? (
+        <button
+          type="button"
+          aria-label="Close navigation menu"
+          data-testid="dashboard-mobile-menu-backdrop"
+          className="fixed inset-0 z-30 bg-black/40 lg:hidden"
+          onClick={closeMobileSidebar}
+        />
+      ) : null}
+
+      <aside
+        id="dashboard-sidebar"
+        data-testid="dashboard-sidebar"
+        className={`fixed inset-y-0 left-0 z-40 flex w-64 flex-col border-r border-zinc-200 bg-white transition-transform duration-200 ease-out dark:border-zinc-800 dark:bg-[#050505] lg:static lg:z-20 lg:shrink-0 lg:translate-x-0 ${
+          isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+        }`}
+      >
+        <div className="flex h-16 shrink-0 items-center justify-between border-b border-transparent px-6">
+          <Link href="/" className="flex items-center gap-3 outline-none" onClick={closeMobileSidebar}>
+            <div className="flex h-5 w-5 items-center justify-center bg-black dark:bg-white">
               <RailsTrackMark className="h-3 w-3 text-white dark:text-black" />
             </div>
             <span className="font-semibold text-lg tracking-tight text-black dark:text-white">Rails</span>
           </Link>
-          <span
-            className={`inline-flex items-center border font-mono text-[10px] font-semibold leading-none tracking-wider px-2 py-1 ${
-              isProduction
-                ? 'border-amber-400 bg-amber-100 text-amber-950 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-100'
-                : 'border-zinc-300 bg-zinc-200 text-zinc-800 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300'
-            }`}
-          >
-            {isProduction ? 'PRODUCTION' : 'SANDBOX'}
-          </span>
+          <div className="flex items-center gap-2">
+            <span
+              className={`inline-flex items-center border font-mono text-[10px] font-semibold leading-none tracking-wider px-2 py-1 ${
+                isProduction
+                  ? 'border-amber-400 bg-amber-100 text-amber-950 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-100'
+                  : 'border-zinc-300 bg-zinc-200 text-zinc-800 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300'
+              }`}
+            >
+              {isProduction ? 'PRODUCTION' : 'SANDBOX'}
+            </span>
+            <button
+              type="button"
+              aria-label="Close navigation menu"
+              data-testid="dashboard-mobile-menu-close"
+              className="inline-flex h-8 w-8 items-center justify-center rounded-md text-zinc-600 transition-colors hover:bg-zinc-100 hover:text-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 lg:hidden dark:text-zinc-400 dark:hover:bg-zinc-900 dark:hover:text-white"
+              onClick={closeMobileSidebar}
+            >
+              <span className="material-symbols-sharp !text-[20px] leading-none" aria-hidden>
+                close
+              </span>
+            </button>
+          </div>
         </div>
 
-        <DashboardSidebarPrimaryNav activeTab={activeTab} />
+        <DashboardSidebarPrimaryNav activeTab={activeTab} onNavigate={closeMobileSidebar} />
 
         <div className="mt-auto px-3 py-6 border-t border-zinc-200 dark:border-zinc-900 transition-colors">
           <DashboardSidebarFooterTools />
           <button
             type="button"
-            onClick={onLogout}
+            onClick={() => {
+              closeMobileSidebar();
+              onLogout();
+            }}
             data-testid="dashboard-sign-out"
             className="mt-6 w-full flex items-center justify-center gap-2 py-2 px-4 border border-zinc-200 dark:border-zinc-800 text-sm font-medium text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-colors cursor-pointer"
           >
@@ -1872,7 +1959,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, session, profile, isLoa
                 warning
               </span>
               <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-amber-950 dark:text-amber-100">
-                Live Production Environment — Real Assets at Risk
+                Live Production Environment
               </span>
             </div>
           </div>
@@ -1880,18 +1967,23 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, session, profile, isLoa
 
         <main className="flex-1 flex flex-col min-h-0 min-w-0 overflow-hidden transition-colors">
           <header className="h-16 shrink-0 px-4 md:px-8 flex items-center justify-between border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50/90 dark:bg-[#0a0a0a]/90 backdrop-blur-sm transition-colors z-10">
-            <h1 className="text-xl font-medium tracking-tight text-black dark:text-white">{activeTab}</h1>
-            <div className="flex items-center gap-3 sm:gap-4">
-              <a
-                href={getWebGithubRepoUrl()}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-2 px-3 py-1 rounded-full border border-zinc-200 dark:border-zinc-700 bg-zinc-100/90 dark:bg-zinc-900/50 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-400"
-                data-testid="dashboard-header-github"
+            <div className="flex min-w-0 items-center gap-3">
+              <button
+                type="button"
+                aria-label="Open navigation menu"
+                aria-expanded={isMobileSidebarOpen}
+                aria-controls="dashboard-sidebar"
+                data-testid="dashboard-mobile-menu-open"
+                className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-zinc-200 text-zinc-700 transition-colors hover:bg-zinc-100 hover:text-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 lg:hidden dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-900 dark:hover:text-white"
+                onClick={openMobileSidebar}
               >
-                <SiGithub className="w-[14px] h-[14px] shrink-0" aria-hidden />
-                <span className="text-[10px] font-mono font-semibold uppercase tracking-widest">GitHub</span>
-              </a>
+                <span className="material-symbols-sharp !text-[20px] leading-none" aria-hidden>
+                  menu
+                </span>
+              </button>
+              <h1 className="truncate text-xl font-medium tracking-tight text-black dark:text-white">{activeTab}</h1>
+            </div>
+            <div className="flex items-center gap-3 sm:gap-4">
               <DashboardMaterialThemeToggle />
               <Link
                 href="/dashboard/identity"

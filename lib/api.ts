@@ -6,6 +6,7 @@
 import type { Environment } from '../state/slices/environmentSlice';
 import { getClientServerUrl } from './env';
 import { resolveEnvironmentId } from './environment';
+import { ApiRequestError } from './apiRequestError';
 import { getStoreState } from '../state/store';
 
 interface ApiRequestOptions {
@@ -135,7 +136,11 @@ export async function apiRequest<T>(
       if (errorMessage === 'An error occurred while processing your request.') {
         errorMessage = `Request failed (HTTP ${status}).`;
       }
-      throw new Error(errorMessage);
+      throw new ApiRequestError(errorMessage, {
+        status,
+        path,
+        correlationId,
+      });
     }
 
     const contentType = response.headers.get('content-type');
