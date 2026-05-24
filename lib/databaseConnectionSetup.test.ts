@@ -23,6 +23,7 @@ import {
   resolveMigrationAlertIcon,
   isSetupComplete,
   isFullyConnected,
+  shouldShowConnectedSummaryCard,
   setupOutcomeFromSave,
   areAllServicesSetupComplete,
   mergeConnectionStatusForService,
@@ -353,6 +354,46 @@ describe('databaseConnectionSetup', () => {
       expect(
         isFullyConnected('invalid', { migration_status: 'applied', pending_count: 0, applied_count: 1 })
       ).toBe(false);
+    });
+  });
+
+  describe('shouldShowConnectedSummaryCard', () => {
+    it('shows Connected summary while migration snapshot is still loading after list restore', () => {
+      expect(
+        shouldShowConnectedSummaryCard('connected', undefined, { migrationSnapshotLoaded: false })
+      ).toBe(true);
+    });
+
+    it('hides Connected summary once migration snapshot reports pending work', () => {
+      expect(
+        shouldShowConnectedSummaryCard(
+          'connected',
+          {
+            service: 'accounts',
+            connection_status: 'connected',
+            pending_count: 2,
+            failed_count: 0,
+            latest_status: 'pending',
+          },
+          { migrationSnapshotLoaded: true }
+        )
+      ).toBe(false);
+    });
+
+    it('shows Connected summary when migration snapshot confirms applied', () => {
+      expect(
+        shouldShowConnectedSummaryCard(
+          'connected',
+          {
+            service: 'accounts',
+            connection_status: 'connected',
+            pending_count: 0,
+            failed_count: 0,
+            latest_status: 'applied',
+          },
+          { migrationSnapshotLoaded: true }
+        )
+      ).toBe(true);
     });
   });
 

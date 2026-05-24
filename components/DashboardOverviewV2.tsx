@@ -8,10 +8,8 @@ import {
   readDatabaseSetupCompleted,
   resolveDbsConnectedOnboardingAction,
 } from '@/lib/databaseSetupState';
-import { isMigrationStatusCurrent } from '@/lib/databaseReadiness';
 import { apiKeysApi, databaseConnectionsApi, type DatabaseConnectionMigrationStatusResponse } from '@/lib/api';
 import { useAppSelector } from '@/state/hooks';
-import ApiKeyManager from './ApiKeyManager';
 
 interface DashboardOverviewV2Props {
   overviewStats?: {
@@ -62,8 +60,6 @@ const DashboardOverviewV2: React.FC<DashboardOverviewV2Props> = ({
   const { state, updateStep, isComplete } = useOnboarding();
   const environment = useAppSelector((reduxState) => reduxState.environment.current);
   const [isSendingRequest, setIsSendingRequest] = useState(false);
-  const [areMigrationsCurrent, setAreMigrationsCurrent] = useState(false);
-  const [migrationReadinessError, setMigrationReadinessError] = useState(false);
   const [migrationSnapshot, setMigrationSnapshot] =
     useState<DatabaseConnectionMigrationStatusResponse | null>(null);
 
@@ -76,10 +72,6 @@ const DashboardOverviewV2: React.FC<DashboardOverviewV2Props> = ({
     readDatabaseSetupCompleted(environmentId);
 
   const dbsStepVisuallyComplete = backendMilestoneComplete;
-
-  const handleManageApiKey = () => {
-    document.getElementById('api-keys')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  };
 
   const handleSendTestRequest = () => {
     setIsSendingRequest(true);
@@ -119,14 +111,11 @@ const DashboardOverviewV2: React.FC<DashboardOverviewV2Props> = ({
           summary,
           migrations,
         });
-        const migrationsCurrent = isMigrationStatusCurrent(migrations);
         if (action === 'mark-complete') {
           markDatabaseSetupCompleted(environmentId);
         }
         if (isActive) {
-          setAreMigrationsCurrent(migrationsCurrent);
           setMigrationSnapshot(migrations);
-          setMigrationReadinessError(false);
         }
         if (isActive && action === 'mark-complete') {
           updateStep('dbsConnected', true);
@@ -137,10 +126,6 @@ const DashboardOverviewV2: React.FC<DashboardOverviewV2Props> = ({
         }
       })
       .catch(() => {
-        if (isActive) {
-          setAreMigrationsCurrent(false);
-          setMigrationReadinessError(true);
-        }
         const action = resolveDbsConnectedOnboardingAction({
           stickyCompleted: readDatabaseSetupCompleted(environmentId),
           summary: null,
@@ -154,13 +139,6 @@ const DashboardOverviewV2: React.FC<DashboardOverviewV2Props> = ({
       isActive = false;
     };
   }, [session, environment, environmentId, updateStep]);
-
-  const canCreateApiKey = state.dbsConnected && areMigrationsCurrent;
-  const apiKeyBlockedReason = !state.dbsConnected
-    ? 'Connect all required database integrations before creating an API key.'
-    : migrationReadinessError
-      ? 'Rails could not verify database migration status. Review integrations before creating an API key.'
-      : 'Apply database updates before creating an API key.';
 
   React.useEffect(() => {
     if (!session || !environmentId) return;
@@ -245,7 +223,7 @@ const DashboardOverviewV2: React.FC<DashboardOverviewV2Props> = ({
                 : 'Before you can create accounts and process transactions, connect your infrastructure and generate your first API key.'}
             </p>
 
-            <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 xl:grid-cols-3">
               <div
                 className={`flex h-full flex-col border p-6 transition-colors ${
                   dbsStepVisuallyComplete
@@ -253,7 +231,7 @@ const DashboardOverviewV2: React.FC<DashboardOverviewV2Props> = ({
                     : 'border-zinc-200 bg-zinc-50 shadow-sm ring-1 ring-black dark:border-zinc-800 dark:bg-[#0a0a0a] dark:ring-white'
                 }`}
               >
-                <div className="mb-5 flex items-center justify-between">
+                <div className="mb-5 flex flex-wrap items-start justify-between gap-2">
                   <div
                     className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold ${
                       dbsStepVisuallyComplete ? 'bg-emerald-500 text-white' : 'bg-black text-white dark:bg-white dark:text-black'
@@ -304,7 +282,7 @@ const DashboardOverviewV2: React.FC<DashboardOverviewV2Props> = ({
                       : 'border-zinc-200 bg-zinc-50 shadow-sm ring-1 ring-black dark:border-zinc-800 dark:bg-[#0a0a0a] dark:ring-white'
                 }`}
               >
-                <div className="mb-5 flex items-center justify-between">
+                <div className="mb-5 flex flex-wrap items-start justify-between gap-2">
                   <div
                     className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold ${
                       !state.dbsConnected
@@ -349,13 +327,12 @@ const DashboardOverviewV2: React.FC<DashboardOverviewV2Props> = ({
                     Key Generated
                   </button>
                 ) : (
-                  <button
-                    type="button"
-                    onClick={handleManageApiKey}
+                  <Link
+                    href="/dashboard/integrations?tab=api-key"
                     className="flex w-full items-center justify-center gap-2 bg-black px-4 py-2.5 text-xs font-semibold text-white transition-colors hover:bg-zinc-800 disabled:opacity-60 dark:bg-white dark:text-black dark:hover:bg-zinc-200"
                   >
                     Manage API Key
-                  </button>
+                  </Link>
                 )}
               </div>
 
@@ -368,7 +345,7 @@ const DashboardOverviewV2: React.FC<DashboardOverviewV2Props> = ({
                       : 'border-zinc-200 bg-zinc-50 shadow-sm ring-1 ring-black dark:border-zinc-800 dark:bg-[#0a0a0a] dark:ring-white'
                 }`}
               >
-                <div className="mb-5 flex items-center justify-between">
+                <div className="mb-5 flex flex-wrap items-start justify-between gap-2">
                   <div
                     className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold ${
                       !state.apiKeyGenerated
@@ -431,7 +408,7 @@ const DashboardOverviewV2: React.FC<DashboardOverviewV2Props> = ({
         </section>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 xl:grid-cols-3">
         {overviewTiles.map((tile) => (
           <div
             key={tile.label}
@@ -469,13 +446,6 @@ const DashboardOverviewV2: React.FC<DashboardOverviewV2Props> = ({
           </div>
         ))}
       </div>
-
-      <ApiKeyManager
-        session={session}
-        canCreate={canCreateApiKey}
-        blockedReason={apiKeyBlockedReason}
-        onActiveKeyChange={(hasActiveKey) => updateStep('apiKeyGenerated', hasActiveKey)}
-      />
 
       <div className="p-10 md:p-14 border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#050505] transition-colors">
         <span className="text-[10px] font-mono font-semibold text-zinc-500 tracking-widest uppercase mb-6 block">

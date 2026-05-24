@@ -1879,7 +1879,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, session, profile, isLoa
         )}
 
         <main className="flex-1 flex flex-col min-h-0 min-w-0 overflow-hidden transition-colors">
-          <header className="h-16 shrink-0 px-8 flex items-center justify-between border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50/90 dark:bg-[#0a0a0a]/90 backdrop-blur-sm transition-colors z-10">
+          <header className="h-16 shrink-0 px-4 md:px-8 flex items-center justify-between border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50/90 dark:bg-[#0a0a0a]/90 backdrop-blur-sm transition-colors z-10">
             <h1 className="text-xl font-medium tracking-tight text-black dark:text-white">{activeTab}</h1>
             <div className="flex items-center gap-3 sm:gap-4">
               <a
@@ -1950,10 +1950,10 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, session, profile, isLoa
           {hasDatabaseHealthBanner ? (
             <div
               role="alert"
-              className="shrink-0 border-b border-red-200 bg-red-50 px-8 py-3 dark:border-red-900/50 dark:bg-red-950/20"
+              className="shrink-0 border-b border-red-200 bg-red-50 px-4 py-3 dark:border-red-900/50 dark:bg-red-950/20 md:px-8"
             >
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex min-w-0 items-start gap-3">
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between lg:gap-6">
+                <div className="flex min-w-0 flex-1 items-start gap-3">
                   <span
                     className="material-symbols-sharp mt-0.5 shrink-0 text-red-600 dark:text-red-400 !text-[18px] leading-none"
                     aria-hidden
@@ -1969,7 +1969,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, session, profile, isLoa
                 </div>
                 <Link
                   href="/dashboard/integrations"
-                  className="inline-flex shrink-0 items-center justify-center gap-2 border border-red-300 bg-white px-3 py-2 text-[10px] font-mono font-bold uppercase tracking-widest text-red-700 transition-colors hover:bg-red-100 dark:border-red-800 dark:bg-black dark:text-red-200 dark:hover:bg-red-950/50"
+                  className="inline-flex w-full shrink-0 items-center justify-center gap-2 border border-red-300 bg-white px-3 py-2 text-[10px] font-mono font-bold uppercase tracking-widest text-red-700 transition-colors hover:bg-red-100 dark:border-red-800 dark:bg-black dark:text-red-200 dark:hover:bg-red-950/50 lg:w-auto"
                 >
                   Repair connection
                   <span className="material-symbols-sharp !text-[16px] leading-none" aria-hidden>
@@ -1983,10 +1983,10 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, session, profile, isLoa
           {hasMigrationBanner ? (
             <div
               role="alert"
-              className="shrink-0 border-b border-amber-200 bg-amber-50 px-8 py-3 dark:border-amber-900/60 dark:bg-amber-950/20"
+              className="shrink-0 border-b border-amber-200 bg-amber-50 px-4 py-3 dark:border-amber-900/60 dark:bg-amber-950/20 md:px-8"
             >
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex min-w-0 items-start gap-3">
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between lg:gap-6">
+                <div className="flex min-w-0 flex-1 items-start gap-3">
                   <span
                     className="material-symbols-sharp mt-0.5 shrink-0 text-amber-700 dark:text-amber-300 !text-[18px] leading-none"
                     aria-hidden
@@ -2002,7 +2002,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, session, profile, isLoa
                 </div>
                 <Link
                   href="/dashboard/integrations"
-                  className="inline-flex shrink-0 items-center justify-center gap-2 border border-amber-300 bg-white px-3 py-2 text-[10px] font-mono font-bold uppercase tracking-widest text-amber-950 transition-colors hover:bg-amber-100 dark:border-amber-800 dark:bg-black dark:text-amber-100 dark:hover:bg-amber-950/50"
+                  className="inline-flex w-full shrink-0 items-center justify-center gap-2 border border-amber-300 bg-white px-3 py-2 text-[10px] font-mono font-bold uppercase tracking-widest text-amber-950 transition-colors hover:bg-amber-100 dark:border-amber-800 dark:bg-black dark:text-amber-100 dark:hover:bg-amber-950/50 lg:w-auto"
                 >
                   Review migrations
                   <span className="material-symbols-sharp !text-[16px] leading-none" aria-hidden>
@@ -2014,7 +2014,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, session, profile, isLoa
           ) : null}
 
           <div className="flex-1 min-h-0 overflow-y-auto no-scrollbar">
-            <div className="p-8 max-w-6xl mx-auto w-full pb-32">{renderContent()}</div>
+            <div className="p-4 md:p-6 lg:p-8 max-w-6xl mx-auto w-full pb-32">{renderContent()}</div>
           </div>
         </main>
       </div>

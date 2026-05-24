@@ -1,6 +1,8 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import ApiKeyManager from '@/components/ApiKeyManager';
 import DatabaseConnectionCardSkeleton from '@/components/molecules/DatabaseConnectionCardSkeleton';
 import DatabaseConnectionSetupProgress from '@/components/molecules/DatabaseConnectionSetupProgress';
 import { useOnboarding } from '@/hooks/useOnboarding';
@@ -10,7 +12,7 @@ import {
   readDatabaseSetupCompleted,
   resolveDbsConnectedOnboardingAction,
 } from '@/lib/databaseSetupState';
-import { hasAllMigrationTargets } from '@/lib/databaseReadiness';
+import { hasAllMigrationTargets, isMigrationStatusCurrent } from '@/lib/databaseReadiness';
 import {
   type DatabaseSetupPhase,
   type ConnectionUiStatus,
@@ -31,7 +33,7 @@ import {
   type MigrationAlertTone,
   setupOutcomeFromSave,
   type SetupOutcomeState,
-  isFullyConnected as isServiceFullyConnected,
+  shouldShowConnectedSummaryCard,
   mergeConnectionStatusForService,
   mergeMigrationRunForService,
   resolveRetryStartPhase,
@@ -52,6 +54,10 @@ import { useAppSelector } from '@/state/hooks';
 
 type ConnectionKey = DatabaseConnectionService;
 type ConnectionStatus = 'idle' | 'connecting' | 'connected' | 'invalid' | 'missing';
+type IntegrationsTab = 'databases' | 'api-key';
+
+const parseIntegrationsTab = (value: string | null): IntegrationsTab =>
+  value === 'api-key' ? 'api-key' : 'databases';
 
 interface DashboardIntegrationsProps {
   session?: {
@@ -150,7 +156,10 @@ export default function DashboardIntegrations({
   onMigrationStatusChange,
   onDatabaseHealthChange,
 }: DashboardIntegrationsProps) {
-  const { updateStep } = useOnboarding();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const activeTab = parseIntegrationsTab(searchParams.get('tab'));
+  const { state: onboardingState, updateStep } = useOnboarding();
   const environment = useAppSelector((state) => state.environment.current);
   const currentEnvironmentId =
     session?.environments?.find((item) => item.type === environment)?.id ?? session?.environment_id;
@@ -759,31 +768,95 @@ export default function DashboardIntegrations({
     migrationRunResult?.services.reduce((total, service) => total + service.applied_count, 0) ?? 0;
   const interactionsLocked = computeInteractionsLocked(isRunningMigrations);
 
+  const selectTab = useCallback(
+    (tab: IntegrationsTab) => {
+      const path =
+        tab === 'api-key' ? '/dashboard/integrations?tab=api-key' : '/dashboard/integrations';
+      router.replace(path, { scroll: false });
+    },
+    [router]
+  );
+
+  const canCreateApiKey =
+    onboardingState.dbsConnected && isMigrationStatusCurrent(migrationStatus);
+  const apiKeyBlockedReason = !onboardingState.dbsConnected
+    ? 'Connect all required database integrations before creating an API key.'
+    : !isMigrationStatusCurrent(migrationStatus)
+      ? 'Apply database updates before creating an API key.'
+      : 'Complete setup before creating an API key.';
+
+  const handleActiveKeyChange = useCallback(
+    (hasActiveKey: boolean) => updateStep('apiKeyGenerated', hasActiveKey),
+    [updateStep]
+  );
+
   return (
     <div className="max-w-4xl space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-500">
-      <section>
-        <div className="mb-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+      <div
+        role="tablist"
+        aria-label="Integrations sections"
+        className="flex flex-wrap gap-2 border-b border-zinc-200 dark:border-zinc-800"
+      >
+        <button
+          type="button"
+          role="tab"
+          id="integrations-tab-databases"
+          aria-selected={activeTab === 'databases'}
+          aria-controls="integrations-panel-databases"
+          data-testid="integrations-tab-databases"
+          onClick={() => selectTab('databases')}
+          className={`-mb-px border-b-2 px-4 py-2.5 text-xs font-semibold transition-colors ${
+            activeTab === 'databases'
+              ? 'border-black text-black dark:border-white dark:text-white'
+              : 'border-transparent text-zinc-500 hover:text-black dark:text-zinc-400 dark:hover:text-white'
+          }`}
+        >
+          Databases
+        </button>
+        <button
+          type="button"
+          role="tab"
+          id="integrations-tab-api-key"
+          aria-selected={activeTab === 'api-key'}
+          aria-controls="integrations-panel-api-key"
+          data-testid="integrations-tab-api-key"
+          onClick={() => selectTab('api-key')}
+          className={`-mb-px border-b-2 px-4 py-2.5 text-xs font-semibold transition-colors ${
+            activeTab === 'api-key'
+              ? 'border-black text-black dark:border-white dark:text-white'
+              : 'border-transparent text-zinc-500 hover:text-black dark:text-zinc-400 dark:hover:text-white'
+          }`}
+        >
+          API Key
+        </button>
+      </div>
+
+      {activeTab === 'databases' ? (
+        <>
+      <section id="integrations-panel-databases" role="tabpanel" aria-labelledby="integrations-tab-databases">
+        <div className="mb-2">
           <h2 className="text-2xl font-medium tracking-tight text-black dark:text-white">Database Connections</h2>
-          <span
-            className={`self-start border px-2 py-1 font-mono text-[10px] font-semibold uppercase tracking-wider sm:self-auto ${
-              environment === 'production'
-                ? 'border-amber-300 bg-amber-100 text-amber-950 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100'
-                : 'border-zinc-200 bg-zinc-100 text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300'
-            }`}
-          >
-            {environment} values
-          </span>
         </div>
         <p className="max-w-2xl text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
           You own your data. Connect to a PostgreSQL provider of your choice to store your core banking data
-          securely on your own infrastructure. We recommend <strong>Neon</strong> for its seamless serverless
+          securely on your own infrastructure. We recommend{' '}
+          <a
+            href="https://neon.tech"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-semibold text-zinc-900 underline decoration-dotted decoration-zinc-300 underline-offset-2 transition-colors hover:text-black hover:decoration-zinc-500 dark:text-zinc-100 dark:decoration-zinc-700 dark:hover:text-white dark:hover:decoration-zinc-500"
+          >
+            Neon
+            <span className="sr-only"> (opens in a new tab)</span>
+          </a>{' '}
+          for its seamless serverless
           architecture and branching capabilities.
         </p>
         <div className="mt-6 flex items-start gap-3 border border-emerald-200 bg-emerald-50 p-4 dark:border-emerald-900/50 dark:bg-emerald-950/20">
           <span className="material-symbols-sharp mt-0.5 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden>
             security
           </span>
-          <div>
+          <div className="min-w-0 flex-1">
             <h3 className="text-sm font-medium text-emerald-900 dark:text-emerald-300">Encrypted Storage</h3>
             <p className="mt-1 text-xs leading-relaxed text-emerald-700 dark:text-emerald-400/90">
               Connection strings are encrypted before they are stored and decrypted only when Rails validates or
@@ -801,12 +874,12 @@ export default function DashboardIntegrations({
         )}
         {hasAllMigrationTargets(migrationStatus) && migrationStatus?.has_pending_updates ? (
           <div className="border border-amber-200 bg-amber-50 p-4 dark:border-amber-900/60 dark:bg-amber-950/20">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-col gap-4">
               <div className="flex min-w-0 items-start gap-3">
                 <span className="material-symbols-sharp mt-0.5 shrink-0 text-amber-700 dark:text-amber-300 !text-[18px] leading-none" aria-hidden>
                   database
                 </span>
-                <div>
+                <div className="min-w-0 flex-1">
                   <p className="text-xs font-mono font-bold uppercase tracking-widest text-amber-950 dark:text-amber-100">
                     Database updates available
                   </p>
@@ -821,7 +894,7 @@ export default function DashboardIntegrations({
                 type="button"
                 onClick={handleRunMigrations}
                 disabled={interactionsLocked}
-                className="inline-flex shrink-0 items-center justify-center gap-2 border border-amber-300 bg-white px-4 py-2 text-xs font-semibold text-amber-950 transition-colors hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-amber-800 dark:bg-black dark:text-amber-100 dark:hover:bg-amber-950/50"
+                className="inline-flex w-full items-center justify-center gap-2 border border-amber-300 bg-white px-4 py-2 text-xs font-semibold text-amber-950 transition-colors hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-amber-800 dark:bg-black dark:text-amber-100 dark:hover:bg-amber-950/50"
               >
                 {isRunningMigrations ? (
                   <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-amber-400/40 border-t-amber-800 dark:border-amber-100/20 dark:border-t-amber-100" />
@@ -868,12 +941,15 @@ export default function DashboardIntegrations({
             (persistedSetupOutcome?.outcome === 'failed' ||
               migrationInfo?.latest_status === 'failed');
           const terminalFailedPhase = persistedSetupOutcome?.failedPhase ?? 'setting_up';
+          const migrationSnapshotLoaded = migrationStatus !== null;
           const isFullyConnected =
             connectionStatus === 'connected' &&
             initialCheckComplete &&
             !isSettingUp &&
             !isSetupFailed &&
-            isServiceFullyConnected(connectionStatus, migrationInfo);
+            shouldShowConnectedSummaryCard(connectionStatus, migrationInfo, {
+              migrationSnapshotLoaded,
+            });
           const isConnectedPool =
             connectionStatus === 'connected' && initialCheckComplete && !isSettingUp;
           const isConnecting = connectionStatus === 'connecting' || isSettingUp;
@@ -891,7 +967,7 @@ export default function DashboardIntegrations({
               ? 'neutral'
               : migrationInfo?.failed_count || isSetupFailed
                 ? 'danger'
-                : migrationInfo?.pending_count || migrationInfo?.latest_status === 'not_checked'
+                : migrationInfo?.pending_count
                   ? 'warning'
                   : migrationInfo?.latest_status === 'applied'
                     ? 'success'
@@ -937,7 +1013,7 @@ export default function DashboardIntegrations({
           }
           const transientState = transientSuccess[item.key];
           const shouldRenderMigrationFooter =
-            effectiveMigrationTone !== 'success' || transientState !== 'gone';
+            effectiveMigrationTone === 'danger' || effectiveMigrationTone === 'warning';
           const isTransientExiting =
             effectiveMigrationTone === 'success' && transientState === 'exiting';
           const migrationAlertIcon = resolveMigrationAlertIcon(effectiveMigrationTone);
@@ -949,8 +1025,8 @@ export default function DashboardIntegrations({
               key={item.key}
               className="border border-zinc-200 bg-white p-6 transition-colors dark:border-zinc-800 dark:bg-[#050505]"
             >
-              <div className="mb-4 flex flex-col justify-between gap-4 md:flex-row md:items-center">
-                <div className="flex items-center gap-3">
+              <div className="mb-4 flex flex-col justify-between gap-4 lg:flex-row lg:items-start lg:gap-6">
+                <div className="flex min-w-0 items-start gap-3">
                   <div className="relative flex h-10 w-10 shrink-0 items-center justify-center">
                     <div className="absolute right-0 top-0 flex h-7 w-7 items-center justify-center rounded-full bg-zinc-100 text-zinc-400 dark:bg-zinc-800/70">
                       <span className="material-symbols-sharp !text-[16px] leading-none" aria-hidden>
@@ -965,14 +1041,14 @@ export default function DashboardIntegrations({
                       </span>
                     </div>
                   </div>
-                  <div>
+                  <div className="min-w-0 flex-1">
                     <h3 className="mb-1 font-semibold text-black dark:text-white">{item.title}</h3>
-                    <p className="max-w-sm text-xs leading-relaxed text-zinc-600 dark:text-zinc-400">
+                    <p className="text-xs leading-relaxed text-zinc-600 dark:text-zinc-400">
                       {item.description}
                     </p>
                   </div>
                 </div>
-                <span className="self-start rounded-full border border-zinc-200 bg-zinc-100 px-2 py-1 font-mono text-[10px] font-semibold uppercase tracking-wider text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900 md:self-auto">
+                <span className="shrink-0 self-start rounded-full border border-zinc-200 bg-zinc-100 px-2 py-1 font-mono text-[10px] font-semibold uppercase tracking-wider text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900 lg:self-center">
                   PostgreSQL
                 </span>
               </div>
@@ -986,19 +1062,21 @@ export default function DashboardIntegrations({
                   {isSettingUp ? (
                     <DatabaseConnectionSetupProgress phase={activeSetupPhase!} title={item.title} />
                   ) : isSetupFailed ? (
-                    <div className="flex flex-col gap-3">
-                      <DatabaseConnectionSetupProgress
-                        phase={terminalFailedPhase}
-                        outcome="failed"
-                        failedPhase={terminalFailedPhase}
-                        title={item.title}
-                      />
-                      <div className="flex shrink-0 flex-col gap-2 sm:flex-row sm:justify-end">
+                    <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between lg:gap-6">
+                      <div className="min-w-0 flex-1">
+                        <DatabaseConnectionSetupProgress
+                          phase={terminalFailedPhase}
+                          outcome="failed"
+                          failedPhase={terminalFailedPhase}
+                          title={item.title}
+                        />
+                      </div>
+                      <div className="flex w-full flex-col gap-2 lg:w-auto lg:shrink-0">
                         <button
                           type="button"
                           onClick={() => handleRetryConnection(item.key)}
                           disabled={isRetryDisabled}
-                          className="inline-flex items-center justify-center gap-2 border border-red-300 bg-white px-3 py-2 text-xs font-semibold text-red-700 transition-colors hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-red-800 dark:bg-black dark:text-red-200 dark:hover:bg-red-950/50"
+                          className="inline-flex w-full items-center justify-center gap-2 border border-red-300 bg-white px-3 py-2 text-xs font-semibold text-red-700 transition-colors hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60 lg:w-auto lg:min-w-[7.5rem] dark:border-red-800 dark:bg-black dark:text-red-200 dark:hover:bg-red-950/50"
                         >
                           <span className="material-symbols-sharp !text-[16px] leading-none" aria-hidden>
                             refresh
@@ -1009,7 +1087,7 @@ export default function DashboardIntegrations({
                           type="button"
                           onClick={() => handleEditConnection(item.key)}
                           disabled={interactionsLocked}
-                          className="inline-flex items-center justify-center gap-2 border border-red-300 bg-white px-3 py-2 text-xs font-semibold text-red-700 transition-colors hover:bg-red-100 dark:border-red-800 dark:bg-black dark:text-red-200 dark:hover:bg-red-950/50 disabled:cursor-not-allowed disabled:opacity-60"
+                          className="inline-flex w-full items-center justify-center gap-2 border border-red-300 bg-white px-3 py-2 text-xs font-semibold text-red-700 transition-colors hover:bg-red-100 lg:w-auto lg:min-w-[7.5rem] dark:border-red-800 dark:bg-black dark:text-red-200 dark:hover:bg-red-950/50 disabled:cursor-not-allowed disabled:opacity-60"
                           aria-label={`Edit ${item.title} connection string`}
                         >
                           <span className="material-symbols-sharp !text-[16px] leading-none" aria-hidden>
@@ -1020,12 +1098,12 @@ export default function DashboardIntegrations({
                       </div>
                     </div>
                   ) : isInvalid && !isEditing ? (
-                    <div className="flex flex-col gap-3 border border-red-200 bg-red-50 p-4 dark:border-red-900/50 dark:bg-red-950/20 sm:flex-row sm:items-center sm:justify-between">
-                      <div className="flex min-w-0 items-start gap-3">
+                    <div className="flex flex-col gap-4 border border-red-200 bg-red-50 p-4 dark:border-red-900/50 dark:bg-red-950/20 lg:flex-row lg:items-start lg:justify-between lg:gap-6">
+                      <div className="flex min-w-0 flex-1 items-start gap-3">
                         <span className="material-symbols-sharp shrink-0 text-red-600 dark:text-red-400 !text-[20px] leading-none" aria-hidden>
                           error
                         </span>
-                        <div>
+                        <div className="min-w-0 flex-1">
                           <p className="text-sm font-semibold text-red-700 dark:text-red-300">Needs attention</p>
                           <p className="mt-1 text-xs leading-relaxed text-red-700 dark:text-red-200">
                             The saved encrypted connection did not validate. Retry after the provider recovers, or replace
@@ -1033,12 +1111,12 @@ export default function DashboardIntegrations({
                           </p>
                         </div>
                       </div>
-                      <div className="flex shrink-0 flex-col gap-2 sm:flex-row">
+                      <div className="flex w-full flex-col gap-2 lg:w-auto lg:shrink-0">
                         <button
                           type="button"
                           onClick={() => handleRetryConnection(item.key)}
                           disabled={isRetryDisabled}
-                          className="inline-flex items-center justify-center gap-2 border border-red-300 bg-white px-3 py-2 text-xs font-semibold text-red-700 transition-colors hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-red-800 dark:bg-black dark:text-red-200 dark:hover:bg-red-950/50"
+                          className="inline-flex w-full items-center justify-center gap-2 border border-red-300 bg-white px-3 py-2 text-xs font-semibold text-red-700 transition-colors hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60 lg:w-auto lg:min-w-[7.5rem] dark:border-red-800 dark:bg-black dark:text-red-200 dark:hover:bg-red-950/50"
                         >
                           <span className="material-symbols-sharp !text-[16px] leading-none" aria-hidden>
                             refresh
@@ -1049,7 +1127,7 @@ export default function DashboardIntegrations({
                           type="button"
                           onClick={() => handleEditConnection(item.key)}
                           disabled={interactionsLocked}
-                          className="inline-flex items-center justify-center gap-2 border border-red-300 bg-white px-3 py-2 text-xs font-semibold text-red-700 transition-colors hover:bg-red-100 dark:border-red-800 dark:bg-black dark:text-red-200 dark:hover:bg-red-950/50 disabled:cursor-not-allowed disabled:opacity-60"
+                          className="inline-flex w-full items-center justify-center gap-2 border border-red-300 bg-white px-3 py-2 text-xs font-semibold text-red-700 transition-colors hover:bg-red-100 lg:w-auto lg:min-w-[7.5rem] dark:border-red-800 dark:bg-black dark:text-red-200 dark:hover:bg-red-950/50 disabled:cursor-not-allowed disabled:opacity-60"
                           aria-label={`Edit ${item.title} connection string`}
                         >
                           <span className="material-symbols-sharp !text-[16px] leading-none" aria-hidden>
@@ -1061,8 +1139,8 @@ export default function DashboardIntegrations({
                     </div>
                   ) : isEditing ? (
                     <div>
-                      <div className="flex flex-col gap-3 sm:flex-row">
-                        <div className="relative flex-1">
+                      <div className="flex flex-col gap-3">
+                        <div className="relative min-w-0 flex-1">
                           <input
                             type={showConnections[item.key] ? 'text' : 'password'}
                             name={item.key}
@@ -1100,7 +1178,7 @@ export default function DashboardIntegrations({
                           type="button"
                           onClick={() => handleConnect(item.key)}
                           disabled={interactionsLocked || !value.trim() || isConnecting}
-                          className="flex w-full items-center justify-center gap-2 bg-black px-6 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-white dark:text-black dark:hover:bg-zinc-200 sm:w-[168px]"
+                          className="flex w-full items-center justify-center gap-2 bg-black px-6 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-white dark:text-black dark:hover:bg-zinc-200"
                         >
                           {connectLabel}
                         </button>
@@ -1109,7 +1187,7 @@ export default function DashboardIntegrations({
                             type="button"
                             onClick={() => handleCancelEditConnection(item.key)}
                             disabled={interactionsLocked || isConnecting}
-                            className="flex w-full items-center justify-center border border-zinc-200 bg-white px-4 py-2.5 text-sm font-semibold text-zinc-600 transition-colors hover:bg-zinc-50 hover:text-black disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-800 dark:bg-black dark:text-zinc-300 dark:hover:bg-zinc-900 dark:hover:text-white sm:w-[96px]"
+                            className="flex w-full items-center justify-center border border-zinc-200 bg-white px-4 py-2.5 text-sm font-semibold text-zinc-600 transition-colors hover:bg-zinc-50 hover:text-black disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-800 dark:bg-black dark:text-zinc-300 dark:hover:bg-zinc-900 dark:hover:text-white"
                           >
                             Cancel
                           </button>
@@ -1122,12 +1200,12 @@ export default function DashboardIntegrations({
                       ) : null}
                     </div>
                   ) : isFullyConnected ? (
-                    <div className="flex flex-col gap-3 border border-emerald-200 bg-emerald-50 p-4 dark:border-emerald-900/50 dark:bg-emerald-950/20 sm:flex-row sm:items-center sm:justify-between">
-                      <div className="flex min-w-0 items-start gap-3">
+                    <div className="flex flex-col gap-4 border border-emerald-200 bg-emerald-50 p-4 dark:border-emerald-900/50 dark:bg-emerald-950/20 lg:flex-row lg:items-start lg:justify-between lg:gap-6">
+                      <div className="flex min-w-0 flex-1 items-start gap-3">
                         <span className="material-symbols-sharp shrink-0 text-emerald-600 dark:text-emerald-400 !text-[20px] leading-none" aria-hidden>
                           check_circle
                         </span>
-                        <div>
+                        <div className="min-w-0 flex-1">
                           <p className="text-sm font-semibold text-emerald-900 dark:text-emerald-200">Connected</p>
                           <p className="mt-1 text-xs leading-relaxed text-emerald-700 dark:text-emerald-400/90">
                             The connection string is encrypted and hidden. Replace it only when you need to rotate or update
@@ -1135,30 +1213,26 @@ export default function DashboardIntegrations({
                           </p>
                         </div>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => handleEditConnection(item.key)}
-                        disabled={interactionsLocked}
-                        className="inline-flex shrink-0 items-center justify-center gap-2 border border-emerald-300 bg-white px-3 py-2 text-xs font-semibold text-emerald-900 transition-colors hover:bg-emerald-100 dark:border-emerald-800 dark:bg-black dark:text-emerald-100 dark:hover:bg-emerald-950/50 disabled:cursor-not-allowed disabled:opacity-60"
-                        aria-label={`Edit ${item.title} connection string`}
-                      >
-                        <span className="material-symbols-sharp !text-[16px] leading-none" aria-hidden>
-                          edit
-                        </span>
-                        Edit
-                      </button>
+                      <div className="flex w-full flex-col gap-2 lg:w-auto lg:shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => handleEditConnection(item.key)}
+                          disabled={interactionsLocked}
+                          className="inline-flex w-full items-center justify-center gap-2 border border-emerald-300 bg-white px-3 py-2 text-xs font-semibold text-emerald-900 transition-colors hover:bg-emerald-100 lg:w-auto lg:min-w-[7.5rem] dark:border-emerald-800 dark:bg-black dark:text-emerald-100 dark:hover:bg-emerald-950/50 disabled:cursor-not-allowed disabled:opacity-60"
+                          aria-label={`Edit ${item.title} connection string`}
+                        >
+                          <span className="material-symbols-sharp !text-[16px] leading-none" aria-hidden>
+                            edit
+                          </span>
+                          Edit
+                        </button>
+                      </div>
                     </div>
                   ) : null}
                   {shouldRenderMigrationFooter ? (
                     <div
                       role={migrationFooterIsAlert ? 'alert' : undefined}
-                      className={`mt-4 border p-3 text-xs leading-relaxed ${migrationClassName} ${
-                        effectiveMigrationTone === 'success'
-                          ? isTransientExiting
-                            ? 'animate-out fade-out slide-out-to-top-1 duration-300'
-                            : 'animate-in fade-in slide-in-from-top-1 duration-300'
-                          : ''
-                      }`}
+                      className={`mt-4 border p-3 text-xs leading-relaxed ${migrationClassName}`}
                     >
                       <div className="flex items-start gap-2">
                         <span className="material-symbols-sharp mt-0.5 !text-[16px] leading-none" aria-hidden>
@@ -1174,6 +1248,21 @@ export default function DashboardIntegrations({
           );
         })}
       </div>
+        </>
+      ) : (
+        <div
+          id="integrations-panel-api-key"
+          role="tabpanel"
+          aria-labelledby="integrations-tab-api-key"
+        >
+          <ApiKeyManager
+            session={session}
+            canCreate={canCreateApiKey}
+            blockedReason={apiKeyBlockedReason}
+            onActiveKeyChange={handleActiveKeyChange}
+          />
+        </div>
+      )}
     </div>
   );
 }
