@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 
 interface HeroProps {
@@ -7,7 +6,7 @@ interface HeroProps {
 
 const Hero: React.FC<HeroProps> = ({ isLoading = false }) => {
   const [terminalLines, setTerminalLines] = useState<string[]>([]);
-  const [phase, setPhase] = useState<'install' | 'login' | 'logs'>('install');
+  const [_phase, setPhase] = useState<'install' | 'login' | 'logs'>('install');
 
   useEffect(() => {
     if (isLoading) return;

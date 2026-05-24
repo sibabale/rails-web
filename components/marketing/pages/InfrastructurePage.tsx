@@ -1,7 +1,6 @@
 'use client';
 
 import React from 'react';
-import { Database, Box, ArrowRightLeft, Cloud, Server } from 'lucide-react';
 import Link from 'next/link';
 import { Section } from '../atoms/Section';
 import { Container } from '../atoms/Container';
