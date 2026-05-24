@@ -23,13 +23,6 @@ const fulfillJson = async (route: Route, body: unknown, status = 200) => {
 const emptyPage = (page: number, perPage: number) => ({
   data: [] as unknown[],
   pagination: {
-    page,
-    per_page: perPage,
-    total_count: 0,
-    total_pages: 1,
-  },
-});
-
 const authSuccessBody = () => ({
   access_token: 'e2e-access-token',
   refresh_token: 'e2e-refresh-token',
@@ -59,20 +52,27 @@ export async function handleMockApi(route: Route) {
   const path = url.pathname;
   const method = req.method();
 
-  if (method === 'POST' && path === '/api/v1/auth/login') {
-    await fulfillJson(route, authSuccessBody());
+  const handlers: Record<string, (route: Route) => Promise<void>> = {
+    'POST /api/v1/auth/login': async (route) => {
+      await fulfillJson(route, authSuccessBody());
+    },
+    'POST /api/v1/business/register': async (route) => {
+      await fulfillJson(route, authSuccessBody());
+    },
+    'POST /api/v1/auth/password-reset/request': async (route) => {
+      await fulfillJson(route, { message: 'If the email exists, a reset link was sent.' });
+    },
+  };
+
+  const key = `${method} ${path}`;
+  const handler = handlers[key];
+  if (handler) {
+    await handler(route);
     return;
   }
 
-  if (method === 'POST' && path === '/api/v1/business/register') {
-    await fulfillJson(route, authSuccessBody());
-    return;
-  }
-
-  if (method === 'POST' && path === '/api/v1/auth/password-reset/request') {
-    await fulfillJson(route, { message: 'If the email exists, a reset link was sent.' });
-    return;
-  }
+  await route.continue();
+}
 
   if (method === 'POST' && path === '/api/v1/auth/password-reset/reset') {
     await fulfillJson(route, { message: 'Password updated.' });

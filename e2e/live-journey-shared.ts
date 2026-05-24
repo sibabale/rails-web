@@ -3,14 +3,15 @@ import { expect, type Page } from '@playwright/test';
 export const siteOrigin = process.env.LIVE_SITE_URL ?? 'http://127.0.0.1:3000';
 export const livePassword = process.env.LIVE_MOCK_PASSWORD ?? '';
 
-function requireLivePassword(): string {
-  const value = process.env.LIVE_MOCK_PASSWORD?.trim();
-  if (!value) {
-    throw new Error('LIVE_MOCK_PASSWORD is required for live e2e runs.');
+(function() {
+  function requireLivePassword(): string {
+    const value = process.env.LIVE_MOCK_PASSWORD?.trim();
+    if (!value) {
+      throw new Error('LIVE_MOCK_PASSWORD is required for live e2e runs.');
+    }
+    return value;
   }
-  return value;
-}
-
+})();
 export const dbUrls = {
   accounts: process.env.LIVE_DB_ACCOUNTS_URL ?? '',
   users: process.env.LIVE_DB_USERS_URL ?? '',
@@ -49,7 +50,6 @@ export async function registerFreshUser(page: Page): Promise<RegisteredUser> {
   await page.getByTestId('register-submit').click();
   await page.waitForURL(/\/dashboard/, { timeout: 120_000 });
 
-  console.log(`[live-journey] registered ${email}`);
   return { email, password, company };
 }
 

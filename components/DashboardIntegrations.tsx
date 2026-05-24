@@ -120,8 +120,6 @@ const initialVisibility = databaseConnections.reduce(
 const initialStatus = databaseConnections.reduce(
   (values, item) => ({ ...values, [item.key]: 'idle' }),
   {} as Record<ConnectionKey, ConnectionStatus>
-);
-
 const initialEditMode = databaseConnections.reduce(
   (values, item) => ({ ...values, [item.key]: false }),
   {} as Record<ConnectionKey, boolean>
@@ -346,8 +344,7 @@ export default function DashboardIntegrations({
     setupInFlightRef.current.delete(key);
     setSetupPhases((prev) => ({ ...prev, [key]: null }));
     if (outcome !== undefined) {
-      setSetupOutcomes((prev) => ({ ...prev, [key]: outcome }));
-    }
+    setSetupOutcomes((prev) => ({ ...prev, [key]: outcome }));
   };
 
   const finishAllSetup = () => {
@@ -412,19 +409,16 @@ export default function DashboardIntegrations({
     const migrationInfo = migrationStatusRef.current?.services.find(
       (service) => service.service === key
     );
-    if (
-      connectionStatus === 'connected' &&
-      (persistedOutcome?.outcome === 'failed' || migrationInfo?.latest_status === 'failed')
-    ) {
-      return 'setup_failed';
-    }
-    if (
-      connectionStatus === 'connected' &&
-      (migrationInfo?.pending_count ?? 0) > 0
-    ) {
-      return 'pending_migrations';
-    }
-    return 'invalid';
+    const hasFailed = connectionStatus === 'connected' &&
+      (persistedOutcome?.outcome === 'failed' || migrationInfo?.latest_status === 'failed');
+    const hasPending = connectionStatus === 'connected' &&
+      (migrationInfo?.pending_count ?? 0) > 0;
+    const keyMap: Record<string, RetryCardState> = {
+      connected_failed: 'setup_failed',
+      connected_pending: 'pending_migrations',
+    };
+    const mapKey = hasFailed ? 'connected_failed' : hasPending ? 'connected_pending' : '';
+    return keyMap[mapKey] ?? 'invalid';
   };
 
   const runConnectionSetupFlow = async (
@@ -456,31 +450,27 @@ export default function DashboardIntegrations({
   };
 
   const handleConnect = async (key: ConnectionKey) => {
-    if (!session) {
-      setError('Missing session. Please log in again.');
-      return;
-    }
-
     const nextConnectionString = connections[key].trim();
-    if (!nextConnectionString) {
-      setError('Paste a PostgreSQL connection string before connecting.');
-      return;
+
+    const validations = [
+      { test: () => session, message: 'Missing session. Please log in again.' },
+      { test: () => nextConnectionString, message: 'Paste a PostgreSQL connection string before connecting.' },
+      { test: () => isPostgresConnectionString(nextConnectionString), message: 'Enter a valid postgres:// or postgresql:// connection string.' }
+    ];
+
+    for (const { test, message } of validations) {
+      if (!test()) {
+        setError(message);
+        return;
+      }
     }
 
-    if (!isPostgresConnectionString(nextConnectionString)) {
-      setError('Enter a valid postgres:// or postgresql:// connection string.');
-      return;
-    }
-
-    const wasConnected = statusRef.current[key] === 'connected';
+    const method = statusRef.current[key] === 'connected' ? 'save' : 'create';
     setError(null);
     setSetupOutcomes((prev) => ({ ...prev, [key]: null }));
 
     try {
-      let saved: DatabaseConnectionInfo;
-
-      if (wasConnected) {
-        saved = await databaseConnectionsApi.save(session, key, nextConnectionString);
+      const saved: DatabaseConnectionInfo = await databaseConnectionsApi[method](session, key, nextConnectionString);
         if (isUnchangedSaveResponse(saved)) {
           setConnectionNotices((prev) => ({ ...prev, [key]: unchangedConnectionNotice() }));
           setConnections((prev) => ({ ...prev, [key]: '' }));
@@ -569,13 +559,74 @@ export default function DashboardIntegrations({
     setConnectionNotices((prev) => ({ ...prev, [key]: null }));
 
     try {
-      if (cardState === 'setup_failed' || cardState === 'pending_migrations') {
-        let setupFailureNotice: string | null = null;
-        const outcome = await runConnectionSetupFlow(key, startPhase, async () => {
-          const result = await databaseConnectionsApi.runMigrations(session);
-          const serviceResult = result.services.find((entry) => entry.service === key);
-          if (!serviceResult) {
-            return { outcome: 'failed', failedPhase: 'setting_up' };
+      const handlers: Record<string, () => Promise<void>> = {
+        setup_failed: async () => {
+          let setupFailureNotice: string | null = null;
+          const outcome = await runConnectionSetupFlow(key, startPhase, async () => {
+            const result = await databaseConnectionsApi.runMigrations(session);
+            const serviceResult = result.services.find((entry) => entry.service === key);
+            if (!serviceResult) {
+              return { outcome: 'failed', failedPhase: 'setting_up' };
+            }
+            return serviceResult;
+          });
+          if (outcome.outcome === 'failed') {
+            setupFailureNotice = getSetupFailureNotice(outcome.failedPhase);
+            setConnectionNotices((prev) => ({ ...prev, [key]: setupFailureNotice }));
+          } else {
+            setSetupOutcomes((prev) => ({ ...prev, [key]: outcome.outcome }));
+          }
+        },
+        pending_migrations: async () => {
+          let setupFailureNotice: string | null = null;
+          const outcome = await runConnectionSetupFlow(key, startPhase, async () => {
+            const result = await databaseConnectionsApi.runMigrations(session);
+            const serviceResult = result.services.find((entry) => entry.service === key);
+            if (!serviceResult) {
+              return { outcome: 'failed', failedPhase: 'setting_up' };
+            }
+            return serviceResult;
+          });
+          if (outcome.outcome === 'failed') {
+            setupFailureNotice = getSetupFailureNotice(outcome.failedPhase);
+            setConnectionNotices((prev) => ({ ...prev, [key]: setupFailureNotice }));
+          } else {
+            setSetupOutcomes((prev) => ({ ...prev, [key]: outcome.outcome }));
+          }
+        },
+        migrations_failed: async () => {
+          setConnectionNotices((prev) => ({ ...prev, [key]: getMigrationsFailureNotice() }));
+          const outcome = await runConnectionSetupFlow(key, 'migrate', async () => {
+            const result = await databaseConnectionsApi.runMigrations(session);
+            const serviceResult = result.services.find((entry) => entry.service === key);
+            if (!serviceResult) {
+              return { outcome: 'failed', failedPhase: 'running_migrations' };
+            }
+            return serviceResult;
+          });
+          setSetupOutcomes((prev) => ({ ...prev, [key]: outcome.outcome }));
+        },
+        validation_failed: async () => {
+          setConnectionNotices((prev) => ({ ...prev, [key]: getValidationFailureNotice() }));
+        },
+        completed: async () => {
+          publishGlobalHealthIfIdle();
+        }
+      };
+      const handler = handlers[cardState];
+      if (handler) {
+        await handler();
+      }
+    } catch (err) {
+      finishSetup(key);
+      statusRef.current = { ...statusRef.current, [key]: wasConnected ? 'connected' : 'idle' };
+      setStatus({ ...statusRef.current });
+      publishGlobalHealthIfIdle();
+      setError(err instanceof Error ? err.message : 'Failed to save database connection.');
+    } finally {
+      setRetryingService(null);
+    }
+  };
           }
 
           migrationStatusRef.current = mergeMigrationRunForService(
@@ -619,31 +670,80 @@ export default function DashboardIntegrations({
       let poolFailureNotice: string | null = null;
       let setupFailureNotice: string | null = null;
       const outcome = await runConnectionSetupFlow(key, startPhase, async (advance) => {
-        await advance('connecting');
-        const summary = await databaseConnectionsApi.validate(session);
-        const connection = summary.connections.find((entry) => entry.service === key);
+        const phaseHandlers: Record<string, () => Promise<{ outcome: string; failedPhase: string } | null>> = {
+          connecting: async () => {
+            await advance('connecting');
+            const summary = await databaseConnectionsApi.validate(session);
+            const connection = summary.connections.find((entry) => entry.service === key);
 
-        statusRef.current = mergeConnectionStatusForService(
-          statusRef.current as Record<ConnectionKey, ConnectionUiStatus>,
-          key,
-          connection
-        );
-        setStatus({ ...statusRef.current });
-        setSavedConnectionKeys((prev) => {
-          const next = new Set(prev);
-          if (connection?.status === 'connected' || connection?.status === 'invalid') {
-            next.add(key);
+            statusRef.current = mergeConnectionStatusForService(
+              statusRef.current as Record<ConnectionKey, ConnectionUiStatus>,
+              key,
+              connection
+            );
+            setStatus({ ...statusRef.current });
+            setSavedConnectionKeys((prev) => {
+              const next = new Set(prev);
+              if (connection?.status === 'connected' || connection?.status === 'invalid') {
+                next.add(key);
+              }
+              return next;
+            });
+
+            if (!connection || connection.status === 'invalid') {
+              poolFailureNotice = connection
+                ? connectionSetupNotice(connection)
+                : 'Rails could not open a working database pool for this connection string.';
+              setConnectionNotices((prev) => ({ ...prev, [key]: poolFailureNotice }));
+              return { outcome: 'failed', failedPhase: 'connecting' };
+            }
+            return null;
+          },
+          checking_schema: async () => {
+            await advance('checking_schema');
+            const schemaSummary = await databaseConnectionsApi.validateSchema(session);
+            const hasSchema = schemaSummary.schemas.includes(expectedSchema);
+            if (!hasSchema) {
+              setupFailureNotice =
+                'Schema setup could not finish. Check database permissions and try again.';
+              setConnectionNotices((prev) => ({ ...prev, [key]: setupFailureNotice }));
+              return { outcome: 'failed', failedPhase: 'checking_schema' };
+            }
+            return null;
+          },
+          setting_up: async () => {
+            await advance('setting_up');
+            if (!migrationStatusRef.current) {
+              return { outcome: 'failed', failedPhase: 'setting_up' };
+            }
+            setSetupOutcomes((prev) => ({ ...prev, [key]: null }));
+            const summary = buildConnectionsResponseFromStatuses(
+              statusRef.current as Record<ConnectionKey, ConnectionUiStatus>
+            );
+            publishGlobalHealthIfIdle();
+            if (migrationStatusRef.current) {
+              recomputeOnboarding(summary, migrationStatusRef.current);
+            }
+            return null;
           }
-          return next;
-        });
+        };
 
-        if (!connection || connection.status === 'invalid') {
-          poolFailureNotice = connection
-            ? connectionSetupNotice(connection)
-            : 'Rails could not open a working database pool for this connection string.';
-          setConnectionNotices((prev) => ({ ...prev, [key]: poolFailureNotice }));
-          return { outcome: 'failed', failedPhase: 'connecting' };
+        for (const phase of ['connecting', 'checking_schema', 'setting_up']) {
+          const result = await phaseHandlers[phase]();
+          if (result) {
+            return result;
+          }
         }
+        return null;
+      });
+
+      if (outcome?.outcome === 'failed') {
+        setError(
+          poolFailureNotice ??
+            'Schema setup could not finish. Check database permissions and try again.'
+        );
+      }
+      return;
 
         await advance('setting_up');
         const migrationResult = await databaseConnectionsApi.runMigrations(session);
@@ -731,11 +831,10 @@ export default function DashboardIntegrations({
     setInitialCheckComplete(false);
     setError(null);
 
-    void (async () => {
+    (async () => {
       try {
         const listed = await databaseConnectionsApi.list(session);
         if (!isActive) return;
-
         applyListSnapshot(listed);
         runBackgroundHealthRefresh(listed, () => isActive).catch(() => undefined);
       } catch (err) {
@@ -759,6 +858,21 @@ export default function DashboardIntegrations({
     migrationRunResult?.services.reduce((total, service) => total + service.applied_count, 0) ?? 0;
   const interactionsLocked = computeInteractionsLocked(isRunningMigrations);
 
+  const EncryptedStorageInfo = () => (
+    <div className="mt-6 flex items-start gap-3 border border-emerald-200 bg-emerald-50 p-4 dark:border-emerald-900/50 dark:bg-emerald-950/20">
+      <span className="material-symbols-sharp mt-0.5 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden>
+        security
+      </span>
+      <div>
+        <h3 className="text-sm font-medium text-emerald-900 dark:text-emerald-300">Encrypted Storage</h3>
+        <p className="mt-1 text-xs leading-relaxed text-emerald-700 dark:text-emerald-400/90">
+          Connection strings are encrypted before they are stored and decrypted only when Rails validates or
+          migrates your service databases.
+        </p>
+      </div>
+    </div>
+  );
+
   return (
     <div className="max-w-4xl space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-500">
       <section>
@@ -779,18 +893,7 @@ export default function DashboardIntegrations({
           securely on your own infrastructure. We recommend <strong>Neon</strong> for its seamless serverless
           architecture and branching capabilities.
         </p>
-        <div className="mt-6 flex items-start gap-3 border border-emerald-200 bg-emerald-50 p-4 dark:border-emerald-900/50 dark:bg-emerald-950/20">
-          <span className="material-symbols-sharp mt-0.5 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden>
-            security
-          </span>
-          <div>
-            <h3 className="text-sm font-medium text-emerald-900 dark:text-emerald-300">Encrypted Storage</h3>
-            <p className="mt-1 text-xs leading-relaxed text-emerald-700 dark:text-emerald-400/90">
-              Connection strings are encrypted before they are stored and decrypted only when Rails validates or
-              migrates your service databases.
-            </p>
-          </div>
-        </div>
+        <EncryptedStorageInfo />
       </section>
 
       <div className="space-y-6">
@@ -835,21 +938,25 @@ export default function DashboardIntegrations({
             </div>
           </div>
         ) : null}
-        {migrationRunResult ? (
-          <div
-            className={`border p-4 text-xs ${
-              migrationRunResult.has_failures
-                ? 'border-red-200 bg-red-50 text-red-700 dark:border-red-900/40 dark:bg-red-950/20 dark:text-red-300'
-                : 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/50 dark:bg-emerald-950/20 dark:text-emerald-300'
-            }`}
-          >
-            {migrationRunResult.has_failures
-              ? 'Some migrations failed. Review the affected service connection and try again.'
-              : appliedMigrationCount === 0
-                ? 'All connected service databases are already up to date.'
-                : `${appliedMigrationCount} schema update${appliedMigrationCount === 1 ? '' : 's'} applied successfully.`}
-          </div>
-        ) : null}
+        {migrationRunResult ? (() => {
+          const statusClasses = {
+            failed: 'border-red-200 bg-red-50 text-red-700 dark:border-red-900/40 dark:bg-red-950/20 dark:text-red-300',
+            success: 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/50 dark:bg-emerald-950/20 dark:text-emerald-300'
+          };
+          const messageMap = {
+            failed: 'Some migrations failed. Review the affected service connection and try again.',
+            none: 'All connected service databases are already up to date.',
+            applied: (count) => `${count} schema update${count === 1 ? '' : 's'} applied successfully.`
+          };
+          const key = migrationRunResult.has_failures ? 'failed' : appliedMigrationCount === 0 ? 'none' : 'applied';
+          const message = key === 'applied' ? messageMap.applied(appliedMigrationCount) : messageMap[key];
+          const statusKey = migrationRunResult.has_failures ? 'failed' : 'success';
+          return (
+            <div className={`border p-4 text-xs ${statusClasses[statusKey]}`}>
+              {message}
+            </div>
+          );
+        })() : null}
         {databaseConnections.map((item) => {
           const value = connections[item.key];
           const connectionStatus = status[item.key];
@@ -920,6 +1027,32 @@ export default function DashboardIntegrations({
                   ? 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/50 dark:bg-emerald-950/20 dark:text-emerald-300'
                   : 'border-zinc-200 bg-zinc-50 text-zinc-500 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-400';
 
+          const IntegrationIconStack = ({ accentClassName, icon }) => (
+            <div className="relative flex h-10 w-10 shrink-0 items-center justify-center">
+              <div className="absolute right-0 top-0 flex h-7 w-7 items-center justify-center rounded-full bg-zinc-100 text-zinc-400 dark:bg-zinc-800/70">
+                <span className="material-symbols-sharp !text-[16px] leading-none" aria-hidden>
+                  database
+                </span>
+              </div>
+              <div
+                className={`absolute bottom-0 left-0 z-10 flex h-7 w-7 items-center justify-center rounded-full ring-2 ring-white dark:ring-[#050505] ${accentClassName}`}
+              >
+                <span className="material-symbols-sharp !text-[16px] leading-none" aria-hidden>
+                  {icon}
+                </span>
+              </div>
+            </div>
+          );
+
+          const IntegrationDetails = ({ title, description }) => (
+            <div>
+              <h3 className="mb-1 font-semibold text-black dark:text-white">{title}</h3>
+              <p className="max-w-sm text-xs leading-relaxed text-zinc-600 dark:text-zinc-400">
+                {description}
+              </p>
+            </div>
+          );
+
           const previousTone = previousMigrationToneRef.current[item.key];
           if (previousTone !== effectiveMigrationTone) {
             previousMigrationToneRef.current[item.key] = effectiveMigrationTone;
@@ -951,26 +1084,9 @@ export default function DashboardIntegrations({
             >
               <div className="mb-4 flex flex-col justify-between gap-4 md:flex-row md:items-center">
                 <div className="flex items-center gap-3">
-                  <div className="relative flex h-10 w-10 shrink-0 items-center justify-center">
-                    <div className="absolute right-0 top-0 flex h-7 w-7 items-center justify-center rounded-full bg-zinc-100 text-zinc-400 dark:bg-zinc-800/70">
-                      <span className="material-symbols-sharp !text-[16px] leading-none" aria-hidden>
-                        database
-                      </span>
-                    </div>
-                    <div
-                      className={`absolute bottom-0 left-0 z-10 flex h-7 w-7 items-center justify-center rounded-full ring-2 ring-white dark:ring-[#050505] ${item.accentClassName}`}
-                    >
-                      <span className="material-symbols-sharp !text-[16px] leading-none" aria-hidden>
-                        {item.icon}
-                      </span>
-                    </div>
-                  </div>
-                  <div>
-                    <h3 className="mb-1 font-semibold text-black dark:text-white">{item.title}</h3>
-                    <p className="max-w-sm text-xs leading-relaxed text-zinc-600 dark:text-zinc-400">
-                      {item.description}
-                    </p>
-                  </div>
+                  <IntegrationIconStack accentClassName={item.accentClassName} icon={item.icon} />
+                  <IntegrationDetails title={item.title} description={item.description} />
+                </div>
                 </div>
                 <span className="self-start rounded-full border border-zinc-200 bg-zinc-100 px-2 py-1 font-mono text-[10px] font-semibold uppercase tracking-wider text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900 md:self-auto">
                   PostgreSQL
@@ -984,7 +1100,7 @@ export default function DashboardIntegrations({
               ) : (
                 <>
                   {isSettingUp ? (
-                    <DatabaseConnectionSetupProgress phase={activeSetupPhase!} title={item.title} />
+                    <DatabaseConnectionSetupProgress phase={activeSetupPhase} title={item.title} />
                   ) : isSetupFailed ? (
                     <div className="flex flex-col gap-3">
                       <DatabaseConnectionSetupProgress
@@ -1035,57 +1151,34 @@ export default function DashboardIntegrations({
                       </div>
                       <div className="flex shrink-0 flex-col gap-2 sm:flex-row">
                         <button
-                          type="button"
-                          onClick={() => handleRetryConnection(item.key)}
-                          disabled={isRetryDisabled}
-                          className="inline-flex items-center justify-center gap-2 border border-red-300 bg-white px-3 py-2 text-xs font-semibold text-red-700 transition-colors hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-red-800 dark:bg-black dark:text-red-200 dark:hover:bg-red-950/50"
-                        >
-                          <span className="material-symbols-sharp !text-[16px] leading-none" aria-hidden>
-                            refresh
-                          </span>
-                          Retry
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleEditConnection(item.key)}
-                          disabled={interactionsLocked}
-                          className="inline-flex items-center justify-center gap-2 border border-red-300 bg-white px-3 py-2 text-xs font-semibold text-red-700 transition-colors hover:bg-red-100 dark:border-red-800 dark:bg-black dark:text-red-200 dark:hover:bg-red-950/50 disabled:cursor-not-allowed disabled:opacity-60"
-                          aria-label={`Edit ${item.title} connection string`}
-                        >
-                          <span className="material-symbols-sharp !text-[16px] leading-none" aria-hidden>
-                            edit
-                          </span>
-                          Edit
-                        </button>
-                      </div>
-                    </div>
+                  ) : isConnectedPool && !isEditing ? (
+                    <ConnectionActions
+                      onRetry={() => handleRetryConnection(item.key)}
+                      isRetryDisabled={isRetryDisabled}
+                      onEdit={() => handleEditConnection(item.key)}
+                      interactionsLocked={interactionsLocked}
+                      title={item.title}
+                    />
                   ) : isEditing ? (
-                    <div>
-                      <div className="flex flex-col gap-3 sm:flex-row">
-                        <div className="relative flex-1">
-                          <input
-                            type={showConnections[item.key] ? 'text' : 'password'}
-                            name={item.key}
-                            value={value}
-                            onChange={(event) => handleChange(item.key, event.target.value)}
-                            placeholder={isConnectedPool ? 'Paste a replacement PostgreSQL connection string' : item.placeholder}
-                            aria-label={`${item.title} connection string`}
-                            className="w-full border border-zinc-200 bg-zinc-50 py-2.5 pl-4 pr-20 font-mono text-sm text-black outline-none transition-colors placeholder:text-zinc-400 focus:border-zinc-400 dark:border-zinc-800 dark:bg-[#0a0a0a] dark:text-white dark:placeholder:text-zinc-600 dark:focus:border-zinc-600"
-                          />
-                          <div className="absolute inset-y-0 right-0 flex items-center gap-2 pr-3">
-                            <button
-                              type="button"
-                              onClick={() => setShowConnections((prev) => ({ ...prev, [item.key]: !prev[item.key] }))}
-                              className="text-zinc-400 transition-colors hover:text-zinc-600 dark:hover:text-zinc-300"
-                              aria-label={showConnections[item.key] ? `Hide ${item.title} connection string` : `Show ${item.title} connection string`}
-                            >
-                              <span className="material-symbols-sharp !text-[18px] leading-none" aria-hidden>
-                                {showConnections[item.key] ? 'visibility_off' : 'visibility'}
-                              </span>
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleCopy(value)}
+                    <ConnectionEditor
+                      value={value}
+                      show={showConnections[item.key]}
+                      onChange={(val) => handleChange(item.key, val)}
+                      placeholder={
+                        isConnectedPool
+                          ? 'Paste a replacement PostgreSQL connection string'
+                          : item.placeholder
+                      }
+                      title={item.title}
+                      onToggleShow={() =>
+                        setShowConnections((prev) => ({
+                          ...prev,
+                          [item.key]: !prev[item.key],
+                        }))
+                      }
+                      onCopy={() => handleCopy(value)}
+                    />
+                  ) : null
                               disabled={!value}
                               className="text-zinc-400 transition-colors hover:text-zinc-600 disabled:opacity-50 dark:hover:text-zinc-300"
                               aria-label={`Copy ${item.title} connection string`}

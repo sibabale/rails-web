@@ -132,14 +132,15 @@ const ApiKeyManager: React.FC<ApiKeyManagerProps> = ({
   }, [canCallApi, fetchKeys]); // ✅ Refetch when environment changes
 
   const handleCreate = async () => {
-    if (!canCreate) {
-      setError(blockedReason);
-      return;
-    }
-
-    if (!canCallApi) {
-      setError('Missing session token or environment id.');
-      return;
+    const preconditions: { condition: boolean; message: string }[] = [
+      { condition: !canCreate, message: blockedReason },
+      { condition: !canCallApi, message: 'Missing session token or environment id.' },
+    ];
+    for (const { condition, message } of preconditions) {
+      if (condition) {
+        setError(message);
+        return;
+      }
     }
 
     setError(null);
@@ -217,28 +218,31 @@ const ApiKeyManager: React.FC<ApiKeyManagerProps> = ({
         try {
           const errorData = await response.json();
           errorMessage = errorData.message || errorData.error || errorMessage;
-        } catch {
-          // Log the actual error for debugging
-          const text = await response.text();
-          console.error('API key revocation error (not shown to user):', text);
-        }
-        throw new Error(errorMessage);
-      }
-
-      // Optimistically mark the key as revoked so the UI shows "Revoked" immediately
-      // (in case the list API omits or delays returning revoked keys)
-      setKeys((prev) =>
-        prev.map((k) =>
-          k.id === apiKeyId ? { ...k, status: 'revoked', revoked_at: new Date().toISOString() } : k
-        )
-      );
-      onActiveKeyChange?.(false);
-      await fetchKeys();
     } catch (e: any) {
       setError(e?.message || 'Failed to revoke API key.');
     } finally {
       setIsRevoking(false);
     }
+  };
+
+  const ApiKeyStatus = ({ status }: { status: string }) => {
+    let colorClass = 'text-zinc-400';
+    let text = 'Not Created';
+    let pulse = false;
+    if (status === 'active') {
+      colorClass = 'text-emerald-500';
+      text = 'Active';
+      pulse = true;
+    } else if (status === 'revoked') {
+      colorClass = 'text-amber-500';
+      text = 'Revoked';
+    }
+    return (
+      <span className={`text-[9px] font-mono uppercase font-bold tracking-tighter flex items-center gap-1 ${colorClass}`}>
+        <span className={`w-1 h-1 rounded-full ${pulse ? 'bg-emerald-500 animate-pulse' : colorClass.replace('text-','bg-')}`}></span>
+        {text}
+      </span>
+    );
   };
 
   return (
@@ -250,22 +254,7 @@ const ApiKeyManager: React.FC<ApiKeyManagerProps> = ({
           <div className="mb-2 flex items-center justify-between">
             <span className="text-[9px] font-mono font-semibold uppercase tracking-widest text-zinc-500">API Token</span>
 
-            {apiKeyStatus === 'active' && apiKeyId ? (
-              <span className="text-[9px] font-mono text-emerald-500 uppercase font-bold tracking-tighter flex items-center gap-1">
-                <span className="w-1 h-1 bg-emerald-500 rounded-full animate-pulse"></span>
-                Active
-              </span>
-            ) : apiKeyStatus === 'revoked' && apiKeyId ? (
-              <span className="text-[9px] font-mono text-amber-500 uppercase font-bold tracking-tighter flex items-center gap-1">
-                <span className="w-1 h-1 bg-amber-500 rounded-full"></span>
-                Revoked
-              </span>
-            ) : (
-              <span className="text-[9px] font-mono text-zinc-400 uppercase font-bold tracking-tighter flex items-center gap-1">
-                <span className="w-1 h-1 bg-zinc-400 rounded-full"></span>
-                Not Created
-              </span>
-            )}
+            <ApiKeyStatus status={apiKeyStatus} />
           </div>
 
           <div

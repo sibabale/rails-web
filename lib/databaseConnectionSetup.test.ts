@@ -43,7 +43,7 @@ describe('databaseConnectionSetup', () => {
   it('maps API statuses to UI statuses', () => {
     expect(connectionUiStatusFromApi({ status: 'connected' })).toBe('connected');
     expect(connectionUiStatusFromApi({ status: 'invalid' })).toBe('invalid');
-    expect(connectionUiStatusFromApi(undefined)).toBe('missing');
+    expect(connectionUiStatusFromApi()).toBe('missing');
   });
 
   it('orders setup phases', () => {

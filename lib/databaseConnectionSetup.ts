@@ -81,16 +81,15 @@ export function listServicesNeedingRepair(
 ): DatabaseConnectionService[] {
   return summary.connections
     .filter((connection) => {
-      if (connection.status === 'invalid') {
-        return true;
-      }
-      if (connection.status !== 'connected' || !migrations) {
-        return false;
-      }
-      const migrationInfo = migrations.services.find((entry) => entry.service === connection.service);
-      return (
-        (migrationInfo?.failed_count ?? 0) > 0 || migrationInfo?.latest_status === 'failed'
-      );
+      const statusChecks: { [key: string]: () => boolean } = {
+        invalid: () => true,
+        connected: () => {
+          if (!migrations) return false;
+          const migrationInfo = migrations.services.find((entry) => entry.service === connection.service);
+          return (migrationInfo?.failed_count ?? 0) > 0 || migrationInfo?.latest_status === 'failed';
+        }
+      };
+      return statusChecks[connection.status]?.() ?? false;
     })
     .map((connection) => connection.service);
 }
@@ -117,7 +116,7 @@ const SETUP_PHASE_MIN_VISIBLE_MS: Record<DatabaseSetupPhase, number> = {
   setting_up: 400,
 };
 
-function waitForPaint(): Promise<void> {
+export function waitForPaint(): Promise<void> {
   if (typeof window === 'undefined' || typeof window.requestAnimationFrame !== 'function') {
     return Promise.resolve();
   }
@@ -232,16 +231,31 @@ export function migrationInfoFromSetup(
     };
   }
 
-  const migrationFailed = setup.migration_status === 'failed';
-  const migrationApplied = setup.migration_status === 'applied' || setup.migration_status === 'skipped';
+  const statusMapping: Record<string, {
+    pending_count: number;
+    failed_count: number;
+    latest_status: string;
+  }> = {
+    failed:  { pending_count: 0, failed_count: 1, latest_status: 'failed' },
+    applied: { pending_count: 0, failed_count: 0, latest_status: 'applied' },
+    skipped: { pending_count: 0, failed_count: 0, latest_status: 'applied' },
+    pending: { pending_count: setup.pending_count, failed_count: 0, latest_status: 'pending' },
+  };
+
+  const { pending_count, failed_count, latest_status } =
+    statusMapping[setup.migration_status] || {
+      pending_count: setup.pending_count,
+      failed_count: 0,
+      latest_status: 'pending',
+    };
 
   return {
     service: saved.service,
     connection_status: 'connected',
-    pending_count: migrationFailed || migrationApplied ? 0 : setup.pending_count,
-    failed_count: migrationFailed ? 1 : 0,
+    pending_count,
+    failed_count,
     latest_version: null,
-    latest_status: migrationFailed ? 'failed' : migrationApplied ? 'applied' : 'pending',
+    latest_status,
     latest_updated_at: null,
   };
 }
@@ -340,14 +354,15 @@ export function resolveMigrationAlertIcon(tone: MigrationAlertTone): string {
 export function isSetupComplete(
   setup: DatabaseConnectionInfo['setup'] | DatabaseConnectionMigrationInfo | null | undefined
 ): boolean {
+  const STATUS_MAP: Record<string, boolean> = {
+    applied: true,
+    skipped: true,
+  };
   if (!setup) return false;
   if ('migration_status' in setup) {
-    return setup.migration_status === 'applied' || setup.migration_status === 'skipped';
+    return !!STATUS_MAP[setup.migration_status];
   }
-  return (
-    setup.failed_count === 0 &&
-    (setup.latest_status === 'applied' || setup.latest_status === 'skipped')
-  );
+  return setup.failed_count === 0 && !!STATUS_MAP[setup.latest_status];
 }
 
 export function isFullyConnected(
@@ -361,22 +376,31 @@ export function isFullyConnected(
 export function setupOutcomeFromSave(
   saved: Pick<DatabaseConnectionInfo, 'status' | 'setup'>
 ): SetupOutcomeState {
-  if (saved.status === 'invalid') {
-    return { outcome: 'failed', failedPhase: 'connecting' };
+  const outcomeMap: Record<string, SetupOutcomeState> = {
+    invalid: { outcome: 'failed', failedPhase: 'connecting' },
+    connected_no_setup: { outcome: 'in_progress' },
+    connected_migration_failed: { outcome: 'failed', failedPhase: 'setting_up' },
+    connected_succeeded: { outcome: 'succeeded' },
+    default: { outcome: 'in_progress' },
+  };
+
+  const { status, setup } = saved;
+
+  if (status !== 'connected') {
+    return outcomeMap[status] || outcomeMap.default;
   }
-  if (saved.status !== 'connected') {
-    return { outcome: 'in_progress' };
+
+  if (!setup) {
+    return outcomeMap.connected_no_setup;
   }
-  if (!saved.setup) {
-    return { outcome: 'in_progress' };
-  }
-  if (saved.setup.migration_status === 'failed') {
-    return { outcome: 'failed', failedPhase: 'setting_up' };
-  }
-  if (isSetupComplete(saved.setup)) {
-    return { outcome: 'succeeded' };
-  }
-  return { outcome: 'in_progress' };
+
+  const key = setup.migration_status === 'failed'
+    ? 'connected_migration_failed'
+    : isSetupComplete(setup)
+      ? 'connected_succeeded'
+      : 'default';
+
+  return outcomeMap[key];
 }
 
 export function areAllServicesSetupComplete(

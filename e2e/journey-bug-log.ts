@@ -57,6 +57,6 @@ export async function expectOrLogAt(
   }
 }
 
-export async function expectOrLog(step: string, assertion: () => Promise<void>): Promise<boolean> {
+export function expectOrLog(step: string, assertion: () => Promise<void>): Promise<boolean> {
   return expectOrLogAt(BYOD_JOURNEY_BUG_LOG, step, assertion);
 }

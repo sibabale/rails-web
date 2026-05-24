@@ -7,7 +7,7 @@ import {
 describe('isDatabaseSetupCompletedFromBackend', () => {
   it('returns false when response is null or undefined', () => {
     expect(isDatabaseSetupCompletedFromBackend(null)).toBe(false);
-    expect(isDatabaseSetupCompletedFromBackend(undefined)).toBe(false);
+    expect(isDatabaseSetupCompletedFromBackend()).toBe(false);
   });
 
   it('returns false when dbs_setup_completed_at is missing or null', () => {

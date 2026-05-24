@@ -88,6 +88,37 @@ test.describe('BYOD registration + connect (live stack)', () => {
 
     await test.step('Connect all four databases with real connection strings', async () => {
       logTimelineStep('connect_all_start');
+
+      const connectionHandlers = {
+        users: async (section, title, key) => {
+          if (USERS_SOFT_FAIL) {
+            const connected = await expectOrLogAt(BYOD_JOURNEY_LIVE_BUG_LOG, `connect-${key}`, async () => {
+              await expect(section.getByText('Connected', { exact: true })).toBeVisible({
+                timeout: USERS_SOFT_FAIL_TIMEOUT_MS,
+              });
+            });
+            if (!connected) {
+              logJourneyBugAt(
+                BYOD_JOURNEY_LIVE_BUG_LOG,
+                `connect-skipped-${key}`,
+                'Users connect failed or timed out — continuing with ledger and audit (RAI-49 platform DB guard / separate BYOD DB required)',
+              );
+            }
+            return connected;
+          }
+          await expect(section.getByText('Connected', { exact: true })).toBeVisible({
+            timeout: CONNECT_TIMEOUT_MS,
+          });
+          return true;
+        },
+        default: async (section, title, key) => {
+          await expect(section.getByText('Connected', { exact: true })).toBeVisible({
+            timeout: CONNECT_TIMEOUT_MS,
+          });
+          return true;
+        }
+      };
+
       for (const { key, title } of DATABASE_CARDS) {
         const url = dbUrls[key];
         const section = card(page, title);
@@ -103,28 +134,8 @@ test.describe('BYOD registration + connect (live stack)', () => {
           });
         });
 
-        const softFailUsers = USERS_SOFT_FAIL && key === 'users';
-        let connected = false;
-
-        if (softFailUsers) {
-          connected = await expectOrLogAt(BYOD_JOURNEY_LIVE_BUG_LOG, `connect-${key}`, async () => {
-            await expect(section.getByText('Connected', { exact: true })).toBeVisible({
-              timeout: USERS_SOFT_FAIL_TIMEOUT_MS,
-            });
-          });
-          if (!connected) {
-            logJourneyBugAt(
-              BYOD_JOURNEY_LIVE_BUG_LOG,
-              `connect-skipped-${key}`,
-              'Users connect failed or timed out — continuing with ledger and audit (RAI-49 platform DB guard / separate BYOD DB required)',
-            );
-          }
-        } else {
-          await expect(section.getByText('Connected', { exact: true })).toBeVisible({
-            timeout: CONNECT_TIMEOUT_MS,
-          });
-          connected = true;
-        }
+        const handler = connectionHandlers[key] ?? connectionHandlers.default;
+        const connected = await handler(section, title, key);
 
         connectResults[key] = connected;
         const durationMs = Date.now() - connectStartedAt;

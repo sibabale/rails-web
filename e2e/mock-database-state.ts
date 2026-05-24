@@ -33,15 +33,15 @@ let migrationRunFailures = new Set<DatabaseConnectionService>();
 let migrationRunApplied = new Set<DatabaseConnectionService>();
 
 export function resetDatabaseMockState() {
-  connections = defaultConnections();
-  storedConnectionStrings = defaultStoredConnectionStrings();
-  migrationsApplied = false;
-  dbsSetupCompletedAt = null;
-  invalidateAccountsOnValidate = false;
-  recoverInvalidServiceOnValidate = null;
-  failMigrationRunForService = null;
-  migrationRunFailures = new Set();
-  migrationRunApplied = new Set();
+  window.connections = defaultConnections();
+  window.storedConnectionStrings = defaultStoredConnectionStrings();
+  window.migrationsApplied = false;
+  window.dbsSetupCompletedAt = null;
+  window.invalidateAccountsOnValidate = false;
+  window.recoverInvalidServiceOnValidate = null;
+  window.failMigrationRunForService = null;
+  window.migrationRunFailures = new Set();
+  window.migrationRunApplied = new Set();
 }
 
 /** Seed returning-user state for login-restore E2E scenarios. */
@@ -60,11 +60,11 @@ export function seedSavedConnectedDatabases(options?: {
 }
 
 export function setInvalidateAccountsOnValidate(value: boolean) {
-  invalidateAccountsOnValidate = value;
+  window.invalidateAccountsOnValidate = value;
 }
 
 export function setFailMigrationRunForService(service: DatabaseConnectionService | null) {
-  failMigrationRunForService = service;
+  window.failMigrationRunForService = service;
 }
 
 /** Flips one invalid service back to connected on the next POST validate (retry E2E). */
@@ -73,18 +73,21 @@ export function setRecoverInvalidServiceOnValidate(service: DatabaseConnectionSe
 }
 
 /** Partial BYOD: one connected, one invalid (saved), two never connected — RAI-48 banner/card sync. */
-export function seedPartialDatabaseConnections(options?: { withMilestone?: boolean }) {
-  connections.accounts = 'connected';
-  connections.users = 'invalid';
-  connections.ledger = 'missing';
-  connections.audit = 'missing';
-  storedConnectionStrings.accounts = `${SEED_CONNECTION_STRING}/accounts`;
-  storedConnectionStrings.users = `${SEED_CONNECTION_STRING}/users`;
-  storedConnectionStrings.ledger = null;
-  storedConnectionStrings.audit = null;
-  migrationsApplied = true;
-  dbsSetupCompletedAt = options?.withMilestone === false ? null : new Date().toISOString();
-}
+;(function() {
+  function seedPartialDatabaseConnections(options?: { withMilestone?: boolean }) {
+    connections.accounts = 'connected';
+    connections.users = 'invalid';
+    connections.ledger = 'missing';
+    connections.audit = 'missing';
+    storedConnectionStrings.accounts = `${SEED_CONNECTION_STRING}/accounts`;
+    storedConnectionStrings.users = `${SEED_CONNECTION_STRING}/users`;
+    storedConnectionStrings.ledger = null;
+    storedConnectionStrings.audit = null;
+    migrationsApplied = true;
+    dbsSetupCompletedAt = options?.withMilestone === false ? null : new Date().toISOString();
+  }
+  window.seedPartialDatabaseConnections = seedPartialDatabaseConnections;
+})();
 
 const isInvalidConnectionString = (value: string) =>
   value.includes('@invalid-host') || value.includes('postgres://invalid');
@@ -118,52 +121,6 @@ const buildConnectionsResponse = () => {
 
 const buildMigrationStatus = () => {
   persistDbsSetupIfReady();
-  const services = REQUIRED_SERVICES.map((service) => {
-    const connectionStatus = connections[service];
-    if (connectionStatus !== 'connected') {
-      return {
-        service,
-        connection_status: connectionStatus,
-        pending_count: 0,
-        failed_count: 0,
-        latest_version: null,
-        latest_status: 'not_connected',
-        latest_updated_at: null,
-      };
-    }
-
-    const pending = migrationsApplied || migrationRunApplied.has(service) ? 0 : 1;
-    const failed = migrationRunFailures.has(service) ? 1 : 0;
-    const applied = migrationsApplied || migrationRunApplied.has(service);
-    return {
-      service,
-      connection_status: 'connected',
-      pending_count: failed > 0 ? 0 : pending,
-      failed_count: failed,
-      latest_version: '20260518193000',
-      latest_status: failed > 0 ? 'failed' : applied ? 'applied' : 'pending',
-      latest_updated_at: applied ? new Date().toISOString() : null,
-    };
-  });
-
-  const hasPending = services.some((service) => service.pending_count > 0 || service.failed_count > 0);
-
-  return {
-    has_pending_updates: hasPending,
-    requires_manual_update: hasPending,
-    services,
-    dbs_setup_completed_at: dbsSetupCompletedAt,
-  };
-};
-
-const parseJsonBody = async (route: Route): Promise<Record<string, unknown>> => {
-  try {
-    return (await route.request().postDataJSON()) as Record<string, unknown>;
-  } catch {
-    return {};
-  }
-};
-
 export async function tryHandleDatabaseConnectionsRoute(
   route: Route,
   fulfillJson: (route: Route, body: unknown, status?: number) => Promise<void>,
@@ -173,23 +130,32 @@ export async function tryHandleDatabaseConnectionsRoute(
   const path = url.pathname;
   const method = req.method();
 
-  if (method === 'GET' && path === '/api/v1/database-connections') {
-    await fulfillJson(route, buildConnectionsResponse());
-    return true;
+  const handlers: Record<string, () => Promise<boolean>> = {
+    'GET /api/v1/database-connections': async () => {
+      await fulfillJson(route, buildConnectionsResponse());
+      return true;
+    },
+    'POST /api/v1/database-connections': async () => {
+      const body = await parseJsonBody(route);
+      const service = body.service as DatabaseConnectionService | undefined;
+      const connectionString = String(body.connection_string ?? '');
+      if (!service || !REQUIRED_SERVICES.includes(service)) {
+        await fulfillJson(route, { message: 'Invalid database service' }, 400);
+        return true;
+      }
+      if (!connectionString.trim()) {
+        await fulfillJson(route, { message: 'Connection string is required' }, 400);
+        return true;
+      }
+    },
+  };
+
+  const key = `${method} ${path}`;
+  if (handlers[key]) {
+    return await handlers[key]();
   }
 
-  if (method === 'POST' && path === '/api/v1/database-connections') {
-    const body = await parseJsonBody(route);
-    const service = body.service as DatabaseConnectionService | undefined;
-    const connectionString = String(body.connection_string ?? '');
-    if (!service || !REQUIRED_SERVICES.includes(service)) {
-      await fulfillJson(route, { message: 'Invalid database service' }, 400);
-      return true;
-    }
-    if (!connectionString.trim()) {
-      await fulfillJson(route, { message: 'Connection string is required' }, 400);
-      return true;
-    }
+  // rest of the original function...
 
     const trimmed = connectionString.trim();
     const stored = storedConnectionStrings[service];

@@ -9,18 +9,23 @@ const headed = process.env.LIVE_HEADED === '1' || process.env.LIVE_HEADED === 't
 const slowMo = Number(process.env.LIVE_SLOW_MO ?? (headed ? 400 : 150));
 
 /** Prefer BYOD_* from .env.local (Neon E2E branch); fall back to service URLs in .env. */
-function applyEnvLine(key: string, value: string): void {
-  if (key === 'BYOD_USERS_DATABASE_URL' || key === 'USERS_DATABASE_URL')
-    process.env.LIVE_DB_USERS_URL = value;
-  if (key === 'BYOD_ACCOUNTS_DATABASE_URL' || key === 'ACCOUNTS_DATABASE_URL')
-    process.env.LIVE_DB_ACCOUNTS_URL = value;
-  if (key === 'BYOD_LEDGER_DATABASE_URL' || key === 'LEDGER_DATABASE_URL')
-    process.env.LIVE_DB_LEDGER_URL = value;
-  if (key === 'BYOD_AUDIT_DATABASE_URL' || key === 'AUDIT_DATABASE_URL')
-    process.env.LIVE_DB_AUDIT_URL = value;
-}
+const envKeyMap: Record<string, string> = {
+  'BYOD_USERS_DATABASE_URL': 'LIVE_DB_USERS_URL',
+  'USERS_DATABASE_URL': 'LIVE_DB_USERS_URL',
+  'BYOD_ACCOUNTS_DATABASE_URL': 'LIVE_DB_ACCOUNTS_URL',
+  'ACCOUNTS_DATABASE_URL': 'LIVE_DB_ACCOUNTS_URL',
+  'BYOD_LEDGER_DATABASE_URL': 'LIVE_DB_LEDGER_URL',
+  'LEDGER_DATABASE_URL': 'LIVE_DB_LEDGER_URL',
+  'BYOD_AUDIT_DATABASE_URL': 'LIVE_DB_AUDIT_URL',
+  'AUDIT_DATABASE_URL': 'LIVE_DB_AUDIT_URL',
+};
 
-function loadEnvFile(filePath: string, fromLocal = false): void {
+const applyEnvLine = (key: string, value: string): void => {
+  const envVar = envKeyMap[key];
+  if (envVar) process.env[envVar] = value;
+};
+
+export function loadEnvFile(filePath: string, fromLocal = false): void {
   if (!fs.existsSync(filePath)) return;
   const text = fs.readFileSync(filePath, 'utf8');
   for (const line of text.split('\n')) {
@@ -37,7 +42,7 @@ function loadEnvFile(filePath: string, fromLocal = false): void {
   }
 }
 
-function loadEnterpriseDatabaseUrls(): void {
+export function loadEnterpriseDatabaseUrls(): void {
   const enterpriseDir = path.resolve(configDir, '../rails-enterprise');
   loadEnvFile(path.join(enterpriseDir, '.env'));
   loadEnvFile(path.join(enterpriseDir, '.env.local'), true);

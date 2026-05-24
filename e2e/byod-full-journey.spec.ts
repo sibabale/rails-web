@@ -35,9 +35,9 @@ const DATABASE_CARDS = [
   { key: 'audit' as const, title: 'Audit Services Database' },
 ];
 
-function connectionStringFor(service: (typeof DATABASE_CARDS)[number]['key']): string {
+const connectionStringFor = (service: (typeof DATABASE_CARDS)[number]['key']): string => {
   return `${DB_CONNECTION_BASE}/${service}`;
-}
+};
 
 function card(page: import('@playwright/test').Page, title: string) {
   return page.locator('section').filter({

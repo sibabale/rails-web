@@ -38,26 +38,20 @@ function isDocsExternalHref(href: string): boolean {
   return /^https?:\/\//i.test(href) || href.startsWith('//');
 }
 
-function dashboardTabFromPathname(pathname: string | null): string {
+export function dashboardTabFromPathname(pathname: string | null): string {
   if (!pathname) return 'Overview';
   const parts = pathname.replace(/\/$/, '').split('/').filter(Boolean);
-  if (parts[0] !== 'dashboard') return 'Overview';
-  if (parts.length < 2) return 'Overview';
+  if (parts[0] !== 'dashboard' || parts.length < 2) return 'Overview';
 
-  switch (parts[1]) {
-    case 'accounts':
-      return 'Accounts';
-    case 'transactions':
-      return 'Transactions';
-    case 'ledger':
-      return 'Ledger';
-    case 'integrations':
-      return 'Integrations';
-    case 'identity':
-      return 'Identity';
-    default:
-      return 'Overview';
-  }
+  const tabMap: Record<string, string> = {
+    accounts: 'Accounts',
+    transactions: 'Transactions',
+    ledger: 'Ledger',
+    integrations: 'Integrations',
+    identity: 'Identity',
+  };
+
+  return tabMap[parts[1]] || 'Overview';
 }
 
 const DATABASE_SERVICE_LABELS: Record<DatabaseConnectionService, string> = {
@@ -580,7 +574,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, session, profile, isLoa
     databaseConnectionsApi
       .list(session)
       .then((health) => databaseConnectionsApi.migrations(session).then((status) => ({ health, status })))
-      .then(async ({ health, status }) => {
+      .then(({ health, status }) => {
         if (cancelled) return;
         setDatabaseHealth(health);
         setDatabaseHealthError(null);
@@ -593,6 +587,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, session, profile, isLoa
           markDatabaseSetupCompleted(currentEnvironmentId);
           setDatabaseSetupCompleted(true);
         }
+        return null;
       })
       .catch((error) => {
         if (!cancelled) {
@@ -605,6 +600,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, session, profile, isLoa
             error instanceof Error ? error.message : 'Unable to check database migrations.'
           );
         }
+        return null;
       });
 
     return () => {
@@ -633,6 +629,8 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, session, profile, isLoa
             created_at: acc.created_at,
             metadata: acc.metadata,
           }));
+          return null;
+        });
           setAccounts(transformed);
           setAccountsPagination(response.pagination);
         })
@@ -771,6 +769,34 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, session, profile, isLoa
   const getHealthIssuesForServices = (services: DatabaseConnectionService[]) =>
     databaseHealthIssues.filter((connection) => services.includes(connection.service));
 
+  const DependencyIssueMessage = ({ issues, copy }: { issues: any; copy: string }) => (
+    <div className="flex min-w-0 items-start gap-3">
+      <span className="material-symbols-sharp mt-0.5 shrink-0 text-red-600 dark:text-red-400 !text-[18px] leading-none" aria-hidden>
+        error
+      </span>
+      <div>
+        <p className="text-xs font-mono font-bold uppercase tracking-widest text-red-700 dark:text-red-300">
+          Database dependency unavailable
+        </p>
+        <p className="mt-1 text-sm text-red-700 dark:text-red-200">
+          {healthIssueCopy(issues)} {copy}
+        </p>
+      </div>
+    </div>
+  );
+
+  const RepairConnectionLink = () => (
+    <Link
+      href="/dashboard/integrations"
+      className="inline-flex shrink-0 items-center justify-center gap-2 border border-red-300 bg-white px-3 py-2 text-[10px] font-mono font-bold uppercase tracking-widest text-red-700 transition-colors hover:bg-red-100 dark:border-red-800 dark:bg-black dark:text-red-200 dark:hover:bg-red-950/50"
+    >
+      Repair connection
+      <span className="material-symbols-sharp !text-[16px] leading-none" aria-hidden>
+        arrow_forward
+      </span>
+    </Link>
+  );
+
   const renderDependencyIssue = (services: DatabaseConnectionService[], copy: string) => {
     const issues = getHealthIssuesForServices(services);
     if (issues.length === 0) return null;
@@ -778,28 +804,8 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, session, profile, isLoa
     return (
       <div className="border border-red-200 bg-red-50/90 p-4 transition-colors dark:border-red-900/40 dark:bg-red-950/20">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex min-w-0 items-start gap-3">
-            <span className="material-symbols-sharp mt-0.5 shrink-0 text-red-600 dark:text-red-400 !text-[18px] leading-none" aria-hidden>
-              error
-            </span>
-            <div>
-              <p className="text-xs font-mono font-bold uppercase tracking-widest text-red-700 dark:text-red-300">
-                Database dependency unavailable
-              </p>
-              <p className="mt-1 text-sm text-red-700 dark:text-red-200">
-                {healthIssueCopy(issues)} {copy}
-              </p>
-            </div>
-          </div>
-          <Link
-            href="/dashboard/integrations"
-            className="inline-flex shrink-0 items-center justify-center gap-2 border border-red-300 bg-white px-3 py-2 text-[10px] font-mono font-bold uppercase tracking-widest text-red-700 transition-colors hover:bg-red-100 dark:border-red-800 dark:bg-black dark:text-red-200 dark:hover:bg-red-950/50"
-          >
-            Repair connection
-            <span className="material-symbols-sharp !text-[16px] leading-none" aria-hidden>
-              arrow_forward
-            </span>
-          </Link>
+          <DependencyIssueMessage issues={issues} copy={copy} />
+          <RepairConnectionLink />
         </div>
       </div>
     );
@@ -1429,31 +1435,45 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, session, profile, isLoa
   );
 
   const renderContent = () => {
-    if (activeTab === 'Identity') {
-      return <IdentityView profile={profile} isLoadingProfile={isLoadingProfile} timeLeft={timeLeft} />;
-    }
+    const contentMap = {
+      Identity: <IdentityView profile={profile} isLoadingProfile={isLoadingProfile} timeLeft={timeLeft} />,  
+      Transactions: selectedTransactionId
+        ? isLoadingTransactionDetails
+          ? (
+            <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <div className="flex items-center gap-4">
+                <button 
+                  onClick={() => setSelectedTransactionId(null)}
+                  className="p-2 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors text-zinc-500 hover:text-zinc-800 dark:hover:text-white"
+                  type="button"
+                  aria-label="Back to transactions"
+                >
+                  <span className="material-symbols-sharp !text-[20px] leading-none" aria-hidden>
+                    arrow_back
+                  </span>
+                </button>
+                <div>
+                  <h2 className="text-xl font-medium tracking-tight text-black dark:text-white">Transaction</h2>
+                  <p className="text-sm text-zinc-600 dark:text-zinc-400">Loading transaction details...</p>
+                </div>
+              </div>
+            </div>
+          )
+          : (
+            <TransactionDetailsView transactionId={selectedTransactionId} />
+          )
+        : (
+          <TransactionsListView
+            transactions={transactions}
+            pagination={transactionsPagination}
+            onPageChange={setTransactionsPage}
+            onSelectTransaction={setSelectedTransactionId}
+          />
+        )
+    };
 
-    switch (activeTab) {
-      case 'Transactions':
-        if (selectedTransactionId) {
-          if (isLoadingTransactionDetails) {
-            return (
-              <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                <div className="flex items-center gap-4">
-                  <button 
-                    onClick={() => setSelectedTransactionId(null)}
-                    className="p-2 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors text-zinc-500 hover:text-zinc-800 dark:hover:text-white"
-                    type="button"
-                    aria-label="Back to transactions"
-                  >
-                    <span className="material-symbols-sharp !text-[20px] leading-none" aria-hidden>
-                      arrow_back
-                    </span>
-                  </button>
-                  <div>
-                    <h2 className="text-xl font-medium tracking-tight text-black dark:text-white">Transaction</h2>
-                    <p className="text-sm text-zinc-600 dark:text-zinc-400">Loading transaction details...</p>
-                  </div>
+    return contentMap[activeTab] || null;
+  };
                 </div>
                 <div className="border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#050505] transition-colors p-12">
                   <div className="space-y-4">
@@ -1948,65 +1968,20 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, session, profile, isLoa
           </header>
 
           {hasDatabaseHealthBanner ? (
-            <div
-              role="alert"
-              className="shrink-0 border-b border-red-200 bg-red-50 px-8 py-3 dark:border-red-900/50 dark:bg-red-950/20"
-            >
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex min-w-0 items-start gap-3">
-                  <span
-                    className="material-symbols-sharp mt-0.5 shrink-0 text-red-600 dark:text-red-400 !text-[18px] leading-none"
-                    aria-hidden
-                  >
-                    report
-                  </span>
-                  <div className="min-w-0">
-                    <p className="text-xs font-mono font-bold uppercase tracking-widest text-red-700 dark:text-red-300">
-                      Database connection issue
-                    </p>
-                    <p className="mt-1 text-sm text-red-700 dark:text-red-200">{databaseHealthBannerCopy}</p>
-                  </div>
-                </div>
-                <Link
-                  href="/dashboard/integrations"
-                  className="inline-flex shrink-0 items-center justify-center gap-2 border border-red-300 bg-white px-3 py-2 text-[10px] font-mono font-bold uppercase tracking-widest text-red-700 transition-colors hover:bg-red-100 dark:border-red-800 dark:bg-black dark:text-red-200 dark:hover:bg-red-950/50"
-                >
-                  Repair connection
-                  <span className="material-symbols-sharp !text-[16px] leading-none" aria-hidden>
-                    arrow_forward
-                  </span>
-                </Link>
-              </div>
-            </div>
+            <DatabaseHealthBanner
+              copy={databaseHealthBannerCopy}
+              linkHref="/dashboard/integrations"
+              linkText="Repair connection"
+            />
           ) : null}
 
           {hasMigrationBanner ? (
-            <div
-              role="alert"
-              className="shrink-0 border-b border-amber-200 bg-amber-50 px-8 py-3 dark:border-amber-900/60 dark:bg-amber-950/20"
-            >
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex min-w-0 items-start gap-3">
-                  <span
-                    className="material-symbols-sharp mt-0.5 shrink-0 text-amber-700 dark:text-amber-300 !text-[18px] leading-none"
-                    aria-hidden
-                  >
-                    database
-                  </span>
-                  <div className="min-w-0">
-                    <p className="text-xs font-mono font-bold uppercase tracking-widest text-amber-950 dark:text-amber-100">
-                      Database updates available
-                    </p>
-                    <p className="mt-1 text-sm text-amber-900 dark:text-amber-200">{migrationBannerCopy}</p>
-                  </div>
-                </div>
-                <Link
-                  href="/dashboard/integrations"
-                  className="inline-flex shrink-0 items-center justify-center gap-2 border border-amber-300 bg-white px-3 py-2 text-[10px] font-mono font-bold uppercase tracking-widest text-amber-950 transition-colors hover:bg-amber-100 dark:border-amber-800 dark:bg-black dark:text-amber-100 dark:hover:bg-amber-950/50"
-                >
-                  Review migrations
-                  <span className="material-symbols-sharp !text-[16px] leading-none" aria-hidden>
-                    arrow_forward
+            <MigrationBanner
+              copy={migrationBannerCopy}
+              linkHref="/dashboard/integrations"
+              linkText="Review migrations"
+            />
+          ) : null}
                   </span>
                 </Link>
               </div>

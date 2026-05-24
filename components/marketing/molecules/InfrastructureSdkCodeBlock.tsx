@@ -169,30 +169,33 @@ function AccountSnippet({ sdk }: { sdk: InfrastructureSdkLanguage }) {
 
 function TransferSnippet({ sdk }: { sdk: InfrastructureSdkLanguage }) {
   const xfer = MARKETING_SAMPLE_TRANSFER;
-  switch (sdk) {
-    case 'TypeScript':
-      return <TypescriptRailsAccountsTransferInfrastructure />;
-    case 'Go':
-      return (
-        <>
-          {kw('import')} (<br />
-          {'  '}{str('"context"')}<br />
-          {'  '}{str(`"${MARKETING_GO_MODULE}"`)}<br />
-          )<br />
-          <br />
-          client := rails.{typ('NewClient')}()<br />
-          result, err := client.Accounts.{typ('Transfer')}(<br />
-          {'    '}context.{typ('Background')}(),<br />
-          {'    '}{str(`"${xfer.fromAccountId}"`)},<br />
-          {'    '}rails.AccountTransferParams{'{'}<br />
-          {'      '}
-          {prop('Amount')}: {str(`"${xfer.amount}"`)},<br />
-          {'      '}
-          {prop('ToAccountID')}: {str(`"${xfer.toAccountId}"`)},<br />
-          {'      '}
-          {prop('Description')}: rails.{typ('String')}({str(`"${xfer.description}"`)}),<br />
-          {'    }'})<br />
-        </>
+  const snippetMap: Record<InfrastructureSdkLanguage, React.ReactNode> = {
+    TypeScript: <TypescriptRailsAccountsTransferInfrastructure />,
+    Go: (
+      <>
+        {kw('import')} (<br />
+        {'  '}{str('"context"')}<br />
+        {'  '}{str(`"${MARKETING_GO_MODULE}"`)}<br />
+        )<br />
+        <br />
+        client := rails.{typ('NewClient')}()<br />
+        result, err := client.Accounts.{typ('Transfer')}(<br />
+        {'    '}context.{typ('Background')}(),<br />
+        {'    '}{str(`"${xfer.fromAccountId}"`)},<br />
+        {'    '}rails.AccountTransferParams{'{'}<br />
+        {'      '}
+        {prop('Amount')}: {str(`"${xfer.amount}"`)},<br />
+        {'      '}
+        {prop('ToAccountID')}: {str(`"${xfer.toAccountId}"`)},<br />
+        {'      '}
+        {prop('Description')}: rails.{typ('String')}({str(`"${xfer.description}"`)}),<br />
+        {'    }'})<br />
+      </>
+    ),
+    // add other SDKs as needed
+  };
+  return snippetMap[sdk] || null;
+}
       );
     case 'Java':
       return (
@@ -260,6 +263,51 @@ function TransferSnippet({ sdk }: { sdk: InfrastructureSdkLanguage }) {
   }
 }
 
+interface SdkHeaderProps {
+  description: string;
+  activeSdk: InfrastructureSdkLanguage;
+  menuOpen: boolean;
+  onToggle: () => void;
+  operation: string;
+}
+
+function SdkHeader({
+  description,
+  activeSdk,
+  menuOpen,
+  onToggle,
+  operation,
+}: SdkHeaderProps) {
+  return (
+    <div
+      className="flex items-center justify-between gap-3 px-4 py-3 border-b structural-border bg-zinc-100 dark:bg-[#0a0a0a] transition-colors"
+    >
+      <div
+        className="text-[10px] font-medium text-zinc-600 dark:text-zinc-400 truncate"
+        title={description}
+      >
+        {description}
+      </div>
+      <div className="relative shrink-0">
+        <button
+          type="button"
+          data-testid={`infrastructure-sdk-toggle-${operation}`}
+          onClick={onToggle}
+          className="font-mono text-[10px] text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white transition-colors flex items-center gap-1 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 px-2 py-1 rounded-sm shadow-sm dark:shadow-none"
+        >
+          {activeSdk}{' '}
+          <span
+            className={`material-symbols-sharp transition-transform ${menuOpen ? 'rotate-180' : ''}`}
+            style={{ fontSize: '0.75rem' }}
+          >
+            expand_more
+          </span>
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export function InfrastructureSdkCodeBlock({ operation }: InfrastructureSdkCodeBlockProps) {
   const [activeSdk, setActiveSdk] = useState<InfrastructureSdkLanguage>('TypeScript');
   const [menuOpen, setMenuOpen] = useState(false);
@@ -270,28 +318,13 @@ export function InfrastructureSdkCodeBlock({ operation }: InfrastructureSdkCodeB
       className="border structural-border bg-white dark:bg-black w-full shadow-lg dark:shadow-xl transition-colors"
       data-testid={`infrastructure-sdk-code-${operation}`}
     >
-      <div className="flex items-center justify-between gap-3 px-4 py-3 border-b structural-border bg-zinc-100 dark:bg-[#0a0a0a] transition-colors">
-        <div
-          className="text-[10px] font-medium text-zinc-600 dark:text-zinc-400 truncate"
-          title={requestDescription}
-        >
-          {requestDescription}
-        </div>
-        <div className="relative shrink-0">
-          <button
-            type="button"
-            data-testid={`infrastructure-sdk-toggle-${operation}`}
-            onClick={() => setMenuOpen((o) => !o)}
-            className="font-mono text-[10px] text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white transition-colors flex items-center gap-1 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 px-2 py-1 rounded-sm shadow-sm dark:shadow-none"
-          >
-            {activeSdk}{' '}
-            <span
-              className={`material-symbols-sharp transition-transform ${menuOpen ? 'rotate-180' : ''}`}
-              style={{ fontSize: '0.75rem' }}
-            >
-              expand_more
-            </span>
-          </button>
+      <SdkHeader
+        description={requestDescription}
+        activeSdk={activeSdk}
+        menuOpen={menuOpen}
+        onToggle={() => setMenuOpen((o) => !o)}
+        operation={operation}
+      />
           {menuOpen && (
             <div className="absolute right-0 top-full mt-1 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 py-1 rounded-sm shadow-xl z-50 min-w-[120px]">
               {SDK_OPTIONS.map((sdk) => (

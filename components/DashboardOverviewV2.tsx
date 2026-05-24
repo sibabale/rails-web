@@ -124,13 +124,23 @@ const DashboardOverviewV2: React.FC<DashboardOverviewV2Props> = ({
           setAreMigrationsCurrent(migrationsCurrent);
           setMigrationSnapshot(migrations);
           setMigrationReadinessError(false);
-        }
-        if (isActive && action === 'mark-complete') {
-          updateStep('dbsConnected', true);
-        } else if (isActive && action === 'hold' && readDatabaseSetupCompleted(environmentId)) {
-          updateStep('dbsConnected', true);
-        } else if (isActive && action === 'mark-incomplete' && !readDatabaseSetupCompleted(environmentId)) {
-          updateStep('dbsConnected', false);
+
+          const actionHandlers: Record<string, () => void> = {
+            'mark-complete': () => updateStep('dbsConnected', true),
+            'hold': () => {
+              if (readDatabaseSetupCompleted(environmentId)) {
+                updateStep('dbsConnected', true);
+              }
+            },
+            'mark-incomplete': () => {
+              if (!readDatabaseSetupCompleted(environmentId)) {
+                updateStep('dbsConnected', false);
+              }
+              return null;
+            },
+          };
+
+          actionHandlers[action]?.();
         }
       })
       .catch(() => {
@@ -208,31 +218,7 @@ const DashboardOverviewV2: React.FC<DashboardOverviewV2Props> = ({
     <div className="space-y-8 w-full" data-testid="dashboard-overview-v2">
       {!state.dismissed && (
         <section className="relative overflow-hidden border border-zinc-200 bg-white p-6 transition-colors dark:border-zinc-800 dark:bg-[#050505] md:p-8">
-          <div className="relative z-10">
-            <div className="mb-4 flex items-center justify-between gap-4">
-              <div className="flex items-center gap-2">
-                <div className="flex h-4 w-4 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-950/40">
-                  {isComplete ? (
-                    <span className="material-symbols-sharp text-emerald-500 !text-[10px] leading-none" aria-hidden>
-                      check
-                    </span>
-                  ) : (
-                    <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
-                  )}
-                </div>
-                <span className="font-mono text-[10px] font-semibold uppercase tracking-widest text-emerald-600 dark:text-emerald-400">
-                  {isComplete ? 'Setup Complete' : 'Setup Required'}
-                </span>
-              </div>
-              {isComplete && (
-                <button
-                  type="button"
-                  onClick={() => updateStep('dismissed', true)}
-                  className="font-mono text-[10px] font-semibold uppercase tracking-widest text-zinc-500 transition-colors hover:text-black dark:hover:text-white"
-                >
-                  Dismiss
-                </button>
-              )}
+          <SetupStatus isComplete={isComplete} onDismiss={() => updateStep('dismissed', true)} />
             </div>
 
             <h2 className="mb-2 text-2xl font-medium tracking-tight text-black dark:text-white">Welcome to Rails</h2>

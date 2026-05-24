@@ -31,7 +31,7 @@ const mockSession = () => ({
   environments: [{ id: 'env-sandbox-1', type: 'sandbox' }],
 });
 
-async function openIntegrationsAsAdmin(page: import('@playwright/test').Page) {
+const openIntegrationsAsAdmin = async (page: import('@playwright/test').Page) => {
   await page.context().addCookies([
     {
       name: 'rails_session_present',
@@ -47,7 +47,7 @@ async function openIntegrationsAsAdmin(page: import('@playwright/test').Page) {
   await expect(page.getByRole('heading', { name: 'Database Connections' })).toBeVisible({
     timeout: 15_000,
   });
-}
+};
 
 test.describe('Database integrations edge cases', () => {
   test('unhappy path: invalid connection shows needs attention and blocks API key', async ({ page }) => {

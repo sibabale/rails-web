@@ -27,7 +27,7 @@ export function startLiveTimeline(): void {
   appendTimeline({ layer: 'e2e', event: 'run_start' });
 }
 
-function appendTimeline(partial: Omit<TimelineEntry, 'ts' | 'elapsed_ms'>) {
+export function appendTimeline(partial: Omit<TimelineEntry, 'ts' | 'elapsed_ms'>) {
   fs.mkdirSync(LOG_DIR, { recursive: true });
   const entry: TimelineEntry = {
     ts: new Date().toISOString(),
@@ -39,7 +39,6 @@ function appendTimeline(partial: Omit<TimelineEntry, 'ts' | 'elapsed_ms'>) {
 
 export function logTimelineStep(event: string, detail?: string): void {
   appendTimeline({ layer: 'e2e', event, detail });
-  console.log(`[live-timeline +${Date.now() - runStartedAt}ms] ${event}${detail ? `: ${detail}` : ''}`);
 }
 
 export function attachApiTimeline(page: Page, apiOrigin: string): void {

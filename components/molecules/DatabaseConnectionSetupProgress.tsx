@@ -25,6 +25,37 @@ export default function DatabaseConnectionSetupProgress({
   const isTerminalFailed = outcome === 'failed' && failedIndex >= 0;
   const isTerminal = isTerminalFailed || outcome === 'succeeded';
 
+  const stateConfig = {
+    failed: {
+      className: 'border-red-300 bg-red-100 text-red-800 dark:border-red-800 dark:bg-red-950/40 dark:text-red-200',
+      ariaHidden: false as const,
+      ariaLabel: 'Failed',
+      testId: 'setup-step-failed',
+      icon: <span className="material-symbols-sharp !text-[14px] leading-none">close</span>,
+    },
+    complete: {
+      className: 'border-emerald-300 bg-emerald-100 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200',
+      ariaHidden: true as const,
+      ariaLabel: undefined,
+      testId: undefined,
+      icon: <span className="material-symbols-sharp !text-[14px] leading-none">check</span>,
+    },
+    active: {
+      className: 'border-zinc-400 bg-white text-zinc-900 dark:border-zinc-600 dark:bg-black dark:text-white',
+      ariaHidden: true as const,
+      ariaLabel: undefined,
+      testId: undefined,
+      icon: <span className="h-2.5 w-2.5 animate-spin rounded-full border-2 border-zinc-300 border-t-zinc-700 dark:border-zinc-700 dark:border-t-zinc-200" />,  
+    },
+    pending: {
+      className: 'border-zinc-200 bg-white text-zinc-400 dark:border-zinc-800 dark:bg-black dark:text-zinc-600',
+      ariaHidden: true as const,
+      ariaLabel: undefined,
+      testId: undefined,
+      icon: null,
+    },
+  } as const;
+
   return (
     <div
       className="border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-[#0a0a0a]"
@@ -41,28 +72,33 @@ export default function DatabaseConnectionSetupProgress({
           const isFailedStep = isTerminalFailed && index === failedIndex;
           const isComplete = isTerminalFailed ? index < failedIndex : index < activeIndex;
           const isActive = !isTerminalFailed && index === activeIndex;
+          let state: keyof typeof stateConfig;
+
+          if (isFailedStep) state = 'failed';
+          else if (isComplete) state = 'complete';
+          else if (isActive) state = 'active';
+          else state = 'pending';
+
+          const { className, ariaHidden, ariaLabel, testId, icon } = stateConfig[state];
+
           return (
             <li key={step.id} className="flex items-start gap-3">
               <span
-                className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border text-[10px] font-bold ${
-                  isFailedStep
-                    ? 'border-red-300 bg-red-100 text-red-800 dark:border-red-800 dark:bg-red-950/40 dark:text-red-200'
-                    : isComplete
-                      ? 'border-emerald-300 bg-emerald-100 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200'
-                      : isActive
-                        ? 'border-zinc-400 bg-white text-zinc-900 dark:border-zinc-600 dark:bg-black dark:text-white'
-                        : 'border-zinc-200 bg-white text-zinc-400 dark:border-zinc-800 dark:bg-black dark:text-zinc-600'
-                }`}
-                aria-hidden={!isFailedStep}
-                aria-label={isFailedStep ? 'Failed' : undefined}
-                data-testid={isFailedStep ? 'setup-step-failed' : undefined}
+                className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border text-[10px] font-bold ${className}`}
+                aria-hidden={ariaHidden}
+                aria-label={ariaLabel}
+                data-testid={testId}
               >
-                {isFailedStep ? (
-                  <span className="material-symbols-sharp !text-[14px] leading-none">close</span>
-                ) : isComplete ? (
-                  <span className="material-symbols-sharp !text-[14px] leading-none">check</span>
-                ) : isActive ? (
-                  <span className="h-2.5 w-2.5 animate-spin rounded-full border-2 border-zinc-300 border-t-zinc-700 dark:border-zinc-700 dark:border-t-zinc-200" />
+                {icon ?? index + 1}
+              </span>
+              <span className="text-sm text-zinc-700 dark:text-zinc-300">{step.label}</span>
+            </li>
+          );
+        })}
+      </ol>
+    </div>
+  );
+}
                 ) : (
                   index + 1
                 )}
