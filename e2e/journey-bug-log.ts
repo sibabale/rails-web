@@ -5,6 +5,11 @@ import { fileURLToPath } from 'node:url';
 const LOG_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), 'artifacts');
 export const BYOD_JOURNEY_BUG_LOG = path.join(LOG_DIR, 'byod-journey-bugs.jsonl');
 export const BYOD_JOURNEY_LIVE_BUG_LOG = path.join(LOG_DIR, 'byod-journey-live-bugs.jsonl');
+/** Registration + login restore live flow only (not full journey / reg-connect). */
+export const BYOD_REGISTRATION_LOGIN_LIVE_BUG_LOG = path.join(
+  LOG_DIR,
+  'byod-registration-login-live-bugs.jsonl',
+);
 
 export type JourneyBugEntry = {
   timestamp: string;
@@ -31,7 +36,11 @@ export function logJourneyBugAt(logPath: string, step: string, message: string, 
     ...(detail ? { detail } : {}),
   };
   fs.appendFileSync(logPath, `${JSON.stringify(entry)}\n`);
-  const tag = logPath.includes('live') ? 'LIVE-JOURNEY-BUG' : 'BYOD-JOURNEY-BUG';
+  const tag = logPath.includes('registration-login-live')
+    ? 'LIVE-REG-LOGIN-BUG'
+    : logPath.includes('live')
+      ? 'LIVE-JOURNEY-BUG'
+      : 'BYOD-JOURNEY-BUG';
   console.warn(`[${tag}] ${step}: ${message}${detail ? ` — ${detail}` : ''}`);
 }
 

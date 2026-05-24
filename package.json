@@ -13,7 +13,9 @@
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:headed": "playwright test --headed",
     "test:e2e:journey": "playwright test e2e/byod-full-journey.spec.ts --workers=1 --headed",
+    "test:e2e:registration-login": "playwright test e2e/byod-full-journey.spec.ts --grep 'registration → connect → login' --workers=1 --headed",
     "test:e2e:journey:live": "./scripts/run-live-journey.sh",
+    "test:e2e:registration-login:live": "./scripts/run-live-registration-login.sh",
     "test:e2e:registration:live": "./scripts/run-live-registration.sh",
     "test:e2e:registration-connect:live": "./scripts/run-live-registration-connect.sh",
     "test:e2e:record": "playwright test e2e/byod-full-journey.spec.ts --workers=1"

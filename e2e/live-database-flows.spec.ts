@@ -44,7 +44,8 @@ test.describe('Live BYOD recordings', () => {
     }
 
     await page.goto(`${siteOrigin}/dashboard`);
-    await page.getByRole('button', { name: /Manage API Key/i }).click();
+    await page.getByRole('link', { name: /Manage API Key/i }).click();
+    await expect(page).toHaveURL(/\/dashboard\/integrations\?tab=api-key/);
     await page.locator('#api-keys').getByRole('button', { name: /^Create$/i }).click();
     await expect(page.getByText(/pk_|API key|plaintext/i)).toBeVisible({ timeout: 30_000 });
   });

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { getClientServerUrl } from '../lib/env';
 import { useAppSelector } from '../state/hooks';
 
@@ -42,9 +42,16 @@ const ApiKeyManager: React.FC<ApiKeyManagerProps> = ({
   const [isCreating, setIsCreating] = useState(false);
   const [isRevoking, setIsRevoking] = useState(false);
   const [isLoadingKeys, setIsLoadingKeys] = useState(false);
+  const [hasLoadedKeys, setHasLoadedKeys] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const [keys, setKeys] = useState<ApiKeyInfo[]>([]);
+  const onActiveKeyChangeRef = useRef(onActiveKeyChange);
+  const hasLoadedKeysRef = useRef(false);
+
+  useEffect(() => {
+    onActiveKeyChangeRef.current = onActiveKeyChange;
+  }, [onActiveKeyChange]);
 
   const [showPlaintextModal, setShowPlaintextModal] = useState(false);
   const [plaintextKey, setPlaintextKey] = useState<string | null>(null);
@@ -71,7 +78,7 @@ const ApiKeyManager: React.FC<ApiKeyManagerProps> = ({
     if (s === 'revoked') return 'revoked';
     return 'active';
   }, [currentKey]);
-  const isLoadingTokenRow = isLoadingKeys && !isRevoking;
+  const isLoadingTokenRow = isLoadingKeys && !hasLoadedKeys && !isRevoking;
 
   const maskedPlaceholder = useMemo(() => {
     if (!apiKeyId) return null;
@@ -81,7 +88,8 @@ const ApiKeyManager: React.FC<ApiKeyManagerProps> = ({
   const fetchKeys = useCallback(async () => {
     if (!canCallApi) return;
     setError(null);
-    setIsLoadingKeys(true);
+    const showRowLoader = !hasLoadedKeysRef.current;
+    if (showRowLoader) setIsLoadingKeys(true);
     try {
       const response = await fetch(`${CLIENT_SERVER_URL.replace(/\/$/, '')}/api/v1/api-keys`, {
         method: 'GET',
@@ -111,7 +119,7 @@ const ApiKeyManager: React.FC<ApiKeyManagerProps> = ({
         (key) =>
           (key.environment_id || '') === (environmentId || '') && (key.status || '').toLowerCase() === 'active'
       );
-      onActiveKeyChange?.(hasActiveKey);
+      onActiveKeyChangeRef.current?.(hasActiveKey);
       // Preserve any revoked keys we have in state that the API might not return
       setKeys((prev) => {
         const revokedOnlyInState = prev.filter(
@@ -122,14 +130,25 @@ const ApiKeyManager: React.FC<ApiKeyManagerProps> = ({
     } catch (e: any) {
       setError(e?.message || 'Failed to load API keys.');
     } finally {
+      hasLoadedKeysRef.current = true;
+      setHasLoadedKeys(true);
       setIsLoadingKeys(false);
     }
-  }, [canCallApi, CLIENT_SERVER_URL, accessToken, environmentId, environment, onActiveKeyChange]);
+  }, [canCallApi, CLIENT_SERVER_URL, accessToken, environmentId, environment]);
 
   useEffect(() => {
-    if (!canCallApi) return;
-    fetchKeys();
-  }, [canCallApi, fetchKeys]); // ✅ Refetch when environment changes
+    if (!canCallApi) {
+      hasLoadedKeysRef.current = false;
+      setHasLoadedKeys(false);
+      setKeys([]);
+      return;
+    }
+    hasLoadedKeysRef.current = false;
+    setHasLoadedKeys(false);
+    void fetchKeys();
+    // Refetch when auth/environment changes; fetchKeys identity is derived from these inputs.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [canCallApi, environmentId, environment, accessToken]);
 
   const handleCreate = async () => {
     if (!canCreate) {
@@ -247,22 +266,22 @@ const ApiKeyManager: React.FC<ApiKeyManagerProps> = ({
 
       <div className="space-y-4">
         <div className="border border-zinc-200 bg-zinc-50 p-4 transition-colors dark:border-zinc-800 dark:bg-[#050505]">
-          <div className="mb-2 flex items-center justify-between">
+          <div className="mb-2 flex flex-wrap items-center gap-2">
             <span className="text-[9px] font-mono font-semibold uppercase tracking-widest text-zinc-500">API Token</span>
 
             {apiKeyStatus === 'active' && apiKeyId ? (
-              <span className="text-[9px] font-mono text-emerald-500 uppercase font-bold tracking-tighter flex items-center gap-1">
-                <span className="w-1 h-1 bg-emerald-500 rounded-full animate-pulse"></span>
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[9px] font-mono font-bold uppercase tracking-tighter text-emerald-700 dark:border-emerald-900/50 dark:bg-emerald-950/30 dark:text-emerald-300">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
                 Active
               </span>
             ) : apiKeyStatus === 'revoked' && apiKeyId ? (
-              <span className="text-[9px] font-mono text-amber-500 uppercase font-bold tracking-tighter flex items-center gap-1">
-                <span className="w-1 h-1 bg-amber-500 rounded-full"></span>
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[9px] font-mono font-bold uppercase tracking-tighter text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-300">
+                <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
                 Revoked
               </span>
             ) : (
-              <span className="text-[9px] font-mono text-zinc-400 uppercase font-bold tracking-tighter flex items-center gap-1">
-                <span className="w-1 h-1 bg-zinc-400 rounded-full"></span>
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-zinc-200 bg-zinc-100 px-2 py-0.5 text-[9px] font-mono font-bold uppercase tracking-tighter text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400">
+                <span className="h-1.5 w-1.5 rounded-full bg-zinc-400" />
                 Not Created
               </span>
             )}

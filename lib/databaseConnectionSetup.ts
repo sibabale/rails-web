@@ -358,6 +358,28 @@ export function isFullyConnected(
   return isSetupComplete(setup);
 }
 
+/**
+ * Green "Connected" summary on integrations cards. After login restore the list
+ * snapshot arrives before per-service migration health; avoid flashing the
+ * replacement form while background refresh is in flight.
+ */
+export function shouldShowConnectedSummaryCard(
+  connectionStatus: string,
+  migrationInfo: DatabaseConnectionMigrationInfo | null | undefined,
+  options: { migrationSnapshotLoaded: boolean }
+): boolean {
+  if (connectionStatus !== 'connected') {
+    return false;
+  }
+  if (isSetupComplete(migrationInfo)) {
+    return true;
+  }
+  if (!options.migrationSnapshotLoaded && migrationInfo == null) {
+    return true;
+  }
+  return false;
+}
+
 export function setupOutcomeFromSave(
   saved: Pick<DatabaseConnectionInfo, 'status' | 'setup'>
 ): SetupOutcomeState {
