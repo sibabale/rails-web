@@ -67,15 +67,15 @@ const DashboardOverviewV2: React.FC<DashboardOverviewV2Props> = ({
   const [migrationSnapshot, setMigrationSnapshot] =
     useState<DatabaseConnectionMigrationStatusResponse | null>(null);
 
+  const environmentId =
+    session?.environments?.find((item: { id: string; type: string }) => item.type === environment)?.id ??
+    session?.environment_id;
+
   const backendMilestoneComplete =
     isDatabaseSetupCompletedFromBackend(migrationSnapshot) ||
     readDatabaseSetupCompleted(environmentId);
 
   const dbsStepVisuallyComplete = backendMilestoneComplete;
-
-  const environmentId =
-    session?.environments?.find((item: { id: string; type: string }) => item.type === environment)?.id ??
-    session?.environment_id;
 
   const handleManageApiKey = () => {
     document.getElementById('api-keys')?.scrollIntoView({ behavior: 'smooth', block: 'start' });

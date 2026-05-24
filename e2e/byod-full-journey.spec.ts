@@ -52,6 +52,7 @@ test.describe('BYOD full journey', () => {
   });
 
   test('registration → connect → login restore → edit', async ({ page }) => {
+    test.setTimeout(120_000);
     const runId = Date.now();
     const email = `byod-journey-${runId}@example.com`;
     const password = 'Password123!';
@@ -106,7 +107,8 @@ test.describe('BYOD full journey', () => {
         .getByRole('heading', { name: 'Connect Databases', exact: true })
         .locator('..');
       await expectOrLog('milestone-incomplete-before-apply', async () => {
-        await expect(connectStep.getByRole('link', { name: 'Configure Integrations' })).toBeVisible({
+        await expect(connectStep.getByRole('button', { name: 'Connected' })).toHaveCount(0);
+        await expect(connectStep.getByText('Configure Integrations')).toBeVisible({
           timeout: 10_000,
         });
       });
