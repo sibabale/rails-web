@@ -720,7 +720,9 @@ export default function DashboardIntegrations({
   };
 
   useEffect(() => {
-    if (!session) return;
+    if (!session) {
+      return undefined;
+    }
     let isActive = true;
 
     setSavedConnectionKeys(new Set());
@@ -729,7 +731,7 @@ export default function DashboardIntegrations({
     setInitialCheckComplete(false);
     setError(null);
 
-    const bootstrap = async () => {
+    void (async () => {
       try {
         const listed = await databaseConnectionsApi.list(session);
         if (!isActive) return;
@@ -741,12 +743,8 @@ export default function DashboardIntegrations({
         finishAllSetup();
         setError(err instanceof Error ? err.message : 'Failed to load database connections.');
         setInitialCheckComplete(true);
-        return;
       }
-      return;
-    };
-
-    bootstrap();
+    })();
 
     return () => {
       isActive = false;
