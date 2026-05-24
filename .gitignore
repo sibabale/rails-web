@@ -19,6 +19,14 @@ out/
 playwright-report/
 test-results/
 blob-report/
+e2e/artifacts/
+recordings-output/
+
+# Local QA captures (manual browser runs)
+public/qa-screenshots/
+
+# TypeScript incremental build cache
+tsconfig.tsbuildinfo
 
 # IDE
 .codex/

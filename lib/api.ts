@@ -237,6 +237,117 @@ export const transactionsApi = {
     apiRequest<Transaction>(`/api/v1/transactions/${id}`, { method: 'GET' }, session),
 };
 
+export type DatabaseConnectionService = 'accounts' | 'users' | 'ledger' | 'audit';
+
+export interface DatabaseConnectionSetupResult {
+  migration_status: string;
+  pending_count: number;
+  applied_count: number;
+  error?: string | null;
+  message?: string | null;
+}
+
+export interface DatabaseConnectionInfo {
+  service: DatabaseConnectionService;
+  status: 'connected' | 'invalid' | 'missing';
+  last_validated_at?: string | null;
+  updated_at?: string | null;
+  setup?: DatabaseConnectionSetupResult | null;
+  unchanged?: boolean;
+}
+
+export interface DatabaseConnectionsResponse {
+  all_connected: boolean;
+  connections: DatabaseConnectionInfo[];
+  dbs_setup_completed_at?: string | null;
+}
+
+export interface DatabaseConnectionMigrationInfo {
+  service: DatabaseConnectionService;
+  connection_status?: 'connected' | 'invalid' | 'missing' | string;
+  pending_count: number;
+  failed_count: number;
+  latest_version?: string | null;
+  latest_status?: 'not_connected' | 'not_checked' | 'pending' | 'running' | 'applied' | 'failed' | string | null;
+  latest_updated_at?: string | null;
+}
+
+export interface DatabaseConnectionMigrationStatusResponse {
+  has_pending_updates: boolean;
+  requires_manual_update: boolean;
+  services: DatabaseConnectionMigrationInfo[];
+  dbs_setup_completed_at?: string | null;
+}
+
+export interface DatabaseConnectionMigrationRunInfo {
+  service: DatabaseConnectionService;
+  status: 'applied' | 'failed' | 'skipped' | string;
+  pending_count: number;
+  applied_count: number;
+  error?: string | null;
+}
+
+export interface DatabaseConnectionMigrationRunResponse {
+  has_failures: boolean;
+  services: DatabaseConnectionMigrationRunInfo[];
+}
+
+export const databaseConnectionsApi = {
+  list: (session: Session | null): Promise<DatabaseConnectionsResponse> =>
+    apiRequest<DatabaseConnectionsResponse>('/api/v1/database-connections', { method: 'GET' }, session),
+
+  save: (
+    session: Session | null,
+    service: DatabaseConnectionService,
+    connectionString: string
+  ): Promise<DatabaseConnectionInfo> =>
+    apiRequest<DatabaseConnectionInfo>(
+      '/api/v1/database-connections',
+      {
+        method: 'POST',
+        body: { service, connection_string: connectionString },
+      },
+      session
+    ),
+
+  validate: (session: Session | null): Promise<DatabaseConnectionsResponse> =>
+    apiRequest<DatabaseConnectionsResponse>(
+      '/api/v1/database-connections/validate',
+      { method: 'POST', body: {} },
+      session
+    ),
+
+  migrations: (session: Session | null): Promise<DatabaseConnectionMigrationStatusResponse> =>
+    apiRequest<DatabaseConnectionMigrationStatusResponse>(
+      '/api/v1/database-connections/migrations',
+      { method: 'GET' },
+      session
+    ),
+
+  runMigrations: (session: Session | null): Promise<DatabaseConnectionMigrationRunResponse> =>
+    apiRequest<DatabaseConnectionMigrationRunResponse>(
+      '/api/v1/database-connections/migrations/run',
+      { method: 'POST', body: {} },
+      session
+  ),
+};
+
+export interface ApiKeyInfo {
+  id: string;
+  business_id: string;
+  environment_id: string | null;
+  status: string;
+  last_used_at: string | null;
+  created_at: string;
+  revoked_at: string | null;
+  created_by_user_id: string | null;
+}
+
+export const apiKeysApi = {
+  list: (session: Session | null): Promise<ApiKeyInfo[]> =>
+    apiRequest<ApiKeyInfo[]>('/api/v1/api-keys', { method: 'GET' }, session),
+};
+
 export interface PaginationMeta {
   page: number;
   per_page: number;

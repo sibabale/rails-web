@@ -1,5 +1,6 @@
 import type { BrowserContext, Route } from '@playwright/test';
 import { MOCK_API_ORIGIN } from './constants';
+import { resetDatabaseMockState, tryHandleDatabaseConnectionsRoute } from './mock-database-state';
 
 const corsHeaders: Record<string, string> = {
   'Access-Control-Allow-Origin': '*',
@@ -88,6 +89,10 @@ export async function handleMockApi(route: Route) {
     return;
   }
 
+  if (await tryHandleDatabaseConnectionsRoute(route, fulfillJson)) {
+    return;
+  }
+
   if (method === 'GET' && /^\/api\/v1\/accounts\/[^/]+\/transactions$/.test(path)) {
     await fulfillJson(route, []);
     return;
@@ -155,15 +160,6 @@ export async function handleMockApi(route: Route) {
     return;
   }
 
-  if (method === 'POST' && path === '/api/v1/api-keys') {
-    await fulfillJson(route, {
-      id: 'api-key-1',
-      key: 'pk_e2e_plaintext_key',
-      status: 'active',
-    });
-    return;
-  }
-
   if (method === 'POST' && path.includes('/api/v1/api-keys/') && path.endsWith('/revoke')) {
     await fulfillJson(route, { message: 'revoked' });
     return;
@@ -182,5 +178,6 @@ export async function handleMockApi(route: Route) {
 }
 
 export async function installApiMocksOnContext(context: BrowserContext) {
+  resetDatabaseMockState();
   await context.route(`${MOCK_API_ORIGIN}/**`, handleMockApi);
 }
