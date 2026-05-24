@@ -159,10 +159,10 @@ export default function DashboardIntegrations({
   const router = useRouter();
   const searchParams = useSearchParams();
   const activeTab = parseIntegrationsTab(searchParams.get('tab'));
-  const { state: onboardingState, updateStep } = useOnboarding();
   const environment = useAppSelector((state) => state.environment.current);
   const currentEnvironmentId =
     session?.environments?.find((item) => item.type === environment)?.id ?? session?.environment_id;
+  const { state: onboardingState, updateStep } = useOnboarding(currentEnvironmentId);
   const [connections, setConnections] = useState(initialConnectionValues);
   const [showConnections, setShowConnections] = useState(initialVisibility);
   const [isEditingConnection, setIsEditingConnection] = useState(initialEditMode);
