@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef, useMemo, memo } from 'react';
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import { useAppDispatch, useAppSelector } from '../state/hooks';
 import { setEnvironment } from '../state/slices/environmentSlice';
 import Pagination from './Pagination';
