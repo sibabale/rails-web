@@ -49,7 +49,10 @@ export LIVE_MOCK_PASSWORD
 export LIVE_HEADED=1
 export LIVE_SLOW_MO="${LIVE_SLOW_MO:-400}"
 
+BUG_LOG="$WEB/e2e/artifacts/byod-registration-login-live-bugs.jsonl"
+
 echo "=== Live registration + login restore (RAI-51/55) ==="
+echo "Bug log:  $BUG_LOG"
 echo "Rebuild users-service if you changed rails-enterprise:"
 echo "  cd $ENTERPRISE/services/users-service && cargo build -p users_service"
 echo ""
@@ -112,3 +115,8 @@ npx playwright test e2e/byod-registration-login.live.spec.ts \
 
 echo ""
 echo "Videos: find $WEB/recordings-output -name 'video.webm'"
+echo "Bugs:   $BUG_LOG"
+if [[ -s "$BUG_LOG" ]]; then
+  echo "--- bug log preview ---"
+  tail -20 "$BUG_LOG"
+fi
