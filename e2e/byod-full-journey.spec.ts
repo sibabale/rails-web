@@ -69,6 +69,14 @@ test.describe('BYOD full journey', () => {
       await page.getByLabel('Password').fill(password);
       await page.getByTestId('register-submit').click();
       await expect(page).toHaveURL(/\/dashboard/, { timeout: 30_000 });
+      await page.evaluate(() => {
+        localStorage.removeItem('rails_onboarding');
+        for (const key of Object.keys(localStorage)) {
+          if (key.startsWith('rails_database_setup_completed')) {
+            localStorage.removeItem(key);
+          }
+        }
+      });
     });
 
     await test.step('Fresh user sees database onboarding required', async () => {

@@ -51,6 +51,7 @@ test.describe('BYOD full journey (live stack)', () => {
 
   test('registration → connect → login restore → edit', async ({ page }) => {
     test.skip(!hasLiveDatabaseUrls(), 'Set LIVE_DB_* URLs in rails-enterprise/.env (see scripts/run-live-journey.sh)');
+    test.setTimeout(600_000);
 
     attachApiTimeline(page, BFF_ORIGIN);
 
@@ -92,19 +93,26 @@ test.describe('BYOD full journey (live stack)', () => {
       }
     });
 
+    await test.step('Overview Step 1 incomplete before apply (RAI-51)', async () => {
+      console.log('[live-journey] Step 3a — Milestone gated until apply');
+      await page.goto(`${siteOrigin}/dashboard`);
+      const connectStep = page
+        .getByRole('heading', { name: 'Connect Databases', exact: true })
+        .locator('..');
+      await expectOrLogAt(BYOD_JOURNEY_LIVE_BUG_LOG, 'milestone-incomplete-before-apply', async () => {
+        await expect(connectStep.getByRole('button', { name: 'Connected' })).toHaveCount(0);
+        await expect(connectStep.getByText('Configure Integrations')).toBeVisible({
+          timeout: 30_000,
+        });
+      });
+      await openIntegrations(page);
+    });
+
     await test.step('Apply database schema updates (real migrations)', async () => {
       console.log('[live-journey] Step 3 — Apply updates (real)');
-      const banner = page.getByText(/database schema updates are ready to apply/i);
-      const bannerVisible = await banner.isVisible().catch(() => false);
-      if (!bannerVisible) {
-        logJourneyBugAt(
-          BYOD_JOURNEY_LIVE_BUG_LOG,
-          'apply-banner-missing',
-          'No pending updates banner after connect — migrations may already be applied',
-        );
-        return;
-      }
-
+      await expect(page.getByText(/database schema updates are ready to apply/i)).toBeVisible({
+        timeout: 120_000,
+      });
       await page.getByRole('button', { name: /Apply updates/i }).click();
       await expectOrLogAt(BYOD_JOURNEY_LIVE_BUG_LOG, 'apply-success', async () => {
         await expect(page.getByText(/applied successfully|already up to date/i)).toBeVisible({
