@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { getClientServerUrl } from '../lib/env';
 import { useAppSelector } from '../state/hooks';
 
@@ -25,10 +25,19 @@ interface ApiKeyManagerProps {
   session?: {
     access_token?: string;
     environment_id?: string;
+    environments?: { id: string; type: string }[];
   };
+  canCreate?: boolean;
+  blockedReason?: string;
+  onActiveKeyChange?: (hasActiveKey: boolean) => void;
 }
 
-const ApiKeyManager: React.FC<ApiKeyManagerProps> = ({ session }) => {
+const ApiKeyManager: React.FC<ApiKeyManagerProps> = ({
+  session,
+  canCreate = true,
+  blockedReason = 'Complete setup before creating an API key.',
+  onActiveKeyChange,
+}) => {
   const environment = useAppSelector((state) => state.environment.current);
   const [isCreating, setIsCreating] = useState(false);
   const [isRevoking, setIsRevoking] = useState(false);
@@ -42,7 +51,8 @@ const ApiKeyManager: React.FC<ApiKeyManagerProps> = ({ session }) => {
   const [copyFeedback, setCopyFeedback] = useState<'idle' | 'copied' | 'failed'>('idle');
 
   const CLIENT_SERVER_URL = getClientServerUrl() || '';
-  const environmentId = session?.environment_id;
+  const environmentId =
+    session?.environments?.find((item) => item.type === environment)?.id ?? session?.environment_id;
   const accessToken = session?.access_token;
 
   const canCallApi = Boolean(accessToken && environmentId && CLIENT_SERVER_URL);
@@ -68,7 +78,7 @@ const ApiKeyManager: React.FC<ApiKeyManagerProps> = ({ session }) => {
     return '********************************';
   }, [apiKeyId]);
 
-  const fetchKeys = async () => {
+  const fetchKeys = useCallback(async () => {
     if (!canCallApi) return;
     setError(null);
     setIsLoadingKeys(true);
@@ -97,6 +107,11 @@ const ApiKeyManager: React.FC<ApiKeyManagerProps> = ({ session }) => {
 
       const data = (await response.json()) as ApiKeyInfo[];
       const fromApi = Array.isArray(data) ? data : [];
+      const hasActiveKey = fromApi.some(
+        (key) =>
+          (key.environment_id || '') === (environmentId || '') && (key.status || '').toLowerCase() === 'active'
+      );
+      onActiveKeyChange?.(hasActiveKey);
       // Preserve any revoked keys we have in state that the API might not return
       setKeys((prev) => {
         const revokedOnlyInState = prev.filter(
@@ -109,15 +124,19 @@ const ApiKeyManager: React.FC<ApiKeyManagerProps> = ({ session }) => {
     } finally {
       setIsLoadingKeys(false);
     }
-  };
+  }, [canCallApi, CLIENT_SERVER_URL, accessToken, environmentId, environment, onActiveKeyChange]);
 
   useEffect(() => {
     if (!canCallApi) return;
     fetchKeys();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [accessToken, environmentId, environment]); // ✅ Refetch when environment changes
+  }, [canCallApi, fetchKeys]); // ✅ Refetch when environment changes
 
   const handleCreate = async () => {
+    if (!canCreate) {
+      setError(blockedReason);
+      return;
+    }
+
     if (!canCallApi) {
       setError('Missing session token or environment id.');
       return;
@@ -157,6 +176,7 @@ const ApiKeyManager: React.FC<ApiKeyManagerProps> = ({ session }) => {
 
       setPlaintextKey(data.key);
       setShowPlaintextModal(true);
+      onActiveKeyChange?.(true);
 
       await fetchKeys();
     } catch (e: any) {
@@ -212,6 +232,7 @@ const ApiKeyManager: React.FC<ApiKeyManagerProps> = ({ session }) => {
           k.id === apiKeyId ? { ...k, status: 'revoked', revoked_at: new Date().toISOString() } : k
         )
       );
+      onActiveKeyChange?.(false);
       await fetchKeys();
     } catch (e: any) {
       setError(e?.message || 'Failed to revoke API key.');
@@ -221,7 +242,7 @@ const ApiKeyManager: React.FC<ApiKeyManagerProps> = ({ session }) => {
   };
 
   return (
-    <section className="space-y-6 border border-zinc-200 bg-white p-8 transition-colors dark:border-zinc-800 dark:bg-[#050505]">
+    <section id="api-keys" className="space-y-6 border border-zinc-200 bg-white p-8 transition-colors dark:border-zinc-800 dark:bg-[#050505]">
       <h4 className="mb-4 text-[10px] font-mono font-semibold uppercase tracking-widest text-zinc-500">Security Credentials</h4>
 
       <div className="space-y-4">
@@ -285,7 +306,7 @@ const ApiKeyManager: React.FC<ApiKeyManagerProps> = ({ session }) => {
               <button
                 className="h-7 border border-zinc-200 bg-white px-2.5 text-[10px] font-mono font-semibold uppercase tracking-widest text-zinc-600 transition-colors hover:bg-zinc-50 hover:text-black disabled:cursor-not-allowed disabled:opacity-60 dark:border-zinc-800 dark:bg-black dark:text-zinc-300 dark:hover:bg-zinc-900 dark:hover:text-white"
                 onClick={handleCreate}
-                disabled={isCreating || isRevoking}
+                disabled={isCreating || isRevoking || !canCreate}
               >
                 <span className="inline-flex items-center gap-2">
                   {isCreating && (
