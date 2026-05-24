@@ -329,8 +329,17 @@ export const databaseConnectionsApi = {
       '/api/v1/database-connections/migrations/run',
       { method: 'POST', body: {} },
       session
-  ),
+    ),
 };
+
+export async function refreshDatabaseHealth(session: Session): Promise<{
+  summary: DatabaseConnectionsResponse;
+  migrations: DatabaseConnectionMigrationStatusResponse;
+}> {
+  const summary = await databaseConnectionsApi.validate(session);
+  const migrations = await databaseConnectionsApi.migrations(session);
+  return { summary, migrations };
+}
 
 export interface ApiKeyInfo {
   id: string;

@@ -1,7 +1,15 @@
 import { expect, type Page } from '@playwright/test';
 
 export const siteOrigin = process.env.LIVE_SITE_URL ?? 'http://127.0.0.1:3000';
-export const livePassword = process.env.LIVE_MOCK_PASSWORD ?? 'SecurePass123!';
+export const livePassword = process.env.LIVE_MOCK_PASSWORD ?? '';
+
+function requireLivePassword(): string {
+  const value = process.env.LIVE_MOCK_PASSWORD?.trim();
+  if (!value) {
+    throw new Error('LIVE_MOCK_PASSWORD is required for live e2e runs.');
+  }
+  return value;
+}
 
 export const dbUrls = {
   accounts: process.env.LIVE_DB_ACCOUNTS_URL ?? '',
@@ -30,7 +38,7 @@ export type RegisteredUser = {
 /** Registers a fresh business + admin against the real BFF / enterprise stack. */
 export async function registerFreshUser(page: Page): Promise<RegisteredUser> {
   const { email, company } = freshUserIdentity();
-  const password = livePassword;
+  const password = requireLivePassword();
 
   await page.goto(`${siteOrigin}/register`);
   await page.getByLabel('Company Name').fill(company);

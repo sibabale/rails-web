@@ -41,8 +41,10 @@ import {
   type RetryCardState,
   waitForSetupPhaseVisible,
 } from '@/lib/databaseConnectionSetup';
+import { refreshIntegrationStateAfterSave } from '@/lib/postConnectIntegrationRefresh';
 import {
   databaseConnectionsApi,
+  refreshDatabaseHealth,
   type DatabaseConnectionInfo,
   type DatabaseConnectionService,
   type DatabaseConnectionMigrationRunResponse,
@@ -145,12 +147,6 @@ const initialConnectionNotices = databaseConnections.reduce(
 
 const statusFromConnection = (connection: DatabaseConnectionInfo | undefined): ConnectionStatus =>
   connectionUiStatusFromApi(connection);
-
-async function refreshDatabaseHealth(session: NonNullable<DashboardIntegrationsProps['session']>) {
-  const summary = await databaseConnectionsApi.validate(session);
-  const migrations = await databaseConnectionsApi.migrations(session);
-  return { summary, migrations };
-}
 
 export default function DashboardIntegrations({
   session,
@@ -260,6 +256,23 @@ export default function DashboardIntegrations({
     }
   };
 
+  const applySetupOutcomeFromSave = (key: ConnectionKey, saved: DatabaseConnectionInfo) => {
+    if (saved.status === 'invalid') {
+      setSetupOutcomes((prev) => ({ ...prev, [key]: null }));
+      return;
+    }
+    const outcome = setupOutcomeFromSave(saved);
+    if (outcome.outcome === 'succeeded') {
+      setSetupOutcomes((prev) => ({ ...prev, [key]: null }));
+      return;
+    }
+    if (outcome.outcome === 'failed') {
+      setSetupOutcomes((prev) => ({ ...prev, [key]: outcome }));
+      return;
+    }
+    setSetupOutcomes((prev) => ({ ...prev, [key]: null }));
+  };
+
   const applySingleServiceSave = (key: ConnectionKey, saved: DatabaseConnectionInfo) => {
     const nextStatus = statusFromConnection(saved);
     const notice = connectionSetupNotice(saved);
@@ -338,23 +351,6 @@ export default function DashboardIntegrations({
     if (outcome !== undefined) {
       setSetupOutcomes((prev) => ({ ...prev, [key]: outcome }));
     }
-  };
-
-  const applySetupOutcomeFromSave = (key: ConnectionKey, saved: DatabaseConnectionInfo) => {
-    if (saved.status === 'invalid') {
-      setSetupOutcomes((prev) => ({ ...prev, [key]: null }));
-      return;
-    }
-    const outcome = setupOutcomeFromSave(saved);
-    if (outcome.outcome === 'succeeded') {
-      setSetupOutcomes((prev) => ({ ...prev, [key]: null }));
-      return;
-    }
-    if (outcome.outcome === 'failed') {
-      setSetupOutcomes((prev) => ({ ...prev, [key]: outcome }));
-      return;
-    }
-    setSetupOutcomes((prev) => ({ ...prev, [key]: null }));
   };
 
   const finishAllSetup = () => {
@@ -450,8 +446,12 @@ export default function DashboardIntegrations({
 
     try {
       const outcome = await run(advance);
-      finishSetup(key, outcome ?? undefined);
-      return outcome ?? undefined;
+      if (outcome === undefined) {
+        finishSetup(key);
+      } else {
+        finishSetup(key, outcome);
+      }
+      return outcome ?? null;
     } catch (err) {
       finishSetup(key);
       throw err;
@@ -494,13 +494,14 @@ export default function DashboardIntegrations({
         await runConnectionSetupFlow(key, 'validating', async (advance) => {
           await advance('connecting');
           await advance('setting_up');
+          return null;
         });
       } else {
         await runConnectionSetupFlow(key, 'validating', async (advance) => {
           await advance('connecting');
           saved = await databaseConnectionsApi.save(session, key, nextConnectionString);
           await advance('setting_up');
-          return undefined;
+          return null;
         });
       }
 
@@ -513,43 +514,15 @@ export default function DashboardIntegrations({
       }
 
       try {
-        if (shouldRunFullHealthRefreshAfterSave(saved)) {
-          // Trust inline POST setup during connect; GET /migrations probes every
-          // BYOD in parallel and can mark siblings failed under Neon load (RAI-21 live).
-          const { summary, migrations: merged } = buildPostConnectRefreshState(
-            saved,
-            statusRef.current as Record<ConnectionKey, ConnectionUiStatus>,
-            migrationStatusRef.current
-          );
-          migrationStatusRef.current = merged;
-          setMigrationStatus(merged);
-          onMigrationStatusChange?.(merged);
-          onDatabaseHealthChange?.(summary);
-          recomputeOnboarding(summary, merged);
-
-          if (summary.all_connected) {
-            let listed: DatabaseConnectionsResponse | null = null;
-            for (let attempt = 0; attempt < 5; attempt += 1) {
-              listed = await databaseConnectionsApi.list(session);
-              applyListSnapshot(listed);
-              if (isDatabaseSetupCompletedFromBackend(listed) || attempt === 4) {
-                break;
-              }
-              await delay(1500);
-            }
-            if (listed && migrationStatusRef.current) {
-              recomputeOnboarding(listed, migrationStatusRef.current);
-            }
-          }
-        } else if (!isUnchangedSaveResponse(saved)) {
-          const migrations = await databaseConnectionsApi.migrations(session);
-          migrationStatusRef.current = migrations;
-          setMigrationStatus(migrations);
-          onMigrationStatusChange?.(migrations);
-          const summary = buildConnectionsResponseFromStatuses(statusRef.current);
-          onDatabaseHealthChange?.(summary);
-          recomputeOnboarding(summary, migrations);
-        }
+        await refreshIntegrationStateAfterSave(session, saved, {
+          statusRef,
+          migrationStatusRef,
+          setMigrationStatus,
+          onMigrationStatusChange,
+          onDatabaseHealthChange,
+          recomputeOnboarding,
+          applyListSnapshot,
+        });
       } catch {
         // Post-connect milestone refresh is best-effort; card state already reflects the save.
       }
@@ -765,13 +738,15 @@ export default function DashboardIntegrations({
         if (!isActive) return;
 
         applyListSnapshot(listed);
-        void runBackgroundHealthRefresh(listed, () => isActive);
+        runBackgroundHealthRefresh(listed, () => isActive).catch(() => undefined);
       } catch (err) {
         if (!isActive) return;
         finishAllSetup();
         setError(err instanceof Error ? err.message : 'Failed to load database connections.');
         setInitialCheckComplete(true);
+        return;
       }
+      return;
     };
 
     bootstrap();

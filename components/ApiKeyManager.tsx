@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { getClientServerUrl } from '../lib/env';
 import { useAppSelector } from '../state/hooks';
 
@@ -78,7 +78,7 @@ const ApiKeyManager: React.FC<ApiKeyManagerProps> = ({
     return '********************************';
   }, [apiKeyId]);
 
-  const fetchKeys = async () => {
+  const fetchKeys = useCallback(async () => {
     if (!canCallApi) return;
     setError(null);
     setIsLoadingKeys(true);
@@ -124,13 +124,12 @@ const ApiKeyManager: React.FC<ApiKeyManagerProps> = ({
     } finally {
       setIsLoadingKeys(false);
     }
-  };
+  }, [canCallApi, CLIENT_SERVER_URL, accessToken, environmentId, environment, onActiveKeyChange]);
 
   useEffect(() => {
     if (!canCallApi) return;
     fetchKeys();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [accessToken, environmentId, environment]); // ✅ Refetch when environment changes
+  }, [canCallApi, fetchKeys]); // ✅ Refetch when environment changes
 
   const handleCreate = async () => {
     if (!canCreate) {

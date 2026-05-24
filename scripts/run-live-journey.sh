@@ -44,7 +44,11 @@ if [[ -z "${LIVE_DB_ACCOUNTS_URL:-}" || -z "${LIVE_DB_USERS_URL:-}" || -z "${LIV
 fi
 
 export LIVE_SITE_URL="$SITE_URL"
-export LIVE_MOCK_PASSWORD="${LIVE_MOCK_PASSWORD:-SecurePass123!}"
+if [[ -z "${LIVE_MOCK_PASSWORD:-}" ]]; then
+  echo "Set LIVE_MOCK_PASSWORD for live e2e (test-only credential)." >&2
+  exit 1
+fi
+export LIVE_MOCK_PASSWORD
 export LIVE_HEADED=1
 export LIVE_SLOW_MO="${LIVE_SLOW_MO:-400}"
 

@@ -1,7 +1,5 @@
 'use client';
 
-import type { CSSProperties } from 'react';
-
 interface SkeletonBlockProps {
   width?: string;
   height?: string;
@@ -17,7 +15,6 @@ export default function SkeletonBlock({
   rounded = false,
   ariaLabel,
 }: SkeletonBlockProps) {
-  const style: CSSProperties = { width, height };
   return (
     <span
       data-testid="skeleton-block"
@@ -27,7 +24,7 @@ export default function SkeletonBlock({
       className={`inline-block animate-pulse bg-zinc-200 align-middle dark:bg-zinc-800 ${
         rounded ? 'rounded-full' : ''
       } ${className}`}
-      style={style}
+      style={{ width, height }}
     />
   );
 }

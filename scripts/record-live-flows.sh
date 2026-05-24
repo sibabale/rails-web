@@ -39,7 +39,11 @@ wait_http() {
 load_env_urls
 export LIVE_SITE_URL="$SITE_URL"
 export LIVE_MOCK_EMAIL="${LIVE_MOCK_EMAIL:-recordings.mock@rails.local}"
-export LIVE_MOCK_PASSWORD="${LIVE_MOCK_PASSWORD:-SecurePass123!}"
+if [[ -z "${LIVE_MOCK_PASSWORD:-}" ]]; then
+  echo "Set LIVE_MOCK_PASSWORD for live e2e (test-only credential)." >&2
+  exit 1
+fi
+export LIVE_MOCK_PASSWORD
 
 echo "Waiting for gateway at $GATEWAY_URL/health ..."
 wait_http "$GATEWAY_URL/health" "gateway" 180 || {
