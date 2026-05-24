@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { getClientServerUrl } from '../lib/env';
+import { resolveEnvironmentId } from '../lib/environment';
 import { useAppSelector } from '../state/hooks';
 
 type ApiKeyStatus = 'active' | 'revoked' | 'none';
@@ -58,8 +59,7 @@ const ApiKeyManager: React.FC<ApiKeyManagerProps> = ({
   const [copyFeedback, setCopyFeedback] = useState<'idle' | 'copied' | 'failed'>('idle');
 
   const CLIENT_SERVER_URL = getClientServerUrl() || '';
-  const environmentId =
-    session?.environments?.find((item) => item.type === environment)?.id ?? session?.environment_id;
+  const environmentId = resolveEnvironmentId(session, environment);
   const accessToken = session?.access_token;
 
   const canCallApi = Boolean(accessToken && environmentId && CLIENT_SERVER_URL);

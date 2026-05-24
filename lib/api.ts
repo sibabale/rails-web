@@ -5,6 +5,7 @@
 
 import type { Environment } from '../state/slices/environmentSlice';
 import { getClientServerUrl } from './env';
+import { resolveEnvironmentId } from './environment';
 import { getStoreState } from '../state/store';
 
 interface ApiRequestOptions {
@@ -89,20 +90,10 @@ export async function apiRequest<T>(
   requestHeaders['X-Environment'] = currentEnvironment;
 
   // Add environment ID if required (for Users/Accounts services)
-  // Use environment_id from session that matches the current environment type
   if (requiresEnvironment && session) {
-    if (session.environments && session.environments.length > 0) {
-      // Find environment_id that matches the current environment type
-      const matchingEnv = session.environments.find(e => e.type === currentEnvironment);
-      if (matchingEnv) {
-        requestHeaders['X-Environment-Id'] = matchingEnv.id;
-      } else {
-        // Fallback to session.environment_id if no match found
-        requestHeaders['X-Environment-Id'] = session.environment_id;
-      }
-    } else {
-      // Fallback if environments array is not available
-      requestHeaders['X-Environment-Id'] = session.environment_id;
+    const environmentId = resolveEnvironmentId(session, currentEnvironment);
+    if (environmentId) {
+      requestHeaders['X-Environment-Id'] = environmentId;
     }
   }
 
