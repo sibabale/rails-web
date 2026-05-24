@@ -7,10 +7,31 @@ import { useAppDispatch, useAppSelector } from '../state/hooks';
 import { setEnvironment } from '../state/slices/environmentSlice';
 import Pagination from './Pagination';
 import DashboardOverviewV2 from './DashboardOverviewV2';
+import DashboardIntegrations from './DashboardIntegrations';
 import { SiGithub } from '@icons-pack/react-simple-icons';
 import { RailsTrackMark } from '@/components/marketing/atoms/RailsTrackMark';
 import { DashboardMaterialThemeToggle } from './DashboardMaterialThemeToggle';
-import { accountsApi, transactionsApi, ledgerApi, type Account as ApiAccount, type Transaction, type LedgerEntry, type PaginationMeta } from '../lib/api';
+import {
+  isDatabaseSetupCompletedFromBackend,
+  markDatabaseSetupCompleted,
+  readDatabaseSetupCompleted,
+} from '../lib/databaseSetupState';
+import { hasAllMigrationTargets, isMigrationStatusCurrent } from '../lib/databaseReadiness';
+import { listServicesNeedingRepair } from '../lib/databaseConnectionSetup';
+import {
+  accountsApi,
+  databaseConnectionsApi,
+  transactionsApi,
+  ledgerApi,
+  type Account as ApiAccount,
+  type Transaction,
+  type LedgerEntry,
+  type PaginationMeta,
+  type DatabaseConnectionInfo,
+  type DatabaseConnectionService,
+  type DatabaseConnectionMigrationStatusResponse,
+  type DatabaseConnectionsResponse,
+} from '../lib/api';
 import { getMarketingDocsCtaUrl, getWebGithubRepoUrl } from '../lib/env';
 
 function isDocsExternalHref(href: string): boolean {
@@ -30,6 +51,8 @@ function dashboardTabFromPathname(pathname: string | null): string {
       return 'Transactions';
     case 'ledger':
       return 'Ledger';
+    case 'integrations':
+      return 'Integrations';
     case 'identity':
       return 'Identity';
     default:
@@ -37,11 +60,31 @@ function dashboardTabFromPathname(pathname: string | null): string {
   }
 }
 
+const DATABASE_SERVICE_LABELS: Record<DatabaseConnectionService, string> = {
+  accounts: 'Accounts database',
+  users: 'Users database',
+  ledger: 'Ledger database',
+  audit: 'Audit services database',
+};
+
+const TRANSACTION_DEPENDENCIES: DatabaseConnectionService[] = ['accounts', 'ledger', 'audit'];
+const LEDGER_DEPENDENCIES: DatabaseConnectionService[] = ['ledger'];
+const ACCOUNTS_DEPENDENCIES: DatabaseConnectionService[] = ['accounts'];
+
+const healthIssueCopy = (connections: DatabaseConnectionInfo[]): string => {
+  const labels = connections.map((connection) => DATABASE_SERVICE_LABELS[connection.service] ?? connection.service);
+  if (labels.length === 0) return '';
+  if (labels.length === 1) return `${labels[0]} is not healthy.`;
+  if (labels.length === 2) return `${labels[0]} and ${labels[1]} are not healthy.`;
+  return `${labels.slice(0, -1).join(', ')}, and ${labels[labels.length - 1]} are not healthy.`;
+};
+
 const DASHBOARD_SIDEBAR_NAV_ITEMS: { name: string; icon: string; href: string }[] = [
   { name: 'Overview', icon: 'dashboard', href: '/dashboard' },
   { name: 'Accounts', icon: 'account_balance', href: '/dashboard/accounts' },
   { name: 'Transactions', icon: 'swap_horiz', href: '/dashboard/transactions' },
   { name: 'Ledger', icon: 'book', href: '/dashboard/ledger' },
+  { name: 'Integrations', icon: 'account_tree', href: '/dashboard/integrations' },
 ];
 
 /** Accounts-service amounts are in minor units (e.g. cents). */
@@ -428,6 +471,8 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, session, profile, isLoa
   const pathname = usePathname();
   const router = useRouter();
   const prevPathnameRef = useRef<string | null>(null);
+  const currentEnvironmentId =
+    session?.environments?.find((item) => item.type === environment)?.id ?? session?.environment_id;
 
   const activeTab = useMemo(() => dashboardTabFromPathname(pathname), [pathname]);
   const [timeLeft, setTimeLeft] = useState<string>('');
@@ -435,6 +480,11 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, session, profile, isLoa
   const [isLoadingTransactions, setIsLoadingTransactions] = useState(false);
   const [accountsError, setAccountsError] = useState<string | null>(null);
   const [transactionsError, setTransactionsError] = useState<string | null>(null);
+  const [databaseHealth, setDatabaseHealth] = useState<DatabaseConnectionsResponse | null>(null);
+  const [databaseHealthError, setDatabaseHealthError] = useState<string | null>(null);
+  const [databaseSetupCompleted, setDatabaseSetupCompleted] = useState(false);
+  const [migrationStatus, setMigrationStatus] = useState<DatabaseConnectionMigrationStatusResponse | null>(null);
+  const [migrationStatusError, setMigrationStatusError] = useState<string | null>(null);
   
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
   const [selectedTransactionId, setSelectedTransactionId] = useState<string | null>(null);
@@ -505,6 +555,62 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, session, profile, isLoa
       setLedgerPage(1);
     }
   }, [activeTab]);
+
+  useEffect(() => {
+    setDatabaseSetupCompleted(readDatabaseSetupCompleted(currentEnvironmentId));
+  }, [currentEnvironmentId]);
+
+  useEffect(() => {
+    if (!session) {
+      setDatabaseHealth(null);
+      setDatabaseHealthError(null);
+      setMigrationStatus(null);
+      setMigrationStatusError(null);
+      return;
+    }
+
+    if (activeTab === 'Integrations') {
+      return;
+    }
+
+    let cancelled = false;
+    setDatabaseHealthError(null);
+    setMigrationStatusError(null);
+
+    databaseConnectionsApi
+      .list(session)
+      .then((health) => databaseConnectionsApi.migrations(session).then((status) => ({ health, status })))
+      .then(async ({ health, status }) => {
+        if (cancelled) return;
+        setDatabaseHealth(health);
+        setDatabaseHealthError(null);
+        setMigrationStatus(status);
+        setMigrationStatusError(null);
+        const backendCompleted =
+          isDatabaseSetupCompletedFromBackend(health) ||
+          isDatabaseSetupCompletedFromBackend(status);
+        if (backendCompleted) {
+          markDatabaseSetupCompleted(currentEnvironmentId);
+          setDatabaseSetupCompleted(true);
+        }
+      })
+      .catch((error) => {
+        if (!cancelled) {
+          setDatabaseHealth(null);
+          setMigrationStatus(null);
+          setDatabaseHealthError(
+            error instanceof Error ? error.message : 'Unable to validate database connections.'
+          );
+          setMigrationStatusError(
+            error instanceof Error ? error.message : 'Unable to check database migrations.'
+          );
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [session, environment, currentEnvironmentId, activeTab]);
 
   // Fetch accounts when Accounts tab is active or environment changes
   useEffect(() => {
@@ -651,6 +757,53 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, session, profile, isLoa
         });
     }
   }, [activeTab, session, ledgerPage, environment]);
+
+  const databaseHealthIssues = useMemo(() => {
+    if (!databaseHealth) return [];
+    const repairServices = new Set(
+      listServicesNeedingRepair(databaseHealth, migrationStatus)
+    );
+    return databaseHealth.connections.filter((connection) =>
+      repairServices.has(connection.service)
+    );
+  }, [databaseHealth, migrationStatus]);
+
+  const getHealthIssuesForServices = (services: DatabaseConnectionService[]) =>
+    databaseHealthIssues.filter((connection) => services.includes(connection.service));
+
+  const renderDependencyIssue = (services: DatabaseConnectionService[], copy: string) => {
+    const issues = getHealthIssuesForServices(services);
+    if (issues.length === 0) return null;
+
+    return (
+      <div className="border border-red-200 bg-red-50/90 p-4 transition-colors dark:border-red-900/40 dark:bg-red-950/20">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex min-w-0 items-start gap-3">
+            <span className="material-symbols-sharp mt-0.5 shrink-0 text-red-600 dark:text-red-400 !text-[18px] leading-none" aria-hidden>
+              error
+            </span>
+            <div>
+              <p className="text-xs font-mono font-bold uppercase tracking-widest text-red-700 dark:text-red-300">
+                Database dependency unavailable
+              </p>
+              <p className="mt-1 text-sm text-red-700 dark:text-red-200">
+                {healthIssueCopy(issues)} {copy}
+              </p>
+            </div>
+          </div>
+          <Link
+            href="/dashboard/integrations"
+            className="inline-flex shrink-0 items-center justify-center gap-2 border border-red-300 bg-white px-3 py-2 text-[10px] font-mono font-bold uppercase tracking-widest text-red-700 transition-colors hover:bg-red-100 dark:border-red-800 dark:bg-black dark:text-red-200 dark:hover:bg-red-950/50"
+          >
+            Repair connection
+            <span className="material-symbols-sharp !text-[16px] leading-none" aria-hidden>
+              arrow_forward
+            </span>
+          </Link>
+        </div>
+      </div>
+    );
+  };
 
   const fetchAllAccounts = async () => {
     const perPage = 100;
@@ -1153,6 +1306,11 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, session, profile, isLoa
         </div>
       </div>
 
+      {renderDependencyIssue(
+        TRANSACTION_DEPENDENCIES,
+        'Transaction reads and new transaction processing should stay paused until the dependency recovers.'
+      )}
+
       {transactionsListError ? (
         <div className="border border-amber-200 dark:border-amber-900/40 bg-amber-50/90 dark:bg-amber-950/25 p-6 transition-colors">
           <div className="flex items-center gap-3 mb-2">
@@ -1379,6 +1537,28 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, session, profile, isLoa
             </div>
           </div>
         );
+      case 'Integrations':
+        return (
+          <DashboardIntegrations
+            session={session}
+            onDatabaseHealthChange={(health) => {
+              setDatabaseHealth(health);
+              setDatabaseHealthError(null);
+              if (isDatabaseSetupCompletedFromBackend(health)) {
+                markDatabaseSetupCompleted(currentEnvironmentId);
+                setDatabaseSetupCompleted(true);
+              }
+            }}
+            onMigrationStatusChange={(status) => {
+              setMigrationStatus(status);
+              setMigrationStatusError(null);
+              if (isDatabaseSetupCompletedFromBackend(status) || isMigrationStatusCurrent(status)) {
+                markDatabaseSetupCompleted(currentEnvironmentId);
+                setDatabaseSetupCompleted(true);
+              }
+            }}
+          />
+        );
       case 'Accounts':
         const selectedAccount = accounts.find(a => a.id === selectedAccountId);
         if (selectedAccount) return renderAccountDetails(selectedAccount);
@@ -1391,6 +1571,11 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, session, profile, isLoa
                 <p className="text-sm text-zinc-600 dark:text-zinc-400">System ledger accounts. Click row to inspect details.</p>
               </div>
             </div>
+
+            {renderDependencyIssue(
+              ACCOUNTS_DEPENDENCIES,
+              'Account reads and account mutations should stay paused until the dependency recovers.'
+            )}
             
             {accountsError && (
               <div className="border border-red-200 dark:border-red-900/40 bg-red-50/80 dark:bg-red-950/20 p-4 mb-4 transition-colors">
@@ -1495,6 +1680,11 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, session, profile, isLoa
                 <p className="text-sm text-zinc-600 dark:text-zinc-400">View ledger entries and transactions. Ledger entries are created via SDK.</p>
               </div>
             </div>
+
+            {renderDependencyIssue(
+              LEDGER_DEPENDENCIES,
+              'Ledger reads and posting workflows should stay paused until the dependency recovers.'
+            )}
             
             {ledgerError && (
               <div className="border border-red-200 dark:border-red-900/40 bg-red-50/80 dark:bg-red-950/20 p-4 transition-colors">
@@ -1611,6 +1801,21 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, session, profile, isLoa
         return null;
     }
   };
+
+  const pendingMigrationCount =
+    migrationStatus?.services.reduce((total, service) => total + service.pending_count + service.failed_count, 0) ?? 0;
+  const hasDatabaseHealthBanner = databaseSetupCompleted && (databaseHealthIssues.length > 0 || Boolean(databaseHealthError));
+  const databaseHealthBannerCopy = databaseHealthError
+    ? 'Unable to validate database connections. Review integrations before processing traffic.'
+    : `${healthIssueCopy(databaseHealthIssues)} End-to-end money movement is paused until this is repaired.`;
+  const hasMigrationBanner =
+    (hasAllMigrationTargets(migrationStatus) && Boolean(migrationStatus?.has_pending_updates)) ||
+    ((databaseSetupCompleted || Boolean(databaseHealth?.all_connected)) && Boolean(migrationStatusError));
+  const migrationBannerCopy = migrationStatusError
+    ? 'Unable to check database schema updates. Review integrations before generating production traffic.'
+    : pendingMigrationCount === 1
+      ? '1 database schema update is available for an existing connection.'
+      : `${pendingMigrationCount} database schema updates are available for existing connections.`;
 
   return (
     <div
@@ -1741,6 +1946,72 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, session, profile, isLoa
               </Link>
             </div>
           </header>
+
+          {hasDatabaseHealthBanner ? (
+            <div
+              role="alert"
+              className="shrink-0 border-b border-red-200 bg-red-50 px-8 py-3 dark:border-red-900/50 dark:bg-red-950/20"
+            >
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex min-w-0 items-start gap-3">
+                  <span
+                    className="material-symbols-sharp mt-0.5 shrink-0 text-red-600 dark:text-red-400 !text-[18px] leading-none"
+                    aria-hidden
+                  >
+                    report
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-xs font-mono font-bold uppercase tracking-widest text-red-700 dark:text-red-300">
+                      Database connection issue
+                    </p>
+                    <p className="mt-1 text-sm text-red-700 dark:text-red-200">{databaseHealthBannerCopy}</p>
+                  </div>
+                </div>
+                <Link
+                  href="/dashboard/integrations"
+                  className="inline-flex shrink-0 items-center justify-center gap-2 border border-red-300 bg-white px-3 py-2 text-[10px] font-mono font-bold uppercase tracking-widest text-red-700 transition-colors hover:bg-red-100 dark:border-red-800 dark:bg-black dark:text-red-200 dark:hover:bg-red-950/50"
+                >
+                  Repair connection
+                  <span className="material-symbols-sharp !text-[16px] leading-none" aria-hidden>
+                    arrow_forward
+                  </span>
+                </Link>
+              </div>
+            </div>
+          ) : null}
+
+          {hasMigrationBanner ? (
+            <div
+              role="alert"
+              className="shrink-0 border-b border-amber-200 bg-amber-50 px-8 py-3 dark:border-amber-900/60 dark:bg-amber-950/20"
+            >
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex min-w-0 items-start gap-3">
+                  <span
+                    className="material-symbols-sharp mt-0.5 shrink-0 text-amber-700 dark:text-amber-300 !text-[18px] leading-none"
+                    aria-hidden
+                  >
+                    database
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-xs font-mono font-bold uppercase tracking-widest text-amber-950 dark:text-amber-100">
+                      Database updates available
+                    </p>
+                    <p className="mt-1 text-sm text-amber-900 dark:text-amber-200">{migrationBannerCopy}</p>
+                  </div>
+                </div>
+                <Link
+                  href="/dashboard/integrations"
+                  className="inline-flex shrink-0 items-center justify-center gap-2 border border-amber-300 bg-white px-3 py-2 text-[10px] font-mono font-bold uppercase tracking-widest text-amber-950 transition-colors hover:bg-amber-100 dark:border-amber-800 dark:bg-black dark:text-amber-100 dark:hover:bg-amber-950/50"
+                >
+                  Review migrations
+                  <span className="material-symbols-sharp !text-[16px] leading-none" aria-hidden>
+                    arrow_forward
+                  </span>
+                </Link>
+              </div>
+            </div>
+          ) : null}
 
           <div className="flex-1 min-h-0 overflow-y-auto no-scrollbar">
             <div className="p-8 max-w-6xl mx-auto w-full pb-32">{renderContent()}</div>

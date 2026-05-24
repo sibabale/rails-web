@@ -39,7 +39,7 @@ interface RegisterFieldConfig {
 }
 
 interface RegistrationSubmitError extends Error {
-  code?: string;
+  status?: number;
 }
 
 interface RegisterSubmitStatus {
@@ -126,9 +126,9 @@ const getRegistrationEndpoint = () => {
   return `${clientServerUrl.replace(/\/$/, '')}/api/v1/business/register`;
 };
 
-const createRegistrationError = (message: string, code?: string): RegistrationSubmitError => {
+const createRegistrationError = (message: string, status?: number): RegistrationSubmitError => {
   const error = new Error(message) as RegistrationSubmitError;
-  error.code = code;
+  error.status = status;
   return error;
 };
 
@@ -136,8 +136,8 @@ const getRegistrationError = async (response: Response) => {
   const fallbackMessage = 'Registration failed. Please try again.';
   const responseForLogging = response.clone();
   try {
-    const errorData = (await response.json()) as Partial<{ message: string; error: string; code: string }>;
-    return createRegistrationError(errorData.message || errorData.error || fallbackMessage, errorData.code);
+    const errorData = (await response.json()) as Partial<{ message: string; error: string; status: number }>;
+    return createRegistrationError(errorData.message || errorData.error || fallbackMessage, errorData.status);
   } catch {
     console.error('Registration error response (not shown to user):', await responseForLogging.text());
     return createRegistrationError(fallbackMessage);
@@ -173,13 +173,13 @@ const registrationFetchError: RegisterSubmitStatus = {
 
 const isFetchFailure = (error: unknown) => error instanceof TypeError && error.message === 'Failed to fetch';
 
-const getRegistrationErrorCode = (error: Error) => {
-  const code = 'code' in error ? error.code : undefined;
-  return typeof code === 'string' ? code : undefined;
+const getRegistrationErrorStatusCode = (error: Error) => {
+  const status = 'status' in error ? error.status : undefined;
+  return typeof status === 'number' ? status : undefined;
 };
 
 const getRegistrationErrorStatus = (error: Error): RegisterSubmitStatus => ({
-  title: getRegistrationErrorCode(error) === 'conflict' ? 'Email already in use' : null,
+  title: getRegistrationErrorStatusCode(error) === 409 ? 'Email already in use' : null,
   message: error.message || registrationFallbackError.message,
 });
 
