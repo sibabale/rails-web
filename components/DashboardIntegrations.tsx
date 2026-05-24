@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import ApiKeyManager from '@/components/ApiKeyManager';
 import DatabaseConnectionCardSkeleton from '@/components/molecules/DatabaseConnectionCardSkeleton';
@@ -41,6 +41,11 @@ import {
   waitForSetupPhaseVisible,
 } from '@/lib/databaseConnectionSetup';
 import { refreshIntegrationStateAfterSave } from '@/lib/postConnectIntegrationRefresh';
+import { resolveEnvironmentId } from '@/lib/environment';
+import {
+  formatIntegrationsLoadError,
+  formatIntegrationsRefreshWarning,
+} from '@/lib/integrationsDiagnostics';
 import {
   databaseConnectionsApi,
   refreshDatabaseHealth,
@@ -85,7 +90,8 @@ const databaseConnections: DatabaseConnection[] = [
     description: 'Manage and view user accounts, balances, and transactional limits.',
     placeholder: 'postgres://user:password@host:port/accounts',
     icon: 'account_balance',
-    accentClassName: 'bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-300',
+    accentClassName:
+      'bg-blue-50 text-blue-600 dark:border dark:border-blue-800/60 dark:bg-blue-950/70 dark:text-blue-200',
   },
   {
     key: 'users',
@@ -93,7 +99,8 @@ const databaseConnections: DatabaseConnection[] = [
     description: 'Store and manage end-user identities, KYC states, and profile details.',
     placeholder: 'postgres://user:password@host:port/users',
     icon: 'group',
-    accentClassName: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-300',
+    accentClassName:
+      'bg-emerald-50 text-emerald-600 dark:border dark:border-emerald-800/60 dark:bg-emerald-950/70 dark:text-emerald-200',
   },
   {
     key: 'ledger',
@@ -101,7 +108,8 @@ const databaseConnections: DatabaseConnection[] = [
     description: 'Maintains an immutable, double-entry record of all financial transactions.',
     placeholder: 'postgres://user:password@host:port/ledger',
     icon: 'book',
-    accentClassName: 'bg-violet-50 text-violet-600 dark:bg-violet-950/40 dark:text-violet-300',
+    accentClassName:
+      'bg-violet-50 text-violet-600 dark:border dark:border-violet-800/60 dark:bg-violet-950/70 dark:text-violet-200',
   },
   {
     key: 'audit',
@@ -109,7 +117,8 @@ const databaseConnections: DatabaseConnection[] = [
     description: 'Stores compliance logs, API request traces, and system access history.',
     placeholder: 'postgres://user:password@host:port/audit',
     icon: 'verified_user',
-    accentClassName: 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300',
+    accentClassName:
+      'bg-amber-50 text-amber-700 dark:border dark:border-amber-800/60 dark:bg-amber-950/70 dark:text-amber-200',
   },
 ];
 
@@ -159,15 +168,23 @@ export default function DashboardIntegrations({
   const router = useRouter();
   const searchParams = useSearchParams();
   const activeTab = parseIntegrationsTab(searchParams.get('tab'));
-  const { state: onboardingState, updateStep } = useOnboarding();
   const environment = useAppSelector((state) => state.environment.current);
-  const currentEnvironmentId =
-    session?.environments?.find((item) => item.type === environment)?.id ?? session?.environment_id;
+  const currentEnvironmentId = resolveEnvironmentId(session, environment);
+  const isProductionUnavailable = environment === 'production' && !currentEnvironmentId;
+  const integrationsErrorContext = useMemo(
+    () => ({
+      environment,
+      environmentId: currentEnvironmentId,
+    }),
+    [environment, currentEnvironmentId]
+  );
+  const { state: onboardingState, updateStep } = useOnboarding(currentEnvironmentId);
   const [connections, setConnections] = useState(initialConnectionValues);
   const [showConnections, setShowConnections] = useState(initialVisibility);
   const [isEditingConnection, setIsEditingConnection] = useState(initialEditMode);
   const [status, setStatus] = useState(initialStatus);
   const [error, setError] = useState<string | null>(null);
+  const [refreshWarning, setRefreshWarning] = useState<string | null>(null);
   const [retryingService, setRetryingService] = useState<ConnectionKey | null>(null);
   const [savedConnectionKeys, setSavedConnectionKeys] = useState<Set<ConnectionKey>>(() => new Set());
   const [migrationStatus, setMigrationStatus] = useState<DatabaseConnectionMigrationStatusResponse | null>(null);
@@ -180,6 +197,7 @@ export default function DashboardIntegrations({
   const setupInFlightRef = useRef<Set<ConnectionKey>>(new Set());
   const statusRef = useRef(initialStatus);
   const migrationStatusRef = useRef<DatabaseConnectionMigrationStatusResponse | null>(null);
+  const fetchGenerationRef = useRef(0);
 
   // Transient success-footer lifecycle per service.
   // - 'gone'     : not rendered (default; returning users with already-applied
@@ -384,23 +402,30 @@ export default function DashboardIntegrations({
     listed: DatabaseConnectionsResponse,
     isStillActive?: () => boolean
   ) => {
-    if (!session) return;
+    if (!session || !currentEnvironmentId) return;
 
     const savedKeys = listSavedConnectionServices(listed);
     try {
       if (savedKeys.length === 0) {
         const migrations = await databaseConnectionsApi.migrations(session);
         if (isStillActive && !isStillActive()) return;
+        setRefreshWarning(null);
         applyHealthSnapshot(listed, migrations);
         return;
       }
 
       const { summary, migrations } = await refreshDatabaseHealth(session);
       if (isStillActive && !isStillActive()) return;
+      setRefreshWarning(null);
       applyHealthSnapshot(summary, migrations);
     } catch (err) {
       if (isStillActive && !isStillActive()) return;
-      setError(err instanceof Error ? err.message : 'Failed to refresh database connection status.');
+      setRefreshWarning(
+        formatIntegrationsRefreshWarning(err, {
+          ...integrationsErrorContext,
+          operation: savedKeys.length === 0 ? 'migrations' : 'validate',
+        })
+      );
     }
   };
 
@@ -732,41 +757,64 @@ export default function DashboardIntegrations({
     if (!session) {
       return undefined;
     }
-    let isActive = true;
+
+    const generation = fetchGenerationRef.current + 1;
+    fetchGenerationRef.current = generation;
+    const isCurrent = () => fetchGenerationRef.current === generation;
 
     setSavedConnectionKeys(new Set());
     setSetupPhases(initialSetupPhases);
     setSetupOutcomes(initialSetupOutcomes);
     setInitialCheckComplete(false);
     setError(null);
+    setRefreshWarning(null);
+    statusRef.current = initialStatus;
+    setStatus(initialStatus);
+    setMigrationStatus(null);
+    migrationStatusRef.current = null;
+    setMigrationRunResult(null);
+
+    if (!currentEnvironmentId) {
+      finishAllSetup();
+      setInitialCheckComplete(true);
+      return () => {
+        fetchGenerationRef.current += 1;
+      };
+    }
 
     void (async () => {
       try {
         const listed = await databaseConnectionsApi.list(session);
-        if (!isActive) return;
+        if (!isCurrent()) return;
 
         applyListSnapshot(listed);
-        runBackgroundHealthRefresh(listed, () => isActive).catch(() => undefined);
+        void runBackgroundHealthRefresh(listed, isCurrent);
       } catch (err) {
-        if (!isActive) return;
+        if (!isCurrent()) return;
         finishAllSetup();
-        setError(err instanceof Error ? err.message : 'Failed to load database connections.');
+        setError(
+          formatIntegrationsLoadError(err, {
+            ...integrationsErrorContext,
+            operation: 'list',
+          })
+        );
         setInitialCheckComplete(true);
       }
     })();
 
     return () => {
-      isActive = false;
+      fetchGenerationRef.current += 1;
       finishAllSetup();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session?.access_token, session?.environment_id, environment]);
+  }, [session?.access_token, session?.environments, environment, currentEnvironmentId]);
 
   const pendingMigrationCount =
     migrationStatus?.services.reduce((total, service) => total + service.pending_count + service.failed_count, 0) ?? 0;
   const appliedMigrationCount =
     migrationRunResult?.services.reduce((total, service) => total + service.applied_count, 0) ?? 0;
-  const interactionsLocked = computeInteractionsLocked(isRunningMigrations);
+  const interactionsLocked =
+    isProductionUnavailable || computeInteractionsLocked(isRunningMigrations);
 
   const selectTab = useCallback(
     (tab: IntegrationsTab) => {
@@ -784,6 +832,22 @@ export default function DashboardIntegrations({
     : !isMigrationStatusCurrent(migrationStatus)
       ? 'Apply database updates before creating an API key.'
       : 'Complete setup before creating an API key.';
+  const apiKeyBlockedBanner = !canCreateApiKey
+    ? !onboardingState.dbsConnected
+      ? {
+          title: 'Database setup required',
+          body: 'API key creation is disabled until every required database is connected for this environment. Connect Accounts, Users, Ledger, and Audit on the Databases tab, then return here to issue a key.',
+        }
+      : !isMigrationStatusCurrent(migrationStatus)
+        ? {
+            title: 'Database updates required',
+            body: 'API key creation is disabled while schema updates are pending. Apply the available updates on the Databases tab, then return here to create a key.',
+          }
+        : {
+            title: 'Setup incomplete',
+            body: 'API key creation is disabled until database setup is complete for this environment.',
+          }
+    : null;
 
   const handleActiveKeyChange = useCallback(
     (hasActiveKey: boolean) => updateStep('apiKeyGenerated', hasActiveKey),
@@ -867,11 +931,31 @@ export default function DashboardIntegrations({
       </section>
 
       <div className="space-y-6">
-        {error && (
-          <div className="border border-red-200 bg-red-50 p-4 text-xs text-red-700 dark:border-red-900/40 dark:bg-red-950/20 dark:text-red-300">
+        {isProductionUnavailable ? (
+          <div
+            className="border border-amber-200 bg-amber-50 p-4 text-xs text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-200"
+            data-testid="integrations-production-unavailable"
+          >
+            Production is not provisioned for this business yet. Switch to Sandbox to configure database
+            connections.
+          </div>
+        ) : null}
+        {error ? (
+          <div
+            className="border border-red-200 bg-red-50 p-4 text-xs text-red-700 dark:border-red-900/40 dark:bg-red-950/20 dark:text-red-300"
+            data-testid="integrations-page-error"
+          >
             {error}
           </div>
-        )}
+        ) : null}
+        {refreshWarning ? (
+          <div
+            className="border border-amber-200 bg-amber-50 p-4 text-xs text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-200"
+            data-testid="integrations-refresh-warning"
+          >
+            {refreshWarning}
+          </div>
+        ) : null}
         {hasAllMigrationTargets(migrationStatus) && migrationStatus?.has_pending_updates ? (
           <div className="border border-amber-200 bg-amber-50 p-4 dark:border-amber-900/60 dark:bg-amber-950/20">
             <div className="flex flex-col gap-4">
@@ -1028,7 +1112,7 @@ export default function DashboardIntegrations({
               <div className="mb-4 flex flex-col justify-between gap-4 lg:flex-row lg:items-start lg:gap-6">
                 <div className="flex min-w-0 items-start gap-3">
                   <div className="relative flex h-10 w-10 shrink-0 items-center justify-center">
-                    <div className="absolute right-0 top-0 flex h-7 w-7 items-center justify-center rounded-full bg-zinc-100 text-zinc-400 dark:bg-zinc-800/70">
+                    <div className="absolute right-0 top-0 flex h-7 w-7 items-center justify-center rounded-full border border-zinc-200 bg-zinc-100 text-zinc-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
                       <span className="material-symbols-sharp !text-[16px] leading-none" aria-hidden>
                         database
                       </span>
@@ -1139,7 +1223,7 @@ export default function DashboardIntegrations({
                     </div>
                   ) : isEditing ? (
                     <div>
-                      <div className="flex flex-col gap-3">
+                      <div className="flex flex-col gap-3 lg:flex-row lg:items-stretch lg:gap-3">
                         <div className="relative min-w-0 flex-1">
                           <input
                             type={showConnections[item.key] ? 'text' : 'password'}
@@ -1174,24 +1258,26 @@ export default function DashboardIntegrations({
                             </button>
                           </div>
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => handleConnect(item.key)}
-                          disabled={interactionsLocked || !value.trim() || isConnecting}
-                          className="flex w-full items-center justify-center gap-2 bg-black px-6 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-white dark:text-black dark:hover:bg-zinc-200"
-                        >
-                          {connectLabel}
-                        </button>
-                        {isConnectedPool ? (
+                        <div className="flex w-full flex-col gap-2 lg:w-auto lg:shrink-0">
                           <button
                             type="button"
-                            onClick={() => handleCancelEditConnection(item.key)}
-                            disabled={interactionsLocked || isConnecting}
-                            className="flex w-full items-center justify-center border border-zinc-200 bg-white px-4 py-2.5 text-sm font-semibold text-zinc-600 transition-colors hover:bg-zinc-50 hover:text-black disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-800 dark:bg-black dark:text-zinc-300 dark:hover:bg-zinc-900 dark:hover:text-white"
+                            onClick={() => handleConnect(item.key)}
+                            disabled={interactionsLocked || !value.trim() || isConnecting}
+                            className="inline-flex w-full items-center justify-center gap-2 bg-black px-6 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-50 lg:w-auto lg:min-w-[7.5rem] dark:bg-white dark:text-black dark:hover:bg-zinc-200"
                           >
-                            Cancel
+                            {connectLabel}
                           </button>
-                        ) : null}
+                          {isConnectedPool ? (
+                            <button
+                              type="button"
+                              onClick={() => handleCancelEditConnection(item.key)}
+                              disabled={interactionsLocked || isConnecting}
+                              className="inline-flex w-full items-center justify-center border border-zinc-200 bg-white px-4 py-2.5 text-sm font-semibold text-zinc-600 transition-colors hover:bg-zinc-50 hover:text-black disabled:cursor-not-allowed disabled:opacity-50 lg:w-auto lg:min-w-[7.5rem] dark:border-zinc-800 dark:bg-black dark:text-zinc-300 dark:hover:bg-zinc-900 dark:hover:text-white"
+                            >
+                              Cancel
+                            </button>
+                          ) : null}
+                        </div>
                       </div>
                       {isConnectedPool ? (
                         <p className="mt-2 text-[11px] leading-relaxed text-zinc-500 dark:text-zinc-400">
@@ -1254,7 +1340,39 @@ export default function DashboardIntegrations({
           id="integrations-panel-api-key"
           role="tabpanel"
           aria-labelledby="integrations-tab-api-key"
+          className="space-y-6"
         >
+          {apiKeyBlockedBanner ? (
+            <div
+              role="status"
+              data-testid="api-key-creation-blocked-banner"
+              className="flex flex-col gap-4 border border-amber-200 bg-amber-50 p-4 dark:border-amber-900/50 dark:bg-amber-950/20 sm:flex-row sm:items-center sm:justify-between"
+            >
+              <div className="flex min-w-0 items-start gap-3">
+                <span
+                  className="material-symbols-sharp mt-0.5 shrink-0 text-amber-700 dark:text-amber-300 !text-[18px] leading-none"
+                  aria-hidden
+                >
+                  info
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-mono font-bold uppercase tracking-widest text-amber-950 dark:text-amber-100">
+                    {apiKeyBlockedBanner.title}
+                  </p>
+                  <p className="mt-1 text-sm leading-relaxed text-amber-900 dark:text-amber-200">
+                    {apiKeyBlockedBanner.body}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => selectTab('databases')}
+                className="inline-flex w-full shrink-0 items-center justify-center border border-amber-300 bg-white px-4 py-2 text-xs font-semibold text-amber-950 transition-colors hover:bg-amber-100 dark:border-amber-800 dark:bg-black dark:text-amber-100 dark:hover:bg-amber-950/50 sm:w-auto"
+              >
+                Go to Databases
+              </button>
+            </div>
+          ) : null}
           <ApiKeyManager
             session={session}
             canCreate={canCreateApiKey}

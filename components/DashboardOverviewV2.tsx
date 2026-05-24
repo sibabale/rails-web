@@ -57,15 +57,14 @@ const DashboardOverviewV2: React.FC<DashboardOverviewV2Props> = ({
   overviewCurrency = 'USD',
   session,
 }) => {
-  const { state, updateStep, isComplete } = useOnboarding();
   const environment = useAppSelector((reduxState) => reduxState.environment.current);
-  const [isSendingRequest, setIsSendingRequest] = useState(false);
-  const [migrationSnapshot, setMigrationSnapshot] =
-    useState<DatabaseConnectionMigrationStatusResponse | null>(null);
-
   const environmentId =
     session?.environments?.find((item: { id: string; type: string }) => item.type === environment)?.id ??
     session?.environment_id;
+  const { state, updateStep, isComplete } = useOnboarding(environmentId);
+  const [isSendingRequest, setIsSendingRequest] = useState(false);
+  const [migrationSnapshot, setMigrationSnapshot] =
+    useState<DatabaseConnectionMigrationStatusResponse | null>(null);
 
   const backendMilestoneComplete =
     isDatabaseSetupCompletedFromBackend(migrationSnapshot) ||
