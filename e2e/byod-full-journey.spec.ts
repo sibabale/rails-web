@@ -99,6 +99,20 @@ test.describe('BYOD full journey', () => {
       }
     });
 
+    await test.step('Overview Step 1 still incomplete before migrations apply', async () => {
+      console.log('[BYOD-JOURNEY] Step 3a — Milestone gated until apply');
+      await page.goto('/dashboard');
+      const connectStep = page
+        .getByRole('heading', { name: 'Connect Databases', exact: true })
+        .locator('..');
+      await expectOrLog('milestone-incomplete-before-apply', async () => {
+        await expect(connectStep.getByRole('link', { name: 'Configure Integrations' })).toBeVisible({
+          timeout: 10_000,
+        });
+      });
+      await page.goto('/dashboard/integrations');
+    });
+
     await test.step('Apply database schema updates', async () => {
       console.log('[BYOD-JOURNEY] Step 3 — Apply updates');
       await expectOrLog('apply-banner-visible', async () => {

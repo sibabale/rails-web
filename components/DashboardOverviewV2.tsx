@@ -3,12 +3,12 @@ import Link from 'next/link';
 import { MarketingDocsCtaLink } from '@/components/marketing/atoms/MarketingDocsCtaLink';
 import { useOnboarding } from '@/hooks/useOnboarding';
 import {
+  isDatabaseSetupCompletedFromBackend,
   markDatabaseSetupCompleted,
   readDatabaseSetupCompleted,
   resolveDbsConnectedOnboardingAction,
 } from '@/lib/databaseSetupState';
 import { isMigrationStatusCurrent } from '@/lib/databaseReadiness';
-import { areAllServicesSetupComplete } from '@/lib/databaseConnectionSetup';
 import { apiKeysApi, databaseConnectionsApi, type DatabaseConnectionMigrationStatusResponse } from '@/lib/api';
 import { useAppSelector } from '@/state/hooks';
 import ApiKeyManager from './ApiKeyManager';
@@ -67,8 +67,11 @@ const DashboardOverviewV2: React.FC<DashboardOverviewV2Props> = ({
   const [migrationSnapshot, setMigrationSnapshot] =
     useState<DatabaseConnectionMigrationStatusResponse | null>(null);
 
-  const dbsStepVisuallyComplete =
-    state.dbsConnected && areAllServicesSetupComplete(migrationSnapshot);
+  const backendMilestoneComplete =
+    isDatabaseSetupCompletedFromBackend(migrationSnapshot) ||
+    readDatabaseSetupCompleted(environmentId);
+
+  const dbsStepVisuallyComplete = backendMilestoneComplete;
 
   const environmentId =
     session?.environments?.find((item: { id: string; type: string }) => item.type === environment)?.id ??
