@@ -55,4 +55,14 @@ describe('resolveDbsConnectedOnboardingAction', () => {
       })
     ).toBe('mark-incomplete');
   });
+
+  it('does not mark complete when only all_connected without backend timestamp', () => {
+    expect(
+      resolveDbsConnectedOnboardingAction({
+        stickyCompleted: false,
+        summary: { all_connected: true },
+        migrations: {},
+      })
+    ).toBe('mark-incomplete');
+  });
 });
