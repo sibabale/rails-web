@@ -1,6 +1,7 @@
 'use client';
 
 import type { ButtonHTMLAttributes, ReactNode } from 'react';
+import ButtonLoadingContent from '@/components/atoms/ButtonLoadingContent';
 
 type Tone = 'neutral' | 'success' | 'warning' | 'danger';
 
@@ -8,6 +9,8 @@ interface SecondaryButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   children: ReactNode;
   tone?: Tone;
   fullWidth?: boolean;
+  loading?: boolean;
+  loadingText?: ReactNode;
 }
 
 const TONE_CLASSES: Record<Tone, string> = {
@@ -27,17 +30,25 @@ export default function SecondaryButton({
   fullWidth = true,
   className = '',
   type = 'button',
+  loading = false,
+  loadingText,
+  disabled,
+  'aria-busy': ariaBusy,
   ...rest
 }: SecondaryButtonProps) {
   return (
     <button
       type={type}
       {...rest}
-      className={`inline-flex items-center justify-center gap-2 border px-4 py-2 text-xs font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
+      disabled={disabled || loading}
+      aria-busy={loading ? true : ariaBusy}
+      className={`relative inline-flex items-center justify-center gap-2 border px-4 py-2 text-xs font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
         TONE_CLASSES[tone]
       } ${fullWidth ? 'w-full lg:w-auto lg:min-w-[7.5rem]' : ''} ${className}`}
     >
-      {children}
+      <ButtonLoadingContent loading={loading} loadingText={loadingText}>
+        {children}
+      </ButtonLoadingContent>
     </button>
   );
 }
