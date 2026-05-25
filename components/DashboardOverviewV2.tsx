@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { MarketingDocsCtaLink } from '@/components/marketing/atoms/MarketingDocsCtaLink';
+import OnboardingStepCard, {
+  type OnboardingStepState,
+} from '@/components/organisms/OnboardingStepCard/OnboardingStepCard';
 import { useOnboarding } from '@/hooks/useOnboarding';
 import {
   isDatabaseSetupCompletedFromBackend,
@@ -223,185 +226,113 @@ const DashboardOverviewV2: React.FC<DashboardOverviewV2Props> = ({
             </p>
 
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 xl:grid-cols-3">
-              <div
-                className={`flex h-full flex-col border p-6 transition-colors ${
-                  dbsStepVisuallyComplete
-                    ? 'border-emerald-200 bg-emerald-50/60 opacity-90 dark:border-emerald-900/50 dark:bg-emerald-950/20'
-                    : 'border-zinc-200 bg-zinc-50 shadow-sm ring-1 ring-black dark:border-zinc-800 dark:bg-[#0a0a0a] dark:ring-white'
-                }`}
-              >
-                <div className="mb-5 flex flex-wrap items-start justify-between gap-2">
-                  <div
-                    className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold ${
-                      dbsStepVisuallyComplete ? 'bg-emerald-500 text-white' : 'bg-black text-white dark:bg-white dark:text-black'
-                    }`}
-                  >
-                    {dbsStepVisuallyComplete ? (
-                      <span className="material-symbols-sharp !text-[14px] leading-none" aria-hidden>
-                        check
-                      </span>
-                    ) : (
-                      '1'
-                    )}
-                  </div>
-                  {!dbsStepVisuallyComplete && (
-                    <span className="rounded-full bg-zinc-200 px-2 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-wider text-black dark:bg-zinc-800 dark:text-white">
-                      Action required
-                    </span>
-                  )}
-                </div>
-                <h3 className="mb-2 text-sm font-semibold text-black dark:text-white">Connect Databases</h3>
-                <p className="mb-6 flex-1 text-xs leading-relaxed text-zinc-600 dark:text-zinc-400">
-                  Provide PostgreSQL connection strings so Rails can work with your own infrastructure.
-                </p>
-                {dbsStepVisuallyComplete ? (
-                  <button
-                    type="button"
-                    disabled
-                    className="w-full bg-emerald-100 px-4 py-2.5 text-xs font-semibold text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400"
-                  >
-                    Connected
-                  </button>
-                ) : (
-                  <Link
-                    href="/dashboard/integrations"
-                    className="block w-full bg-black px-4 py-2.5 text-center text-xs font-semibold text-white transition-colors hover:bg-zinc-800 dark:bg-white dark:text-black dark:hover:bg-zinc-200"
-                  >
-                    Configure Integrations
-                  </Link>
-                )}
-              </div>
+              <OnboardingStepCard
+                stepNumber={1}
+                state={dbsStepVisuallyComplete ? 'complete' : 'active'}
+                title="Connect Databases"
+                description="Provide PostgreSQL connection strings so Rails can work with your own infrastructure."
+                cta={
+                  dbsStepVisuallyComplete ? (
+                    <button
+                      type="button"
+                      disabled
+                      className="w-full bg-emerald-100 px-4 py-2.5 text-xs font-semibold text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400"
+                    >
+                      Connected
+                    </button>
+                  ) : (
+                    <Link
+                      href="/dashboard/integrations"
+                      className="block w-full bg-black px-4 py-2.5 text-center text-xs font-semibold text-white transition-colors hover:bg-zinc-800 dark:bg-white dark:text-black dark:hover:bg-zinc-200"
+                    >
+                      Configure Integrations
+                    </Link>
+                  )
+                }
+              />
 
-              <div
-                className={`flex h-full flex-col border p-6 transition-colors ${
-                  !state.dbsConnected
-                    ? 'border-zinc-200 bg-white opacity-60 dark:border-zinc-800 dark:bg-[#050505]'
+              <OnboardingStepCard
+                stepNumber={2}
+                state={
+                  (!state.dbsConnected
+                    ? 'locked'
                     : state.apiKeyGenerated
-                      ? 'border-emerald-200 bg-emerald-50/60 opacity-90 dark:border-emerald-900/50 dark:bg-emerald-950/20'
-                      : 'border-zinc-200 bg-zinc-50 shadow-sm ring-1 ring-black dark:border-zinc-800 dark:bg-[#0a0a0a] dark:ring-white'
-                }`}
-              >
-                <div className="mb-5 flex flex-wrap items-start justify-between gap-2">
-                  <div
-                    className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold ${
-                      !state.dbsConnected
-                        ? 'border border-zinc-300 text-zinc-500 dark:border-zinc-700'
-                        : state.apiKeyGenerated
-                          ? 'bg-emerald-500 text-white'
-                          : 'bg-black text-white dark:bg-white dark:text-black'
-                    }`}
-                  >
-                    {state.apiKeyGenerated ? (
-                      <span className="material-symbols-sharp !text-[14px] leading-none" aria-hidden>
-                        check
-                      </span>
-                    ) : (
-                      '2'
-                    )}
-                  </div>
-                  {state.dbsConnected && !state.apiKeyGenerated && (
-                    <span className="rounded-full bg-zinc-200 px-2 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-wider text-black dark:bg-zinc-800 dark:text-white">
-                      Action required
-                    </span>
-                  )}
-                </div>
-                <h3 className="mb-2 text-sm font-semibold text-black dark:text-white">Generate API Key</h3>
-                <p className="mb-6 flex-1 text-xs leading-relaxed text-zinc-600 dark:text-zinc-400">
-                  Create a secure token to authenticate application requests against the Rails API.
-                </p>
-                {!state.dbsConnected ? (
-                  <button
-                    type="button"
-                    disabled
-                    className="w-full border border-zinc-200 bg-zinc-50 px-4 py-2.5 text-xs font-semibold text-zinc-400 dark:border-zinc-800 dark:bg-zinc-900/50"
-                  >
-                    Locked
-                  </button>
-                ) : state.apiKeyGenerated ? (
-                  <button
-                    type="button"
-                    disabled
-                    className="w-full bg-emerald-100 px-4 py-2.5 text-xs font-semibold text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400"
-                  >
-                    Key Generated
-                  </button>
-                ) : (
-                  <Link
-                    href="/dashboard/integrations?tab=api-key"
-                    className="flex w-full items-center justify-center gap-2 bg-black px-4 py-2.5 text-xs font-semibold text-white transition-colors hover:bg-zinc-800 disabled:opacity-60 dark:bg-white dark:text-black dark:hover:bg-zinc-200"
-                  >
-                    Manage API Key
-                  </Link>
-                )}
-              </div>
+                      ? 'complete'
+                      : 'active') as OnboardingStepState
+                }
+                title="Generate API Key"
+                description="Create a secure token to authenticate application requests against the Rails API."
+                cta={
+                  !state.dbsConnected ? (
+                    <button
+                      type="button"
+                      disabled
+                      className="w-full border border-zinc-200 bg-zinc-50 px-4 py-2.5 text-xs font-semibold text-zinc-400 dark:border-zinc-800 dark:bg-zinc-900/50"
+                    >
+                      Locked
+                    </button>
+                  ) : state.apiKeyGenerated ? (
+                    <button
+                      type="button"
+                      disabled
+                      className="w-full bg-emerald-100 px-4 py-2.5 text-xs font-semibold text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400"
+                    >
+                      Key Generated
+                    </button>
+                  ) : (
+                    <Link
+                      href="/dashboard/integrations?tab=api-key"
+                      className="flex w-full items-center justify-center gap-2 bg-black px-4 py-2.5 text-xs font-semibold text-white transition-colors hover:bg-zinc-800 disabled:opacity-60 dark:bg-white dark:text-black dark:hover:bg-zinc-200"
+                    >
+                      Manage API Key
+                    </Link>
+                  )
+                }
+              />
 
-              <div
-                className={`flex h-full flex-col border p-6 transition-colors ${
-                  !state.apiKeyGenerated
-                    ? 'border-zinc-200 bg-white opacity-60 dark:border-zinc-800 dark:bg-[#050505]'
+              <OnboardingStepCard
+                stepNumber={3}
+                state={
+                  (!state.apiKeyGenerated
+                    ? 'locked'
                     : state.firstRequestSent
-                      ? 'border-emerald-200 bg-emerald-50/60 opacity-90 dark:border-emerald-900/50 dark:bg-emerald-950/20'
-                      : 'border-zinc-200 bg-zinc-50 shadow-sm ring-1 ring-black dark:border-zinc-800 dark:bg-[#0a0a0a] dark:ring-white'
-                }`}
-              >
-                <div className="mb-5 flex flex-wrap items-start justify-between gap-2">
-                  <div
-                    className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold ${
-                      !state.apiKeyGenerated
-                        ? 'border border-zinc-300 text-zinc-500 dark:border-zinc-700'
-                        : state.firstRequestSent
-                          ? 'bg-emerald-500 text-white'
-                          : 'bg-black text-white dark:bg-white dark:text-black'
-                    }`}
-                  >
-                    {state.firstRequestSent ? (
-                      <span className="material-symbols-sharp !text-[14px] leading-none" aria-hidden>
-                        check
-                      </span>
-                    ) : (
-                      '3'
-                    )}
-                  </div>
-                  {state.apiKeyGenerated && !state.firstRequestSent && (
-                    <span className="rounded-full bg-zinc-200 px-2 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-wider text-black dark:bg-zinc-800 dark:text-white">
-                      Action required
-                    </span>
-                  )}
-                </div>
-                <h3 className="mb-2 text-sm font-semibold text-black dark:text-white">Send First Request</h3>
-                <p className="mb-6 flex-1 text-xs leading-relaxed text-zinc-600 dark:text-zinc-400">
-                  Verify the setup by sending your first test request through the Rails API.
-                </p>
-                {!state.apiKeyGenerated ? (
-                  <button
-                    type="button"
-                    disabled
-                    className="w-full border border-zinc-200 bg-zinc-50 px-4 py-2.5 text-xs font-semibold text-zinc-400 dark:border-zinc-800 dark:bg-zinc-900/50"
-                  >
-                    Locked
-                  </button>
-                ) : state.firstRequestSent ? (
-                  <button
-                    type="button"
-                    disabled
-                    className="w-full bg-emerald-100 px-4 py-2.5 text-xs font-semibold text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400"
-                  >
-                    Verified
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={handleSendTestRequest}
-                    disabled={isSendingRequest}
-                    className="flex w-full items-center justify-center gap-2 bg-black px-4 py-2.5 text-xs font-semibold text-white transition-colors hover:bg-zinc-800 disabled:opacity-60 dark:bg-white dark:text-black dark:hover:bg-zinc-200"
-                  >
-                    {isSendingRequest && (
-                      <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/30 border-t-white dark:border-black/20 dark:border-t-black" />
-                    )}
-                    {isSendingRequest ? 'Sending...' : 'Send Test Request'}
-                  </button>
-                )}
-              </div>
+                      ? 'complete'
+                      : 'active') as OnboardingStepState
+                }
+                title="Send First Request"
+                description="Verify the setup by sending your first test request through the Rails API."
+                cta={
+                  !state.apiKeyGenerated ? (
+                    <button
+                      type="button"
+                      disabled
+                      className="w-full border border-zinc-200 bg-zinc-50 px-4 py-2.5 text-xs font-semibold text-zinc-400 dark:border-zinc-800 dark:bg-zinc-900/50"
+                    >
+                      Locked
+                    </button>
+                  ) : state.firstRequestSent ? (
+                    <button
+                      type="button"
+                      disabled
+                      className="w-full bg-emerald-100 px-4 py-2.5 text-xs font-semibold text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400"
+                    >
+                      Verified
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={handleSendTestRequest}
+                      disabled={isSendingRequest}
+                      className="flex w-full items-center justify-center gap-2 bg-black px-4 py-2.5 text-xs font-semibold text-white transition-colors hover:bg-zinc-800 disabled:opacity-60 dark:bg-white dark:text-black dark:hover:bg-zinc-200"
+                    >
+                      {isSendingRequest && (
+                        <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/30 border-t-white dark:border-black/20 dark:border-t-black" />
+                      )}
+                      {isSendingRequest ? 'Sending...' : 'Send Test Request'}
+                    </button>
+                  )
+                }
+              />
             </div>
           </div>
         </section>
