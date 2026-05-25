@@ -1,17 +1,17 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { Button } from './marketing/atoms/Button/Button';
-import { Container } from './marketing/atoms/Container/Container';
-import { Heading } from './marketing/atoms/Heading/Heading';
-import { Text } from './marketing/atoms/Text/Text';
+import { Button } from '../marketing/atoms/Button/Button';
+import { Container } from '../marketing/atoms/Container/Container';
+import { Heading } from '../marketing/atoms/Heading/Heading';
+import { Text } from '../marketing/atoms/Text/Text';
 import {
   AUTH_ERROR_BOX,
   AUTH_INPUT,
   AUTH_LABEL,
   AUTH_LINK_BACK,
   AUTH_SUCCESS_BOX,
-} from './marketing/marketingAuthUi';
-import { passwordResetApi } from '../lib/api';
+} from '../marketing/marketingAuthUi';
+import { passwordResetApi } from '../../lib/api';
 
 interface ResetPasswordPageProps {
   onSuccess: () => void;

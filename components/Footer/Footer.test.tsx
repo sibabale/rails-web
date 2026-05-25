@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import Footer from '../components/Footer';
+import Footer from './Footer';
 
 describe('Footer', () => {
   it('does not render request access or social links', () => {

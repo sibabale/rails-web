@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
-import { FEATURES } from '../constants';
-import CodeBlock from './CodeBlock';
+import { FEATURES } from '../../constants';
+import CodeBlock from '../CodeBlock/CodeBlock';
 
 const Features: React.FC = () => {
   const [activeFeatureId, setActiveFeatureId] = useState(FEATURES[0].id);

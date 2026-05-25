@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { CodeSnippets } from '../types';
+import { CodeSnippets } from '../../types';
 
 interface CodeBlockProps {
   snippets: CodeSnippets;

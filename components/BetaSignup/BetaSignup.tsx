@@ -1,7 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { usePostHog } from 'posthog-js/react';
-import { betaApplyApi } from '../lib/api';
-import { ApplicationStatus } from '../types';
+import { betaApplyApi } from '../../lib/api';
+import { ApplicationStatus } from '../../types';
 
 const BetaSignup: React.FC = () => {
 

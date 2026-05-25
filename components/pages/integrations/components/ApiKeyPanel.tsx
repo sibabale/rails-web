@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback } from 'react';
-import ApiKeyManager from '@/components/ApiKeyManager';
+import ApiKeyManager from '@/components/ApiKeyManager/ApiKeyManager';
 import Banner from '@/components/molecules/Banner/Banner';
 import SecondaryButton from '@/components/atoms/SecondaryButton/SecondaryButton';
 import { isMigrationStatusCurrent } from '@/lib/databaseReadiness';

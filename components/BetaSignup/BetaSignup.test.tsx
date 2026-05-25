@@ -1,13 +1,13 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import BetaSignup from '../components/BetaSignup';
-import { betaApplyApi } from '../lib/api';
+import BetaSignup from './BetaSignup';
+import { betaApplyApi } from '@/lib/api';
 
 const captureMock = vi.fn();
 
-vi.mock('../lib/api', async () => {
-  const actual = await vi.importActual<typeof import('../lib/api')>('../lib/api');
+vi.mock('@/lib/api', async () => {
+  const actual = await vi.importActual<typeof import('@/lib/api')>('@/lib/api');
   return {
     ...actual,
     betaApplyApi: {
