@@ -18,6 +18,7 @@ import {
   readDatabaseSetupCompleted,
 } from '../lib/databaseSetupState';
 import { hasAllMigrationTargets, isMigrationStatusCurrent } from '../lib/databaseReadiness';
+import { agentDebugLog } from '../lib/agentDebugLog';
 import { listServicesNeedingRepair } from '../lib/databaseConnectionSetup';
 import {
   accountsApi,
@@ -846,15 +847,54 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, session, profile, isLoa
               </p>
             </div>
           </div>
-          <Link
-            href="/dashboard/integrations"
-            className="inline-flex shrink-0 items-center justify-center gap-2 border border-red-300 bg-white px-3 py-2 text-[10px] font-mono font-bold uppercase tracking-widest text-red-700 transition-colors hover:bg-red-100 dark:border-red-800 dark:bg-black dark:text-red-200 dark:hover:bg-red-950/50"
-          >
-            Repair connection
-            <span className="material-symbols-sharp !text-[16px] leading-none" aria-hidden>
-              arrow_forward
-            </span>
-          </Link>
+          {activeTab === 'Integrations' ? (
+            <button
+              type="button"
+              onClick={() => {
+                // #region agent log
+                agentDebugLog(
+                  'Dashboard.tsx:repairConnection',
+                  'repair focus clicked (already on integrations)',
+                  { services: issues.map((c) => c.service) },
+                  'C'
+                );
+                // #endregion
+                document.getElementById('integrations-panel-databases')?.scrollIntoView({
+                  behavior: 'smooth',
+                  block: 'start',
+                });
+              }}
+              className="inline-flex shrink-0 items-center justify-center gap-2 border border-red-300 bg-white px-3 py-2 text-[10px] font-mono font-bold uppercase tracking-widest text-red-700 transition-colors hover:bg-red-100 dark:border-red-800 dark:bg-black dark:text-red-200 dark:hover:bg-red-950/50"
+            >
+              View databases
+              <span className="material-symbols-sharp !text-[16px] leading-none" aria-hidden>
+                south
+              </span>
+            </button>
+          ) : (
+            <Link
+              href="/dashboard/integrations"
+              onClick={() => {
+                // #region agent log
+                agentDebugLog(
+                  'Dashboard.tsx:repairConnection',
+                  'repair link clicked',
+                  {
+                    pathname: typeof window !== 'undefined' ? window.location.pathname : null,
+                    services: issues.map((c) => c.service),
+                  },
+                  'C'
+                );
+                // #endregion
+              }}
+              className="inline-flex shrink-0 items-center justify-center gap-2 border border-red-300 bg-white px-3 py-2 text-[10px] font-mono font-bold uppercase tracking-widest text-red-700 transition-colors hover:bg-red-100 dark:border-red-800 dark:bg-black dark:text-red-200 dark:hover:bg-red-950/50"
+            >
+              Repair connection
+              <span className="material-symbols-sharp !text-[16px] leading-none" aria-hidden>
+                arrow_forward
+              </span>
+            </Link>
+          )}
         </div>
       </div>
     );
