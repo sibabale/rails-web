@@ -1,7 +1,7 @@
 'use client';
 
 import DatabaseConnectionCard from '@/components/pages/integrations/components/DatabaseConnectionCard';
-import Banner from '@/components/molecules/Banner';
+import Banner from '@/components/molecules/Banner/Banner';
 import PrimaryButton from '@/components/atoms/PrimaryButton/PrimaryButton';
 import MaterialIcon from '@/components/atoms/MaterialIcon/MaterialIcon';
 import {

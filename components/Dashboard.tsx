@@ -8,8 +8,8 @@ import { setEnvironment } from '../state/slices/environmentSlice';
 import Pagination from './Pagination';
 import DashboardOverviewV2 from './DashboardOverviewV2';
 import DashboardIntegrations from './pages/integrations/IntegrationsPage';
-import LedgerEntryListSkeleton from '@/components/molecules/LedgerEntryListSkeleton';
-import LedgerSummarySkeleton from '@/components/molecules/LedgerSummarySkeleton';
+import LedgerEntryListSkeleton from '@/components/molecules/LedgerEntryListSkeleton/LedgerEntryListSkeleton';
+import LedgerSummarySkeleton from '@/components/molecules/LedgerSummarySkeleton/LedgerSummarySkeleton';
 import { RailsTrackMark } from '@/components/marketing/atoms/RailsTrackMark';
 import { DashboardMaterialThemeToggle } from './DashboardMaterialThemeToggle';
 import {

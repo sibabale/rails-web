@@ -3,8 +3,8 @@
 import DatabaseCardHeader from '@/components/pages/integrations/components/DatabaseCardHeader';
 import DatabaseConnectionCardSkeleton from '@/components/pages/integrations/components/DatabaseConnectionCardSkeleton';
 import DatabaseConnectionSetupProgress from '@/components/pages/integrations/components/DatabaseConnectionSetupProgress';
-import ConnectionStringField from '@/components/molecules/ConnectionStringField';
-import Banner, { type BannerTone } from '@/components/molecules/Banner';
+import ConnectionStringField from '@/components/molecules/ConnectionStringField/ConnectionStringField';
+import Banner, { type BannerTone } from '@/components/molecules/Banner/Banner';
 import PrimaryButton from '@/components/atoms/PrimaryButton/PrimaryButton';
 import SecondaryButton from '@/components/atoms/SecondaryButton/SecondaryButton';
 import MaterialIcon from '@/components/atoms/MaterialIcon/MaterialIcon';

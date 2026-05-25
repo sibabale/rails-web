@@ -1,6 +1,6 @@
 'use client';
 
-import ServiceAvatar from '@/components/molecules/ServiceAvatar';
+import ServiceAvatar from '@/components/molecules/ServiceAvatar/ServiceAvatar';
 import Pill from '@/components/atoms/Pill/Pill';
 
 interface DatabaseCardHeaderProps {
