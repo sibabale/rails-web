@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { getClientServerUrl } from '../../lib/env';
-import { resolveEnvironmentId } from '../../lib/environment';
-import { useAppSelector } from '../../state/hooks';
+import { getClientServerUrl } from '@/lib/env';
+import { resolveEnvironmentId } from '@/lib/environment';
+import { useAppSelector } from '@/state/hooks';
 
 type ApiKeyStatus = 'active' | 'revoked' | 'none';
 

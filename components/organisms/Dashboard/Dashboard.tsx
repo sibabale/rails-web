@@ -3,11 +3,11 @@
 import React, { useState, useEffect, useRef, useMemo, memo } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { useAppDispatch, useAppSelector } from '../../state/hooks';
-import { setEnvironment } from '../../state/slices/environmentSlice';
+import { useAppDispatch, useAppSelector } from '@/state/hooks';
+import { setEnvironment } from '@/state/slices/environmentSlice';
 import Pagination from '@/components/molecules/Pagination/Pagination';
-import DashboardOverviewV2 from '../DashboardOverviewV2/DashboardOverviewV2';
-import DashboardIntegrations from '../pages/integrations/IntegrationsPage';
+import DashboardOverviewV2 from '@/components/organisms/DashboardOverviewV2/DashboardOverviewV2';
+import DashboardIntegrations from '@/components/pages/integrations/IntegrationsPage';
 import LedgerEntryListSkeleton from '@/components/molecules/LedgerEntryListSkeleton/LedgerEntryListSkeleton';
 import LedgerSummarySkeleton from '@/components/molecules/LedgerSummarySkeleton/LedgerSummarySkeleton';
 import { RailsTrackMark } from '@/components/atoms/RailsTrackMark/RailsTrackMark';
@@ -16,10 +16,10 @@ import {
   isDatabaseSetupCompletedFromBackend,
   markDatabaseSetupCompleted,
   readDatabaseSetupCompleted,
-} from '../../lib/databaseSetupState';
-import { hasAllMigrationTargets, isMigrationStatusCurrent } from '../../lib/databaseReadiness';
-import { agentDebugLog } from '../../lib/agentDebugLog';
-import { listServicesNeedingRepair } from '../../lib/databaseConnectionSetup';
+} from '@/lib/databaseSetupState';
+import { hasAllMigrationTargets, isMigrationStatusCurrent } from '@/lib/databaseReadiness';
+import { agentDebugLog } from '@/lib/agentDebugLog';
+import { listServicesNeedingRepair } from '@/lib/databaseConnectionSetup';
 import {
   accountsApi,
   databaseConnectionsApi,
@@ -33,8 +33,8 @@ import {
   type DatabaseConnectionService,
   type DatabaseConnectionMigrationStatusResponse,
   type DatabaseConnectionsResponse,
-} from '../../lib/api';
-import { getMarketingDocsCtaUrl } from '../../lib/env';
+} from '@/lib/api';
+import { getMarketingDocsCtaUrl } from '@/lib/env';
 
 function isDocsExternalHref(href: string): boolean {
   return /^https?:\/\//i.test(href) || href.startsWith('//');

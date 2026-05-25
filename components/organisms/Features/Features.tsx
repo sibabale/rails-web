@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { FEATURES } from '../../constants';
+import { FEATURES } from '@/constants';
 import CodeBlock from '@/components/molecules/CodeBlock/CodeBlock';
 
 const Features: React.FC = () => {

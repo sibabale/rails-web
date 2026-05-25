@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { isAuthViewsEnabled } from '../../lib/env';
-import ForgotPasswordPage from '../../components/ForgotPasswordPage/ForgotPasswordPage';
+import ForgotPasswordPage from '@/components/organisms/ForgotPasswordPage/ForgotPasswordPage';
 
 export default function ForgotPasswordRoute() {
   const router = useRouter();

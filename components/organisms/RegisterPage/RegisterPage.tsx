@@ -10,9 +10,9 @@ import {
   AUTH_LABEL,
   AUTH_LINK_BACK,
   AUTH_SUCCESS_BOX,
-} from '../marketing/marketingAuthUi';
-import { getClientServerUrl } from '../../lib/env';
-import type { AuthSuccessResponse } from '../../lib/authSession';
+} from '@/components/marketing/marketingAuthUi';
+import { getClientServerUrl } from '@/lib/env';
+import type { AuthSuccessResponse } from '@/lib/authSession';
 
 interface RegisterFormData {
   name: string;

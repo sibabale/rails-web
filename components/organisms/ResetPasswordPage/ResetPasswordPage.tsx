@@ -10,8 +10,8 @@ import {
   AUTH_LABEL,
   AUTH_LINK_BACK,
   AUTH_SUCCESS_BOX,
-} from '../marketing/marketingAuthUi';
-import { passwordResetApi } from '../../lib/api';
+} from '@/components/marketing/marketingAuthUi';
+import { passwordResetApi } from '@/lib/api';
 
 interface ResetPasswordPageProps {
   onSuccess: () => void;
