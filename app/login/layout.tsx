@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { MarketingAuthShell } from '@/components/marketing/MarketingAuthShell/MarketingAuthShell';
+import { MarketingAuthShell } from '@/components/templates/MarketingAuthShell/MarketingAuthShell';
 
 export const metadata: Metadata = {
   title: 'Login | Rails Infra',

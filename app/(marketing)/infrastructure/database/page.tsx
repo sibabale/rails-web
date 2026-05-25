@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import InfrastructureDatabasePage from '@/components/marketing/pages/infrastructure/InfrastructureDatabasePage';
+import InfrastructureDatabasePage from '@/components/pages/marketing/infrastructure/InfrastructureDatabasePage';
 
 export const metadata: Metadata = {
   title: 'PostgreSQL & data | Rails Infra',

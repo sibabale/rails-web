@@ -15,7 +15,7 @@ import {
   writeRailsSessionCookie,
 } from '../../lib/authSession';
 import type { AuthSuccessResponse } from '../../lib/authSession';
-import LoginPage from '../../components/LoginPage/LoginPage';
+import LoginPage from '@/components/organisms/LoginPage/LoginPage';
 
 export default function LoginRoute() {
   const router = useRouter();

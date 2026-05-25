@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import InfrastructurePage from '@/components/marketing/pages/InfrastructurePage';
+import InfrastructurePage from '@/components/pages/marketing/InfrastructurePage';
 
 export const metadata: Metadata = {
   title: 'Infrastructure | Rails Infra',
