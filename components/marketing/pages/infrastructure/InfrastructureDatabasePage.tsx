@@ -2,13 +2,13 @@
 
 import React from 'react';
 import Link from 'next/link';
-import ArchitectureDiagram from '../../ArchitectureDiagram';
-import { CallToAction } from '../../molecules/CallToAction';
-import { Section } from '../../atoms/Section';
-import { Container } from '../../atoms/Container';
-import { Heading } from '../../atoms/Heading';
-import { Text } from '../../atoms/Text';
-import { useMarketingSiteCopy } from '@/components/marketing/MarketingCopyVariantProvider';
+import ArchitectureDiagram from '../../ArchitectureDiagram/ArchitectureDiagram';
+import { CallToAction } from '../../molecules/CallToAction/CallToAction';
+import { Section } from '../../atoms/Section/Section';
+import { Container } from '../../atoms/Container/Container';
+import { Heading } from '../../atoms/Heading/Heading';
+import { Text } from '../../atoms/Text/Text';
+import { useMarketingSiteCopy } from '@/components/marketing/MarketingCopyVariantProvider/MarketingCopyVariantProvider';
 
 export default function InfrastructureDatabase() {
   const { copy, withCopy } = useMarketingSiteCopy();

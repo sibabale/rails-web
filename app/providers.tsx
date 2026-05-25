@@ -5,7 +5,7 @@ import { Provider } from 'react-redux';
 import { PersistGate } from 'redux-persist/integration/react';
 import posthog from 'posthog-js';
 import { PostHogProvider } from 'posthog-js/react';
-import { MarketingThemeProvider } from '@/components/marketing/ThemeProvider';
+import { MarketingThemeProvider } from '@/components/marketing/ThemeProvider/ThemeProvider';
 import { getPostHogKey, getPostHogOptions, isAnalyticsEnabled } from '../lib/analytics';
 import { persistor, store } from '../state/store';
 

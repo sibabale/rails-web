@@ -3,13 +3,13 @@
 import React from 'react';
 import { Database, Box, ArrowRightLeft, Cloud, Server } from 'lucide-react';
 import Link from 'next/link';
-import { Section } from '../atoms/Section';
-import { Container } from '../atoms/Container';
-import { Heading } from '../atoms/Heading';
-import { Text } from '../atoms/Text';
-import { CallToAction } from '../molecules/CallToAction';
-import { InfrastructureSdkCodeBlock } from '../molecules/InfrastructureSdkCodeBlock';
-import { useMarketingSiteCopy } from '@/components/marketing/MarketingCopyVariantProvider';
+import { Section } from '../atoms/Section/Section';
+import { Container } from '../atoms/Container/Container';
+import { Heading } from '../atoms/Heading/Heading';
+import { Text } from '../atoms/Text/Text';
+import { CallToAction } from '../molecules/CallToAction/CallToAction';
+import { InfrastructureSdkCodeBlock } from '../molecules/InfrastructureSdkCodeBlock/InfrastructureSdkCodeBlock';
+import { useMarketingSiteCopy } from '@/components/marketing/MarketingCopyVariantProvider/MarketingCopyVariantProvider';
 
 export default function InfrastructurePage() {
   const { copy, withCopy } = useMarketingSiteCopy();

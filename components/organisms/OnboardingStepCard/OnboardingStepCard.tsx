@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import MaterialIcon from '@/components/atoms/MaterialIcon';
+import MaterialIcon from '@/components/atoms/MaterialIcon/MaterialIcon';
 
 export type OnboardingStepState = 'locked' | 'active' | 'complete';
 

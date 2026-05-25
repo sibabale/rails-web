@@ -8,7 +8,7 @@ import { resetToSandbox } from '../../../state/slices/environmentSlice';
 import { getClientServerUrl } from '../../../lib/env';
 import { clearRailsSession, readValidRailsSession } from '../../../lib/authSession';
 import type { RailsSession } from '../../../lib/authSession';
-import Dashboard from '../../../components/Dashboard';
+import Dashboard from '../../../components/Dashboard/Dashboard';
 
 interface UserProfile {
   id: string;

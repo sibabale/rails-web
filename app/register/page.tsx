@@ -15,7 +15,7 @@ import {
   writeRailsSessionCookie,
 } from '../../lib/authSession';
 import type { AuthSuccessResponse } from '../../lib/authSession';
-import RegisterPage from '../../components/RegisterPage';
+import RegisterPage from '../../components/RegisterPage/RegisterPage';
 
 export default function RegisterRoute() {
   const router = useRouter();

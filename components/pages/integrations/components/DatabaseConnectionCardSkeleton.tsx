@@ -1,6 +1,6 @@
 'use client';
 
-import SkeletonBlock from '@/components/atoms/SkeletonBlock';
+import SkeletonBlock from '@/components/atoms/SkeletonBlock/SkeletonBlock';
 
 interface DatabaseConnectionCardSkeletonProps {
   testId?: string;
