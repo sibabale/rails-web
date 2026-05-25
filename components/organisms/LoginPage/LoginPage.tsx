@@ -11,7 +11,7 @@ import {
   AUTH_LABEL,
   AUTH_LINK_BACK,
   AUTH_REGISTER_LINK,
-} from '@/components/marketing/marketingAuthUi';
+} from '@/lib/marketingAuthUi';
 import { getClientServerUrl } from '@/lib/env';
 import type { AuthSuccessResponse } from '@/lib/authSession';
 

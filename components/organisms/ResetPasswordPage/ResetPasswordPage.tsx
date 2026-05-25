@@ -10,7 +10,7 @@ import {
   AUTH_LABEL,
   AUTH_LINK_BACK,
   AUTH_SUCCESS_BOX,
-} from '@/components/marketing/marketingAuthUi';
+} from '@/lib/marketingAuthUi';
 import { passwordResetApi } from '@/lib/api';
 
 interface ResetPasswordPageProps {
