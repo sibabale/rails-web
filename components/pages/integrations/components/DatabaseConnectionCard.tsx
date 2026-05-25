@@ -43,6 +43,7 @@ interface DatabaseConnectionCardProps {
   initialCheckComplete: boolean;
   interactionsLocked: boolean;
   isRetryDisabled: boolean;
+  isSubmitting: boolean;
   serviceNotice: string | null;
   migrationFooterTone: MigrationAlertTone;
   migrationFooterText: string;
@@ -74,6 +75,7 @@ export default function DatabaseConnectionCard(props: DatabaseConnectionCardProp
     initialCheckComplete,
     interactionsLocked,
     isRetryDisabled,
+    isSubmitting,
     migrationFooterTone,
     migrationFooterText,
     migrationFooterVisible,
@@ -121,11 +123,19 @@ export default function DatabaseConnectionCard(props: DatabaseConnectionCardProp
               onCopy={onCopy}
             />
             <div className="flex w-full flex-col gap-2 lg:w-auto lg:shrink-0">
-              <PrimaryButton onClick={onConnect} disabled={saveDisabled}>
+              <PrimaryButton
+                onClick={onConnect}
+                disabled={saveDisabled}
+                loading={isSubmitting}
+                data-testid={`database-connection-save-${descriptor.key}`}
+              >
                 {connectLabel}
               </PrimaryButton>
               {isConnectedPool || isSetupFailed ? (
-                <SecondaryButton onClick={onCancelEdit} disabled={interactionsLocked}>
+                <SecondaryButton
+                  onClick={onCancelEdit}
+                  disabled={interactionsLocked || isSubmitting}
+                >
                   Cancel
                 </SecondaryButton>
               ) : null}

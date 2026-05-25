@@ -87,6 +87,7 @@ export function useDatabaseConnections({
   const [status, setStatus] = useState(initialStatus);
   const [error, setError] = useState<string | null>(null);
   const [retryingService, setRetryingService] = useState<ConnectionKey | null>(null);
+  const [savingService, setSavingService] = useState<ConnectionKey | null>(null);
   const [savedConnectionKeys, setSavedConnectionKeys] = useState<Set<ConnectionKey>>(() => new Set());
   const [migrationStatus, setMigrationStatus] =
     useState<DatabaseConnectionMigrationStatusResponse | null>(null);
@@ -300,6 +301,7 @@ export function useDatabaseConnections({
     const generation = fetchGenerationRef.current;
     setError(null);
     setSetupOutcomes((p) => ({ ...p, [key]: null }));
+    setSavingService(key);
 
     try {
       let saved: DatabaseConnectionInfo | undefined;
@@ -357,6 +359,8 @@ export function useDatabaseConnections({
       setStatus({ ...statusRef.current });
       publishGlobalHealthIfIdle();
       setError(err instanceof Error ? err.message : 'Failed to save database connection.');
+    } finally {
+      setSavingService((current) => (current === key ? null : current));
     }
   };
 
@@ -508,6 +512,7 @@ export function useDatabaseConnections({
     setSetupOutcomes(initialOutcomes);
     setInitialCheckComplete(false);
     setError(null);
+    setSavingService(null);
     statusRef.current = initialStatus;
     setStatus(initialStatus);
     setMigrationStatus(null);
@@ -559,6 +564,7 @@ export function useDatabaseConnections({
     status,
     error,
     retryingService,
+    savingService,
     savedConnectionKeys,
     migrationStatus,
     isRunningMigrations,

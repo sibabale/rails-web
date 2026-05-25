@@ -3,7 +3,6 @@
 import DatabaseConnectionCard from '@/components/pages/integrations/components/DatabaseConnectionCard';
 import Banner from '@/components/molecules/Banner';
 import PrimaryButton from '@/components/atoms/PrimaryButton';
-import Spinner from '@/components/atoms/Spinner';
 import MaterialIcon from '@/components/atoms/MaterialIcon';
 import {
   useDatabaseConnections,
@@ -229,12 +228,10 @@ export default function DatabasesPanel(props: DatabasesPanelProps) {
               <PrimaryButton
                 onClick={conns.handleRunMigrations}
                 disabled={conns.interactionsLocked}
+                loading={conns.isRunningMigrations}
+                loadingText="Applying…"
               >
-                {conns.isRunningMigrations ? (
-                  <Spinner size={14} />
-                ) : (
-                  <MaterialIcon name="play_arrow" size={16} />
-                )}
+                <MaterialIcon name="play_arrow" size={16} />
                 Apply updates
               </PrimaryButton>
             }
@@ -332,6 +329,7 @@ export default function DatabasesPanel(props: DatabasesPanelProps) {
               initialCheckComplete={conns.initialCheckComplete}
               interactionsLocked={conns.interactionsLocked}
               isRetryDisabled={isRetryDisabled}
+              isSubmitting={conns.savingService === descriptor.key}
               serviceNotice={serviceNotice}
               migrationFooterTone={tone}
               migrationFooterText={text}
