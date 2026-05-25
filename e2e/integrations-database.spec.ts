@@ -184,7 +184,7 @@ test.describe('Database integrations edge cases', () => {
     await accountsCard
       .getByRole('textbox', { name: /Accounts Database connection/i })
       .fill(`${SEED_CONNECTION_STRING}/accounts`);
-    await accountsCard.getByRole('button', { name: /Save replacement/i }).click();
+    await accountsCard.getByRole('button', { name: /^Save$/i }).click();
 
     await expect(accountsCard.getByText(/same connection string already saved/i)).toBeVisible({
       timeout: 5_000,

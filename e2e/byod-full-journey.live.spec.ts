@@ -177,7 +177,7 @@ test.describe('BYOD full journey (live stack)', () => {
       await accountsSection
         .getByRole('textbox', { name: /Accounts Database connection/i })
         .fill(savedConnectionStrings.accounts);
-      await accountsSection.getByRole('button', { name: /Save replacement/i }).click();
+      await accountsSection.getByRole('button', { name: /^Save$/i }).click();
 
       await expectOrLogAt(BYOD_JOURNEY_LIVE_BUG_LOG, 'edit-unchanged-notice', async () => {
         const notice = accountsSection.getByText(/same connection string already saved/i);
@@ -207,7 +207,7 @@ test.describe('BYOD full journey (live stack)', () => {
       await accountsSection
         .getByRole('textbox', { name: /Accounts Database connection/i })
         .fill(replacement);
-      await accountsSection.getByRole('button', { name: /Save replacement/i }).click();
+      await accountsSection.getByRole('button', { name: /^Save$/i }).click();
 
       await expectOrLogAt(BYOD_JOURNEY_LIVE_BUG_LOG, 'edit-changed-phases', async () => {
         await expect(accountsSection.getByText('Validating')).toBeVisible({ timeout: 15_000 });

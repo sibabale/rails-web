@@ -364,7 +364,7 @@ describe('databaseConnectionSetup', () => {
       ).toBe(true);
     });
 
-    it('hides Connected summary once migration snapshot reports pending work', () => {
+    it('keeps Connected summary when migration snapshot reports optional pending work', () => {
       expect(
         shouldShowConnectedSummaryCard(
           'connected',
@@ -377,7 +377,7 @@ describe('databaseConnectionSetup', () => {
           },
           { migrationSnapshotLoaded: true }
         )
-      ).toBe(false);
+      ).toBe(true);
     });
 
     it('shows Connected summary when migration snapshot confirms applied', () => {

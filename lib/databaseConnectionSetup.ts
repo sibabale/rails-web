@@ -359,8 +359,12 @@ export function isFullyConnected(
 }
 
 /**
- * Green "Connected" summary on integrations cards. After login restore the list
- * snapshot arrives before per-service migration health; avoid flashing the
+ * Green "Connected" summary on integrations cards. Pool connectivity is shown
+ * whenever status is connected; optional schema updates use a separate alert
+ * footer (see DashboardIntegrations).
+ *
+ * After login restore the list snapshot arrives before per-service migration
+ * health; treat unknown migration snapshot as connected to avoid flashing the
  * replacement form while background refresh is in flight.
  */
 export function shouldShowConnectedSummaryCard(
@@ -371,13 +375,10 @@ export function shouldShowConnectedSummaryCard(
   if (connectionStatus !== 'connected') {
     return false;
   }
-  if (isSetupComplete(migrationInfo)) {
-    return true;
-  }
   if (!options.migrationSnapshotLoaded && migrationInfo == null) {
     return true;
   }
-  return false;
+  return true;
 }
 
 export function setupOutcomeFromSave(

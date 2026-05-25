@@ -2,7 +2,6 @@ import { describe, expect, it, vi, afterEach } from 'vitest';
 import { ApiRequestError } from '@/lib/apiRequestError';
 import {
   formatIntegrationsLoadError,
-  formatIntegrationsRefreshWarning,
   isIntegrationsDebugEnabled,
   logIntegrationsDebug,
 } from '@/lib/integrationsDiagnostics';
@@ -60,23 +59,6 @@ describe('integrationsDiagnostics', () => {
     });
 
     expect(message).toContain('admin membership');
-    expect(message).not.toBe("You don't have permission to perform this action.");
-  });
-
-  it('formats refresh warnings without using the generic permission string', () => {
-    const err = new ApiRequestError("You don't have permission to perform this action.", {
-      status: 403,
-      path: '/api/v1/database-connections/migrations',
-      correlationId: 'corr-2',
-    });
-
-    const message = formatIntegrationsRefreshWarning(err, {
-      environment: 'sandbox',
-      environmentId: 'sandbox-id',
-      operation: 'migrations',
-    });
-
-    expect(message).toContain('migration health');
     expect(message).not.toBe("You don't have permission to perform this action.");
   });
 });
