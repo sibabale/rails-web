@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import { MarketingThemeProvider } from '../ThemeProvider/ThemeProvider';
-import { MarketingThemeToggle } from './ThemeToggle';
+import { MarketingThemeProvider } from '@/components/marketing/ThemeProvider/ThemeProvider';
+import { MarketingThemeToggle } from './MarketingThemeToggle';
 
 describe('MarketingThemeToggle', () => {
   it('renders inside a theme provider without crashing', () => {

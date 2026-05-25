@@ -7,7 +7,7 @@ import { ledgerApi, accountsApi, transactionsApi } from '../lib/api';
 import Dashboard from '../components/Dashboard/Dashboard';
 import environmentReducer from '../state/slices/environmentSlice';
 
-vi.mock('../components/DashboardMaterialThemeToggle/DashboardMaterialThemeToggle', () => ({
+vi.mock('@/components/molecules/DashboardMaterialThemeToggle/DashboardMaterialThemeToggle', () => ({
   DashboardMaterialThemeToggle: () => (
     <button type="button" data-testid="dashboard-theme-toggle-mock" aria-label="Toggle theme">
       theme

@@ -6,7 +6,7 @@ import { Section } from '@/components/atoms/Section/Section';
 import { Container } from '@/components/atoms/Container/Container';
 import { Heading } from '@/components/atoms/Heading/Heading';
 import { isAuthButtonsEnabled } from '@/lib/env';
-import { MarketingDocsCtaLink } from '@/components/marketing/atoms/MarketingDocsCtaLink/MarketingDocsCtaLink';
+import { MarketingDocsCtaLink } from '@/components/molecules/MarketingDocsCtaLink/MarketingDocsCtaLink';
 import { theme } from '@/lib/marketingTheme';
 import { useMarketingSiteCopy } from '@/components/marketing/MarketingCopyVariantProvider/MarketingCopyVariantProvider';
 

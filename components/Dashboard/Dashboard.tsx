@@ -5,13 +5,13 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAppDispatch, useAppSelector } from '../../state/hooks';
 import { setEnvironment } from '../../state/slices/environmentSlice';
-import Pagination from '../Pagination/Pagination';
+import Pagination from '@/components/molecules/Pagination/Pagination';
 import DashboardOverviewV2 from '../DashboardOverviewV2/DashboardOverviewV2';
 import DashboardIntegrations from '../pages/integrations/IntegrationsPage';
 import LedgerEntryListSkeleton from '@/components/molecules/LedgerEntryListSkeleton/LedgerEntryListSkeleton';
 import LedgerSummarySkeleton from '@/components/molecules/LedgerSummarySkeleton/LedgerSummarySkeleton';
 import { RailsTrackMark } from '@/components/atoms/RailsTrackMark/RailsTrackMark';
-import { DashboardMaterialThemeToggle } from '../DashboardMaterialThemeToggle/DashboardMaterialThemeToggle';
+import { DashboardMaterialThemeToggle } from '@/components/molecules/DashboardMaterialThemeToggle/DashboardMaterialThemeToggle';
 import {
   isDatabaseSetupCompletedFromBackend,
   markDatabaseSetupCompleted,

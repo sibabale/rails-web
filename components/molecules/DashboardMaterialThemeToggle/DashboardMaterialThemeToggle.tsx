@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { useMarketingTheme } from '../marketing/ThemeProvider/ThemeProvider';
+import { useMarketingTheme } from '@/components/marketing/ThemeProvider/ThemeProvider';
 
 /** Theme control for dashboard (Material Symbols Sharp — matches protected chrome). */
 export function DashboardMaterialThemeToggle() {

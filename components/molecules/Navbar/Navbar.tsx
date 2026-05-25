@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { isAuthButtonsEnabled } from '../../lib/env';
+import { isAuthButtonsEnabled } from '@/lib/env';
 
 interface NavbarProps {
   onLogin?: () => void;

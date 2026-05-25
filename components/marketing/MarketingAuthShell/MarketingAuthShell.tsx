@@ -6,9 +6,9 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import React, { useState } from 'react';
 import { isAuthButtonsEnabled } from '@/lib/env';
-import { MarketingDocsCtaLink } from '@/components/marketing/atoms/MarketingDocsCtaLink/MarketingDocsCtaLink';
+import { MarketingDocsCtaLink } from '@/components/molecules/MarketingDocsCtaLink/MarketingDocsCtaLink';
 import { theme } from '@/lib/marketingTheme';
-import { MarketingThemeToggle } from '../ThemeToggle/ThemeToggle';
+import { MarketingThemeToggle } from '@/components/molecules/MarketingThemeToggle/MarketingThemeToggle';
 import { RailsTrackMark } from '@/components/atoms/RailsTrackMark/RailsTrackMark';
 
 type MarketingAuthShellProps = {
