@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { Monitor, Moon, Sun } from 'lucide-react';
-import { useMarketingTheme } from '@/components/marketing/ThemeProvider/ThemeProvider';
+import { useMarketingTheme } from '@/components/organisms/MarketingThemeProvider/MarketingThemeProvider';
 
 export function MarketingThemeToggle() {
   const { theme, setTheme } = useMarketingTheme();

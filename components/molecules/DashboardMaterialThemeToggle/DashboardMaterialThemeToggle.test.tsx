@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import { MarketingThemeProvider } from '@/components/marketing/ThemeProvider/ThemeProvider';
+import { MarketingThemeProvider } from '@/components/organisms/MarketingThemeProvider/MarketingThemeProvider';
 import { DashboardMaterialThemeToggle } from './DashboardMaterialThemeToggle';
 
 describe('DashboardMaterialThemeToggle', () => {

@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useMarketingTheme, type MarketingThemeMode } from '@/components/marketing/ThemeProvider/ThemeProvider';
+import { useMarketingTheme, type MarketingThemeMode } from '@/components/organisms/MarketingThemeProvider/MarketingThemeProvider';
 
 export type ThemeMode = 'light' | 'dark';
 

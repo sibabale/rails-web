@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import { MarketingThemeProvider, useMarketingTheme } from './ThemeProvider';
+import { MarketingThemeProvider, useMarketingTheme } from './MarketingThemeProvider';
 
 function ThemeProbe() {
   const { theme } = useMarketingTheme();

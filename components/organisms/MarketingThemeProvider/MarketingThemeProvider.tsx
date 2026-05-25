@@ -9,7 +9,7 @@ type ThemeProviderState = {
   setTheme: (theme: MarketingThemeMode) => void;
 };
 
-const ThemeContext = createContext<ThemeProviderState | undefined>(undefined);
+const MarketingThemeContext = createContext<ThemeProviderState | undefined>(undefined);
 
 function resolveEffective(mode: MarketingThemeMode): 'light' | 'dark' {
   if (mode === 'system' && typeof window !== 'undefined') {
@@ -70,11 +70,11 @@ export function MarketingThemeProvider({
 
   const value = useMemo(() => ({ theme, setTheme }), [theme, setTheme]);
 
-  return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
+  return <MarketingThemeContext.Provider value={value}>{children}</MarketingThemeContext.Provider>;
 }
 
 export function useMarketingTheme() {
-  const ctx = useContext(ThemeContext);
+  const ctx = useContext(MarketingThemeContext);
   if (!ctx) {
     throw new Error('useMarketingTheme must be used within MarketingThemeProvider');
   }
