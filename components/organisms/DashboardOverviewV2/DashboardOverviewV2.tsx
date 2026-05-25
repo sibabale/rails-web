@@ -1,17 +1,17 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { MarketingDocsCtaLink } from '@/components/molecules/MarketingDocsCtaLink/MarketingDocsCtaLink';
-import OnboardingStepCard, {
-  type OnboardingStepState,
-} from '@/components/organisms/OnboardingStepCard/OnboardingStepCard';
+import OnboardingStepCard from '@/components/organisms/OnboardingStepCard/OnboardingStepCard';
 import { useOnboarding } from '@/hooks/useOnboarding';
 import {
-  isDatabaseSetupCompletedFromBackend,
-  markDatabaseSetupCompleted,
-  readDatabaseSetupCompleted,
-  resolveDbsConnectedOnboardingAction,
-} from '@/lib/databaseSetupState';
-import { apiKeysApi, databaseConnectionsApi, type DatabaseConnectionMigrationStatusResponse } from '@/lib/api';
+  apiKeysApi,
+  databaseConnectionsApi,
+  type DatabaseConnectionsResponse,
+} from '@/lib/api';
+import {
+  evaluateOnboardingStages,
+  type OnboardingStages,
+} from '@/lib/onboarding/evaluateOnboardingStages';
 import { useAppSelector } from '@/state/hooks';
 
 interface DashboardOverviewV2Props {
@@ -64,16 +64,29 @@ const DashboardOverviewV2: React.FC<DashboardOverviewV2Props> = ({
   const environmentId =
     session?.environments?.find((item: { id: string; type: string }) => item.type === environment)?.id ??
     session?.environment_id;
-  const { state, updateStep, isComplete } = useOnboarding(environmentId);
+  // `useOnboarding` continues to back the steps that have no DB source today:
+  // `firstRequestSent` (no backend column yet) and `dismissed` (purely a UI
+  // gesture). The DB step and API key step are driven by the DB snapshot.
+  const { state, updateStep } = useOnboarding(environmentId);
   const [isSendingRequest, setIsSendingRequest] = useState(false);
-  const [migrationSnapshot, setMigrationSnapshot] =
-    useState<DatabaseConnectionMigrationStatusResponse | null>(null);
+  const [connections, setConnections] = useState<DatabaseConnectionsResponse | null>(null);
+  const [hasActiveApiKey, setHasActiveApiKey] = useState<boolean>(false);
 
-  const backendMilestoneComplete =
-    isDatabaseSetupCompletedFromBackend(migrationSnapshot) ||
-    readDatabaseSetupCompleted(environmentId);
+  const stages: OnboardingStages = useMemo(
+    () =>
+      evaluateOnboardingStages({
+        connections,
+        hasActiveApiKey,
+        apiKeyFirstCreatedAt: connections?.api_key_first_created_at ?? null,
+        firstRequestSent: state.firstRequestSent,
+      }),
+    [connections, hasActiveApiKey, state.firstRequestSent]
+  );
 
-  const dbsStepVisuallyComplete = backendMilestoneComplete;
+  const isComplete =
+    stages.dbs === 'complete' &&
+    stages.apiKey === 'complete' &&
+    stages.firstRequest === 'complete';
 
   const handleSendTestRequest = () => {
     setIsSendingRequest(true);
@@ -86,82 +99,26 @@ const DashboardOverviewV2: React.FC<DashboardOverviewV2Props> = ({
   React.useEffect(() => {
     if (!session) return;
     let isActive = true;
-
-    if (readDatabaseSetupCompleted(environmentId)) {
-      updateStep('dbsConnected', true);
-    }
-
-    databaseConnectionsApi
-      .list(session)
-      .then(async (summary) => {
-        const setupCompleted = readDatabaseSetupCompleted(environmentId);
-        const listAction = resolveDbsConnectedOnboardingAction({
-          stickyCompleted: setupCompleted,
-          summary,
-          migrations: null,
-        });
-        if (listAction === 'mark-complete') {
-          markDatabaseSetupCompleted(environmentId);
-        }
-        if (isActive && listAction === 'mark-complete') {
-          updateStep('dbsConnected', true);
-        }
-
-        const migrations = await databaseConnectionsApi.migrations(session);
-        const action = resolveDbsConnectedOnboardingAction({
-          stickyCompleted: setupCompleted || readDatabaseSetupCompleted(environmentId),
-          summary,
-          migrations,
-        });
-        if (action === 'mark-complete') {
-          markDatabaseSetupCompleted(environmentId);
-        }
-        if (isActive) {
-          setMigrationSnapshot(migrations);
-        }
-        if (isActive && action === 'mark-complete') {
-          updateStep('dbsConnected', true);
-        } else if (isActive && action === 'hold' && readDatabaseSetupCompleted(environmentId)) {
-          updateStep('dbsConnected', true);
-        } else if (isActive && action === 'mark-incomplete' && !readDatabaseSetupCompleted(environmentId)) {
-          updateStep('dbsConnected', false);
-        }
-      })
-      .catch(() => {
-        const action = resolveDbsConnectedOnboardingAction({
-          stickyCompleted: readDatabaseSetupCompleted(environmentId),
-          summary: null,
-          migrations: null,
-        });
-        if (isActive && action === 'mark-incomplete' && !readDatabaseSetupCompleted(environmentId)) {
-          updateStep('dbsConnected', false);
-        }
-      });
-    return () => {
-      isActive = false;
-    };
-  }, [session, environment, environmentId, updateStep]);
-
-  React.useEffect(() => {
-    if (!session || !environmentId) return;
-    let isActive = true;
-    apiKeysApi
-      .list(session)
-      .then((keys) => {
-        const hasActiveKey = keys.some(
+    Promise.all([databaseConnectionsApi.list(session), apiKeysApi.list(session)])
+      .then(([snapshot, keys]) => {
+        if (!isActive) return;
+        setConnections(snapshot);
+        const activeKey = keys.some(
           (key) =>
             (key.environment_id || '') === (environmentId || '') &&
             (key.status || '').toLowerCase() === 'active'
         );
-        if (isActive) updateStep('apiKeyGenerated', hasActiveKey);
+        setHasActiveApiKey(activeKey);
       })
       .catch(() => {
-        if (isActive) updateStep('apiKeyGenerated', false);
+        // Network or auth failure: surface the loading-skeleton path by
+        // keeping `connections` null. The evaluator returns "all locked",
+        // which the renderer treats as a neutral pending state.
       });
     return () => {
       isActive = false;
     };
-  }, [session, environment, environmentId, updateStep]);
+  }, [session, environment, environmentId]);
 
   const overviewTiles = [
     {
@@ -225,14 +182,23 @@ const DashboardOverviewV2: React.FC<DashboardOverviewV2Props> = ({
                 : 'Before you can create accounts and process transactions, connect your infrastructure and generate your first API key.'}
             </p>
 
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 xl:grid-cols-3">
+            <div
+              className="grid grid-cols-1 gap-6 lg:grid-cols-2 xl:grid-cols-3"
+              aria-busy={connections === null}
+              data-testid="dashboard-overview-onboarding"
+              data-stage-dbs={stages.dbs}
+              data-stage-apikey={stages.apiKey}
+              data-stage-firstrequest={stages.firstRequest}
+              data-snapshot-loaded={connections !== null ? 'true' : 'false'}
+            >
               <OnboardingStepCard
                 stepNumber={1}
-                state={dbsStepVisuallyComplete ? 'complete' : 'active'}
+                state={stages.dbs}
+                testId="onboarding-step-dbs"
                 title="Connect Databases"
                 description="Provide PostgreSQL connection strings so Rails can work with your own infrastructure."
                 cta={
-                  dbsStepVisuallyComplete ? (
+                  stages.dbs === 'complete' ? (
                     <button
                       type="button"
                       disabled
@@ -253,17 +219,12 @@ const DashboardOverviewV2: React.FC<DashboardOverviewV2Props> = ({
 
               <OnboardingStepCard
                 stepNumber={2}
-                state={
-                  (!state.dbsConnected
-                    ? 'locked'
-                    : state.apiKeyGenerated
-                      ? 'complete'
-                      : 'active') as OnboardingStepState
-                }
+                state={stages.apiKey}
+                testId="onboarding-step-apikey"
                 title="Generate API Key"
                 description="Create a secure token to authenticate application requests against the Rails API."
                 cta={
-                  !state.dbsConnected ? (
+                  stages.apiKey === 'locked' ? (
                     <button
                       type="button"
                       disabled
@@ -271,7 +232,7 @@ const DashboardOverviewV2: React.FC<DashboardOverviewV2Props> = ({
                     >
                       Locked
                     </button>
-                  ) : state.apiKeyGenerated ? (
+                  ) : stages.apiKey === 'complete' ? (
                     <button
                       type="button"
                       disabled
@@ -292,17 +253,12 @@ const DashboardOverviewV2: React.FC<DashboardOverviewV2Props> = ({
 
               <OnboardingStepCard
                 stepNumber={3}
-                state={
-                  (!state.apiKeyGenerated
-                    ? 'locked'
-                    : state.firstRequestSent
-                      ? 'complete'
-                      : 'active') as OnboardingStepState
-                }
+                state={stages.firstRequest}
+                testId="onboarding-step-first-request"
                 title="Send First Request"
                 description="Verify the setup by sending your first test request through the Rails API."
                 cta={
-                  !state.apiKeyGenerated ? (
+                  stages.firstRequest === 'locked' ? (
                     <button
                       type="button"
                       disabled
@@ -310,7 +266,7 @@ const DashboardOverviewV2: React.FC<DashboardOverviewV2Props> = ({
                     >
                       Locked
                     </button>
-                  ) : state.firstRequestSent ? (
+                  ) : stages.firstRequest === 'complete' ? (
                     <button
                       type="button"
                       disabled
