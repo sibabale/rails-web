@@ -1,6 +1,6 @@
 'use client';
 
-import MaterialIcon from '@/components/atoms/MaterialIcon';
+import MaterialIcon from '@/components/atoms/MaterialIcon/MaterialIcon';
 
 interface ServiceAvatarProps {
   primaryIcon: string;

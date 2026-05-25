@@ -2,8 +2,8 @@
 
 import DatabaseConnectionCard from '@/components/pages/integrations/components/DatabaseConnectionCard';
 import Banner from '@/components/molecules/Banner';
-import PrimaryButton from '@/components/atoms/PrimaryButton';
-import MaterialIcon from '@/components/atoms/MaterialIcon';
+import PrimaryButton from '@/components/atoms/PrimaryButton/PrimaryButton';
+import MaterialIcon from '@/components/atoms/MaterialIcon/MaterialIcon';
 import {
   useDatabaseConnections,
   type ConnectionKey,

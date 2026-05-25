@@ -5,9 +5,9 @@ import DatabaseConnectionCardSkeleton from '@/components/pages/integrations/comp
 import DatabaseConnectionSetupProgress from '@/components/pages/integrations/components/DatabaseConnectionSetupProgress';
 import ConnectionStringField from '@/components/molecules/ConnectionStringField';
 import Banner, { type BannerTone } from '@/components/molecules/Banner';
-import PrimaryButton from '@/components/atoms/PrimaryButton';
-import SecondaryButton from '@/components/atoms/SecondaryButton';
-import MaterialIcon from '@/components/atoms/MaterialIcon';
+import PrimaryButton from '@/components/atoms/PrimaryButton/PrimaryButton';
+import SecondaryButton from '@/components/atoms/SecondaryButton/SecondaryButton';
+import MaterialIcon from '@/components/atoms/MaterialIcon/MaterialIcon';
 import {
   type DatabaseSetupPhase,
   type SetupOutcomeState,

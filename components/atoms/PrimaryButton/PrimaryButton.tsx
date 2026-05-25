@@ -1,7 +1,7 @@
 'use client';
 
 import type { ButtonHTMLAttributes, ReactNode } from 'react';
-import ButtonLoadingContent from '@/components/atoms/ButtonLoadingContent';
+import ButtonLoadingContent from '@/components/atoms/ButtonLoadingContent/ButtonLoadingContent';
 
 interface PrimaryButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   children: ReactNode;

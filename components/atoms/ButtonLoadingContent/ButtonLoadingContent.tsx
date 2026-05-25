@@ -1,7 +1,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import Spinner from '@/components/atoms/Spinner';
+import Spinner from '@/components/atoms/Spinner/Spinner';
 
 interface ButtonLoadingContentProps {
   loading: boolean;

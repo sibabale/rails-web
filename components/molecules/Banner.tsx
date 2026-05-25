@@ -1,7 +1,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import MaterialIcon from '@/components/atoms/MaterialIcon';
+import MaterialIcon from '@/components/atoms/MaterialIcon/MaterialIcon';
 
 export type BannerTone = 'neutral' | 'info' | 'success' | 'warning' | 'danger';
 

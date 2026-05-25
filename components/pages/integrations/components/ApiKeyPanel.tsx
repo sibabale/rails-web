@@ -3,7 +3,7 @@
 import { useCallback } from 'react';
 import ApiKeyManager from '@/components/ApiKeyManager';
 import Banner from '@/components/molecules/Banner';
-import SecondaryButton from '@/components/atoms/SecondaryButton';
+import SecondaryButton from '@/components/atoms/SecondaryButton/SecondaryButton';
 import { isMigrationStatusCurrent } from '@/lib/databaseReadiness';
 import type { DatabaseConnectionMigrationStatusResponse } from '@/lib/api';
 

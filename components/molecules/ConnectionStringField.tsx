@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import MaterialIcon from '@/components/atoms/MaterialIcon';
+import MaterialIcon from '@/components/atoms/MaterialIcon/MaterialIcon';
 
 interface ConnectionStringFieldProps {
   name: string;

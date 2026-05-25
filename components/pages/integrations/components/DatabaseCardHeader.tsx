@@ -1,7 +1,7 @@
 'use client';
 
 import ServiceAvatar from '@/components/molecules/ServiceAvatar';
-import Pill from '@/components/atoms/Pill';
+import Pill from '@/components/atoms/Pill/Pill';
 
 interface DatabaseCardHeaderProps {
   title: string;
