@@ -2,9 +2,9 @@
 
 import Link from 'next/link';
 import React from 'react';
-import { Section } from '../../atoms/Section/Section';
-import { Container } from '../../atoms/Container/Container';
-import { Heading } from '../../atoms/Heading/Heading';
+import { Section } from '@/components/atoms/Section/Section';
+import { Container } from '@/components/atoms/Container/Container';
+import { Heading } from '@/components/atoms/Heading/Heading';
 import { isAuthButtonsEnabled } from '@/lib/env';
 import { MarketingDocsCtaLink } from '@/components/marketing/atoms/MarketingDocsCtaLink/MarketingDocsCtaLink';
 import { theme } from '@/lib/marketingTheme';

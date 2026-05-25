@@ -4,10 +4,10 @@ import React from 'react';
 import Link from 'next/link';
 import ArchitectureDiagram from '../../ArchitectureDiagram/ArchitectureDiagram';
 import { CallToAction } from '../../molecules/CallToAction/CallToAction';
-import { Section } from '../../atoms/Section/Section';
-import { Container } from '../../atoms/Container/Container';
-import { Heading } from '../../atoms/Heading/Heading';
-import { Text } from '../../atoms/Text/Text';
+import { Section } from '@/components/atoms/Section/Section';
+import { Container } from '@/components/atoms/Container/Container';
+import { Heading } from '@/components/atoms/Heading/Heading';
+import { Text } from '@/components/atoms/Text/Text';
 import { useMarketingSiteCopy } from '@/components/marketing/MarketingCopyVariantProvider/MarketingCopyVariantProvider';
 
 export default function RailsApi() {

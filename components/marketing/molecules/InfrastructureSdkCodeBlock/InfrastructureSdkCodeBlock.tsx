@@ -9,7 +9,7 @@ import {
   MARKETING_TYPESCRIPT_NPM_IMPORT,
 } from '@/lib/marketingSdkSnippetConstants';
 import { TypescriptRailsAccountsTransferInfrastructure } from '@/components/marketing/snippets/TypescriptRailsAccountsTransferSample/TypescriptRailsAccountsTransferSample';
-import { CodeScrollPane } from '../../atoms/CodeScrollPane/CodeScrollPane';
+import { CodeScrollPane } from '@/components/atoms/CodeScrollPane/CodeScrollPane';
 
 export type InfrastructureSdkLanguage = 'TypeScript' | 'Go' | 'Java' | 'Kotlin' | '.NET';
 

@@ -9,7 +9,7 @@ import { isAuthButtonsEnabled } from '@/lib/env';
 import { MarketingDocsCtaLink } from '@/components/marketing/atoms/MarketingDocsCtaLink/MarketingDocsCtaLink';
 import { theme } from '@/lib/marketingTheme';
 import { MarketingThemeToggle } from '../ThemeToggle/ThemeToggle';
-import { RailsTrackMark } from '../atoms/RailsTrackMark/RailsTrackMark';
+import { RailsTrackMark } from '@/components/atoms/RailsTrackMark/RailsTrackMark';
 
 type MarketingAuthShellProps = {
   children: React.ReactNode;

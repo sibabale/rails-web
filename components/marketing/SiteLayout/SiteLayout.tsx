@@ -10,7 +10,7 @@ import { useMarketingSiteCopy } from '@/components/marketing/MarketingCopyVarian
 import { MarketingDocsCtaLink } from '@/components/marketing/atoms/MarketingDocsCtaLink/MarketingDocsCtaLink';
 import { theme } from '@/lib/marketingTheme';
 import { MarketingThemeToggle } from '../ThemeToggle/ThemeToggle';
-import { RailsTrackMark } from '../atoms/RailsTrackMark/RailsTrackMark';
+import { RailsTrackMark } from '@/components/atoms/RailsTrackMark/RailsTrackMark';
 
 type SiteLayoutProps = {
   children: React.ReactNode;

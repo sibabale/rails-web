@@ -6,10 +6,10 @@ import ArchitectureDiagram from '../../ArchitectureDiagram/ArchitectureDiagram';
 import { SiTypescript, SiGo, SiKotlin, SiOpenjdk, SiDotnet, SiGithub } from '@icons-pack/react-simple-icons';
 import { motion } from 'motion/react';
 import { CallToAction } from '../../molecules/CallToAction/CallToAction';
-import { Section } from '../../atoms/Section/Section';
-import { Container } from '../../atoms/Container/Container';
-import { Heading } from '../../atoms/Heading/Heading';
-import { Text } from '../../atoms/Text/Text';
+import { Section } from '@/components/atoms/Section/Section';
+import { Container } from '@/components/atoms/Container/Container';
+import { Heading } from '@/components/atoms/Heading/Heading';
+import { Text } from '@/components/atoms/Text/Text';
 import { useMarketingSiteCopy } from '@/components/marketing/MarketingCopyVariantProvider/MarketingCopyVariantProvider';
 import { RAILSINFRA_GITHUB_ORG_REPOSITORIES_URL } from '@/lib/railsinfraGithub';
 

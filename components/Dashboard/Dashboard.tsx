@@ -10,7 +10,7 @@ import DashboardOverviewV2 from '../DashboardOverviewV2/DashboardOverviewV2';
 import DashboardIntegrations from '../pages/integrations/IntegrationsPage';
 import LedgerEntryListSkeleton from '@/components/molecules/LedgerEntryListSkeleton/LedgerEntryListSkeleton';
 import LedgerSummarySkeleton from '@/components/molecules/LedgerSummarySkeleton/LedgerSummarySkeleton';
-import { RailsTrackMark } from '@/components/marketing/atoms/RailsTrackMark/RailsTrackMark';
+import { RailsTrackMark } from '@/components/atoms/RailsTrackMark/RailsTrackMark';
 import { DashboardMaterialThemeToggle } from '../DashboardMaterialThemeToggle/DashboardMaterialThemeToggle';
 import {
   isDatabaseSetupCompletedFromBackend,

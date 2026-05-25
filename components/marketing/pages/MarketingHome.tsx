@@ -10,13 +10,13 @@ import {
   type HeroSdkLabel,
 } from '@/components/marketing/heroSdkSamples/heroSdkSamples';
 import { CallToAction } from '../molecules/CallToAction/CallToAction';
-import { Section } from '../atoms/Section/Section';
-import { Heading } from '../atoms/Heading/Heading';
-import { Text } from '../atoms/Text/Text';
+import { Section } from '@/components/atoms/Section/Section';
+import { Heading } from '@/components/atoms/Heading/Heading';
+import { Text } from '@/components/atoms/Text/Text';
 import { startLandingTracking } from '@/lib/analytics';
 import { isAuthButtonsEnabled } from '@/lib/env';
 import { MarketingDocsCtaLink } from '@/components/marketing/atoms/MarketingDocsCtaLink/MarketingDocsCtaLink';
-import { CodeScrollPane } from '../atoms/CodeScrollPane/CodeScrollPane';
+import { CodeScrollPane } from '@/components/atoms/CodeScrollPane/CodeScrollPane';
 import { theme } from '@/lib/marketingTheme';
 import { useMarketingSiteCopy } from '@/components/marketing/MarketingCopyVariantProvider/MarketingCopyVariantProvider';
 

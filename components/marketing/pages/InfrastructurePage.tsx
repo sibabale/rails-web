@@ -3,10 +3,10 @@
 import React from 'react';
 import { Database, Box, ArrowRightLeft, Cloud, Server } from 'lucide-react';
 import Link from 'next/link';
-import { Section } from '../atoms/Section/Section';
-import { Container } from '../atoms/Container/Container';
-import { Heading } from '../atoms/Heading/Heading';
-import { Text } from '../atoms/Text/Text';
+import { Section } from '@/components/atoms/Section/Section';
+import { Container } from '@/components/atoms/Container/Container';
+import { Heading } from '@/components/atoms/Heading/Heading';
+import { Text } from '@/components/atoms/Text/Text';
 import { CallToAction } from '../molecules/CallToAction/CallToAction';
 import { InfrastructureSdkCodeBlock } from '../molecules/InfrastructureSdkCodeBlock/InfrastructureSdkCodeBlock';
 import { useMarketingSiteCopy } from '@/components/marketing/MarketingCopyVariantProvider/MarketingCopyVariantProvider';
