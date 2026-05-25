@@ -8,8 +8,8 @@ import {
   HERO_SDK_LABELS,
   MarketingHeroCodeSample,
   type HeroSdkLabel,
-} from '@/components/marketing/heroSdkSamples/heroSdkSamples';
-import { CallToAction } from '../molecules/CallToAction/CallToAction';
+} from '@/components/organisms/HeroSdkSamples/HeroSdkSamples';
+import { CallToAction } from '@/components/organisms/CallToAction/CallToAction';
 import { Section } from '@/components/atoms/Section/Section';
 import { Heading } from '@/components/atoms/Heading/Heading';
 import { Text } from '@/components/atoms/Text/Text';
@@ -18,7 +18,7 @@ import { isAuthButtonsEnabled } from '@/lib/env';
 import { MarketingDocsCtaLink } from '@/components/molecules/MarketingDocsCtaLink/MarketingDocsCtaLink';
 import { CodeScrollPane } from '@/components/atoms/CodeScrollPane/CodeScrollPane';
 import { theme } from '@/lib/marketingTheme';
-import { useMarketingSiteCopy } from '@/components/marketing/MarketingCopyVariantProvider/MarketingCopyVariantProvider';
+import { useMarketingSiteCopy } from '@/components/organisms/MarketingCopyVariantProvider/MarketingCopyVariantProvider';
 
 export default function MarketingHome() {
   const { copy } = useMarketingSiteCopy();

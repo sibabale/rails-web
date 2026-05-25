@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import { MarketingHeroCodeSample } from './heroSdkSamples';
+import { MarketingHeroCodeSample } from './HeroSdkSamples';
 
 describe('MarketingHeroCodeSample', () => {
   it('renders a TypeScript sample block by default', () => {

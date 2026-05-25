@@ -2,15 +2,15 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import ArchitectureDiagram from '../../ArchitectureDiagram/ArchitectureDiagram';
+import ArchitectureDiagram from '@/components/organisms/ArchitectureDiagram/ArchitectureDiagram';
 import { SiTypescript, SiGo, SiKotlin, SiOpenjdk, SiDotnet, SiGithub } from '@icons-pack/react-simple-icons';
 import { motion } from 'motion/react';
-import { CallToAction } from '../../molecules/CallToAction/CallToAction';
+import { CallToAction } from '@/components/organisms/CallToAction/CallToAction';
 import { Section } from '@/components/atoms/Section/Section';
 import { Container } from '@/components/atoms/Container/Container';
 import { Heading } from '@/components/atoms/Heading/Heading';
 import { Text } from '@/components/atoms/Text/Text';
-import { useMarketingSiteCopy } from '@/components/marketing/MarketingCopyVariantProvider/MarketingCopyVariantProvider';
+import { useMarketingSiteCopy } from '@/components/organisms/MarketingCopyVariantProvider/MarketingCopyVariantProvider';
 import { RAILSINFRA_GITHUB_ORG_REPOSITORIES_URL } from '@/lib/railsinfraGithub';
 
 const FLOW_ICONS = ['ads_click', 'smartphone', 'settings', 'terminal', 'gpp_good', 'database'] as const;

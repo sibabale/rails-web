@@ -8,7 +8,7 @@ import { Heading } from '@/components/atoms/Heading/Heading';
 import { isAuthButtonsEnabled } from '@/lib/env';
 import { MarketingDocsCtaLink } from '@/components/molecules/MarketingDocsCtaLink/MarketingDocsCtaLink';
 import { theme } from '@/lib/marketingTheme';
-import { useMarketingSiteCopy } from '@/components/marketing/MarketingCopyVariantProvider/MarketingCopyVariantProvider';
+import { useMarketingSiteCopy } from '@/components/organisms/MarketingCopyVariantProvider/MarketingCopyVariantProvider';
 
 export function CallToAction({
   title: titleOverride,

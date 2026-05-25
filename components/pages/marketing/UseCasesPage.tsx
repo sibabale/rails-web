@@ -5,8 +5,8 @@ import { Section } from '@/components/atoms/Section/Section';
 import { Container } from '@/components/atoms/Container/Container';
 import { Heading } from '@/components/atoms/Heading/Heading';
 import { Text } from '@/components/atoms/Text/Text';
-import { CallToAction } from '../molecules/CallToAction/CallToAction';
-import { useMarketingSiteCopy } from '@/components/marketing/MarketingCopyVariantProvider/MarketingCopyVariantProvider';
+import { CallToAction } from '@/components/organisms/CallToAction/CallToAction';
+import { useMarketingSiteCopy } from '@/components/organisms/MarketingCopyVariantProvider/MarketingCopyVariantProvider';
 function UseCasesRailsCore() {
   const { copy } = useMarketingSiteCopy();
   const rc = copy.useCases.railsCore;

@@ -2,13 +2,13 @@
 
 import React from 'react';
 import Link from 'next/link';
-import ArchitectureDiagram from '../../ArchitectureDiagram/ArchitectureDiagram';
-import { CallToAction } from '../../molecules/CallToAction/CallToAction';
+import ArchitectureDiagram from '@/components/organisms/ArchitectureDiagram/ArchitectureDiagram';
+import { CallToAction } from '@/components/organisms/CallToAction/CallToAction';
 import { Section } from '@/components/atoms/Section/Section';
 import { Container } from '@/components/atoms/Container/Container';
 import { Heading } from '@/components/atoms/Heading/Heading';
 import { Text } from '@/components/atoms/Text/Text';
-import { useMarketingSiteCopy } from '@/components/marketing/MarketingCopyVariantProvider/MarketingCopyVariantProvider';
+import { useMarketingSiteCopy } from '@/components/organisms/MarketingCopyVariantProvider/MarketingCopyVariantProvider';
 
 export default function RailsApi() {
   const { copy, withCopy } = useMarketingSiteCopy();

@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import React, { useState } from 'react';
 import { isAuthButtonsEnabled } from '@/lib/env';
-import { useMarketingSiteCopy } from '@/components/marketing/MarketingCopyVariantProvider/MarketingCopyVariantProvider';
+import { useMarketingSiteCopy } from '@/components/organisms/MarketingCopyVariantProvider/MarketingCopyVariantProvider';
 import { MarketingDocsCtaLink } from '@/components/molecules/MarketingDocsCtaLink/MarketingDocsCtaLink';
 import { theme } from '@/lib/marketingTheme';
 import { MarketingThemeToggle } from '@/components/molecules/MarketingThemeToggle/MarketingThemeToggle';
