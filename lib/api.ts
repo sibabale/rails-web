@@ -260,6 +260,13 @@ export interface DatabaseConnectionsResponse {
   dbs_setup_completed_at?: string | null;
   /** Write-once milestone: first-ever API key creation timestamp for the environment. Never cleared. */
   api_key_first_created_at?: string | null;
+  /**
+   * Write-once milestone: first time the SDK successfully authenticated against
+   * this environment with an API key. Stamped server-side by the auth context
+   * after API-key validation; never cleared. The Overview reads this to drive
+   * the "Send first request" step instead of trusting localStorage.
+   */
+  first_request_sent_at?: string | null;
 }
 
 export interface DatabaseConnectionMigrationInfo {

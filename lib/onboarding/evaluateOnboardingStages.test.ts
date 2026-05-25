@@ -212,4 +212,47 @@ describe('evaluateOnboardingStages', () => {
     evaluateOnboardingStages(original);
     expect(JSON.stringify(original)).toBe(before);
   });
+
+  // DashboardOverviewV2 now sources `firstRequestSent` from the env-level
+  // `first_request_sent_at` column on the DB snapshot — null while the SDK
+  // has never authenticated, non-null afterwards. The evaluator signature
+  // is unchanged; this test pins the caller-side derivation that replaces
+  // the old localStorage gate.
+  it('drives firstRequest from first_request_sent_at: null -> active, non-null -> complete (API key complete)', () => {
+    const apiKeyStampedAt = '2026-05-25T11:00:00Z';
+
+    const beforeFirstRequest = evaluateOnboardingStages(
+      snapshot({
+        connections: {
+          all_connected: true,
+          connections: connectedServices(),
+          dbs_setup_completed_at: '2026-05-25T10:00:00Z',
+          api_key_first_created_at: apiKeyStampedAt,
+          first_request_sent_at: null,
+        },
+        apiKeyFirstCreatedAt: apiKeyStampedAt,
+        firstRequestSent:
+          (null as string | null) !== null,
+      })
+    );
+    expect(beforeFirstRequest.apiKey).toBe('complete');
+    expect(beforeFirstRequest.firstRequest).toBe('active');
+
+    const afterFirstRequest = evaluateOnboardingStages(
+      snapshot({
+        connections: {
+          all_connected: true,
+          connections: connectedServices(),
+          dbs_setup_completed_at: '2026-05-25T10:00:00Z',
+          api_key_first_created_at: apiKeyStampedAt,
+          first_request_sent_at: '2026-05-25T11:30:00Z',
+        },
+        apiKeyFirstCreatedAt: apiKeyStampedAt,
+        firstRequestSent:
+          ('2026-05-25T11:30:00Z' as string | null) !== null,
+      })
+    );
+    expect(afterFirstRequest.apiKey).toBe('complete');
+    expect(afterFirstRequest.firstRequest).toBe('complete');
+  });
 });

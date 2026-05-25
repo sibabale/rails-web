@@ -64,9 +64,9 @@ const DashboardOverviewV2: React.FC<DashboardOverviewV2Props> = ({
   const environmentId =
     session?.environments?.find((item: { id: string; type: string }) => item.type === environment)?.id ??
     session?.environment_id;
-  // `useOnboarding` continues to back the steps that have no DB source today:
-  // `firstRequestSent` (no backend column yet) and `dismissed` (purely a UI
-  // gesture). The DB step and API key step are driven by the DB snapshot.
+  // `useOnboarding` continues to back the `dismissed` UI gesture only. Every
+  // onboarding milestone (DB, API key, first request) is now derived from the
+  // env-level DB snapshot returned by GET /api/v1/database-connections.
   const { state, updateStep } = useOnboarding(environmentId);
   const [isSendingRequest, setIsSendingRequest] = useState(false);
   const [connections, setConnections] = useState<DatabaseConnectionsResponse | null>(null);
@@ -78,9 +78,9 @@ const DashboardOverviewV2: React.FC<DashboardOverviewV2Props> = ({
         connections,
         hasActiveApiKey,
         apiKeyFirstCreatedAt: connections?.api_key_first_created_at ?? null,
-        firstRequestSent: state.firstRequestSent,
+        firstRequestSent: (connections?.first_request_sent_at ?? null) !== null,
       }),
-    [connections, hasActiveApiKey, state.firstRequestSent]
+    [connections, hasActiveApiKey]
   );
 
   const isComplete =
@@ -88,11 +88,34 @@ const DashboardOverviewV2: React.FC<DashboardOverviewV2Props> = ({
     stages.apiKey === 'complete' &&
     stages.firstRequest === 'complete';
 
+  const refreshOnboardingSnapshot = React.useCallback(() => {
+    if (!session) return;
+    Promise.all([databaseConnectionsApi.list(session), apiKeysApi.list(session)])
+      .then(([snapshot, keys]) => {
+        setConnections(snapshot);
+        const activeKey = keys.some(
+          (key) =>
+            (key.environment_id || '') === (environmentId || '') &&
+            (key.status || '').toLowerCase() === 'active'
+        );
+        setHasActiveApiKey(activeKey);
+      })
+      .catch(() => {
+        // Swallow — caller keeps the stale snapshot if the refresh fails;
+        // the next mount or environment switch will re-fetch.
+      });
+  }, [session, environmentId]);
+
   const handleSendTestRequest = () => {
+    // The DB column `environments.first_request_sent_at` is the source of
+    // truth for this milestone — it is stamped server-side by the auth
+    // middleware on the first authenticated API request. The dashboard no
+    // longer writes to localStorage; instead we refetch the snapshot so the
+    // stage advances as soon as the server-side stamp lands.
     setIsSendingRequest(true);
     window.setTimeout(() => {
       setIsSendingRequest(false);
-      updateStep('firstRequestSent', true);
+      refreshOnboardingSnapshot();
     }, 1500);
   };
 
