@@ -8,17 +8,17 @@ import {
   HERO_SDK_LABELS,
   MarketingHeroCodeSample,
   type HeroSdkLabel,
-} from '@/components/marketing/heroSdkSamples';
-import { CallToAction } from '../molecules/CallToAction';
-import { Section } from '../atoms/Section';
-import { Heading } from '../atoms/Heading';
-import { Text } from '../atoms/Text';
+} from '@/components/marketing/heroSdkSamples/heroSdkSamples';
+import { CallToAction } from '../molecules/CallToAction/CallToAction';
+import { Section } from '../atoms/Section/Section';
+import { Heading } from '../atoms/Heading/Heading';
+import { Text } from '../atoms/Text/Text';
 import { startLandingTracking } from '@/lib/analytics';
 import { isAuthButtonsEnabled } from '@/lib/env';
-import { MarketingDocsCtaLink } from '@/components/marketing/atoms/MarketingDocsCtaLink';
-import { CodeScrollPane } from '../atoms/CodeScrollPane';
+import { MarketingDocsCtaLink } from '@/components/marketing/atoms/MarketingDocsCtaLink/MarketingDocsCtaLink';
+import { CodeScrollPane } from '../atoms/CodeScrollPane/CodeScrollPane';
 import { theme } from '@/lib/marketingTheme';
-import { useMarketingSiteCopy } from '@/components/marketing/MarketingCopyVariantProvider';
+import { useMarketingSiteCopy } from '@/components/marketing/MarketingCopyVariantProvider/MarketingCopyVariantProvider';
 
 export default function MarketingHome() {
   const { copy } = useMarketingSiteCopy();

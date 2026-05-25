@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { MarketingDocsCtaLink } from '@/components/marketing/atoms/MarketingDocsCtaLink';
+import { MarketingDocsCtaLink } from '@/components/marketing/atoms/MarketingDocsCtaLink/MarketingDocsCtaLink';
 import { useOnboarding } from '@/hooks/useOnboarding';
 import {
   isDatabaseSetupCompletedFromBackend,

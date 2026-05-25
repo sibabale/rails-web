@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { Button } from './marketing/atoms/Button';
-import { Container } from './marketing/atoms/Container';
-import { Heading } from './marketing/atoms/Heading';
-import { Text } from './marketing/atoms/Text';
+import { Button } from './marketing/atoms/Button/Button';
+import { Container } from './marketing/atoms/Container/Container';
+import { Heading } from './marketing/atoms/Heading/Heading';
+import { Text } from './marketing/atoms/Text/Text';
 import {
   AUTH_ERROR_BOX,
   AUTH_FOOTER_MICRO,

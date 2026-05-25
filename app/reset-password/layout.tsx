@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { MarketingAuthShell } from '@/components/marketing/MarketingAuthShell';
+import { MarketingAuthShell } from '@/components/marketing/MarketingAuthShell/MarketingAuthShell';
 
 export const metadata: Metadata = {
   title: 'Reset Password | Rails Infra',

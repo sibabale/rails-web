@@ -2,13 +2,13 @@
 
 import Link from 'next/link';
 import React from 'react';
-import { Section } from '../atoms/Section';
-import { Container } from '../atoms/Container';
-import { Heading } from '../atoms/Heading';
+import { Section } from '../../atoms/Section/Section';
+import { Container } from '../../atoms/Container/Container';
+import { Heading } from '../../atoms/Heading/Heading';
 import { isAuthButtonsEnabled } from '@/lib/env';
-import { MarketingDocsCtaLink } from '@/components/marketing/atoms/MarketingDocsCtaLink';
+import { MarketingDocsCtaLink } from '@/components/marketing/atoms/MarketingDocsCtaLink/MarketingDocsCtaLink';
 import { theme } from '@/lib/marketingTheme';
-import { useMarketingSiteCopy } from '@/components/marketing/MarketingCopyVariantProvider';
+import { useMarketingSiteCopy } from '@/components/marketing/MarketingCopyVariantProvider/MarketingCopyVariantProvider';
 
 export function CallToAction({
   title: titleOverride,

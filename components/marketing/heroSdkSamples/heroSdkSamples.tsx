@@ -4,7 +4,7 @@ import {
   MARKETING_GO_MODULE_OPTION,
   MARKETING_SAMPLE_TRANSFER,
 } from '@/lib/marketingSdkSnippetConstants';
-import { TypescriptRailsAccountsTransferMarketingHero } from '@/components/marketing/snippets/TypescriptRailsAccountsTransferSample';
+import { TypescriptRailsAccountsTransferMarketingHero } from '@/components/marketing/snippets/TypescriptRailsAccountsTransferSample/TypescriptRailsAccountsTransferSample';
 
 /** Labels match the shipped Stainless SDKs in `rails-sdks/`. */
 export const HERO_SDK_LABELS = ['TypeScript', 'Go', 'Java', 'Kotlin', '.NET'] as const;

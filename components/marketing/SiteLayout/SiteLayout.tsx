@@ -6,11 +6,11 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import React, { useState } from 'react';
 import { isAuthButtonsEnabled } from '@/lib/env';
-import { useMarketingSiteCopy } from '@/components/marketing/MarketingCopyVariantProvider';
-import { MarketingDocsCtaLink } from '@/components/marketing/atoms/MarketingDocsCtaLink';
+import { useMarketingSiteCopy } from '@/components/marketing/MarketingCopyVariantProvider/MarketingCopyVariantProvider';
+import { MarketingDocsCtaLink } from '@/components/marketing/atoms/MarketingDocsCtaLink/MarketingDocsCtaLink';
 import { theme } from '@/lib/marketingTheme';
-import { MarketingThemeToggle } from './ThemeToggle';
-import { RailsTrackMark } from './atoms/RailsTrackMark';
+import { MarketingThemeToggle } from '../ThemeToggle/ThemeToggle';
+import { RailsTrackMark } from '../atoms/RailsTrackMark/RailsTrackMark';
 
 type SiteLayoutProps = {
   children: React.ReactNode;

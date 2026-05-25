@@ -1,12 +1,12 @@
 'use client';
 
 import React from 'react';
-import { Section } from '../atoms/Section';
-import { Container } from '../atoms/Container';
-import { Heading } from '../atoms/Heading';
-import { Text } from '../atoms/Text';
-import { CallToAction } from '../molecules/CallToAction';
-import { useMarketingSiteCopy } from '@/components/marketing/MarketingCopyVariantProvider';
+import { Section } from '../atoms/Section/Section';
+import { Container } from '../atoms/Container/Container';
+import { Heading } from '../atoms/Heading/Heading';
+import { Text } from '../atoms/Text/Text';
+import { CallToAction } from '../molecules/CallToAction/CallToAction';
+import { useMarketingSiteCopy } from '@/components/marketing/MarketingCopyVariantProvider/MarketingCopyVariantProvider';
 function UseCasesRailsCore() {
   const { copy } = useMarketingSiteCopy();
   const rc = copy.useCases.railsCore;

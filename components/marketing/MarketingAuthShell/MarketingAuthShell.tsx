@@ -6,10 +6,10 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import React, { useState } from 'react';
 import { isAuthButtonsEnabled } from '@/lib/env';
-import { MarketingDocsCtaLink } from '@/components/marketing/atoms/MarketingDocsCtaLink';
+import { MarketingDocsCtaLink } from '@/components/marketing/atoms/MarketingDocsCtaLink/MarketingDocsCtaLink';
 import { theme } from '@/lib/marketingTheme';
-import { MarketingThemeToggle } from './ThemeToggle';
-import { RailsTrackMark } from './atoms/RailsTrackMark';
+import { MarketingThemeToggle } from '../ThemeToggle/ThemeToggle';
+import { RailsTrackMark } from '../atoms/RailsTrackMark/RailsTrackMark';
 
 type MarketingAuthShellProps = {
   children: React.ReactNode;
