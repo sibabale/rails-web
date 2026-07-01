@@ -278,8 +278,13 @@ export function useDatabaseConnections({
     return 'invalid' as const;
   };
 
-  const handleChange = (key: ConnectionKey, value: string) =>
+  const handleChange = (key: ConnectionKey, value: string) => {
     setConnections((p) => ({ ...p, [key]: value }));
+    setConnectionNotices((p) => {
+      if (p[key] == null) return p;
+      return { ...p, [key]: null };
+    });
+  };
 
   const handleCopy = async (value: string) => {
     if (!value || typeof navigator === 'undefined' || !navigator.clipboard) return;
