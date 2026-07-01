@@ -6,10 +6,12 @@ import {
   computeIsCardStateReady,
   connectionSetupNotice,
   connectionUiStatusFromApi,
+  findDuplicateService,
   isPostgresConnectionString,
   isUnchangedSaveResponse,
   listSavedConnectionServices,
   listServicesNeedingRepair,
+  normalizePostgresConnectionIdentity,
   savedConnectionKeysFromSummary,
   statusesFromListResponse,
   mergeMigrationStatusForService,
@@ -583,6 +585,71 @@ describe('databaseConnectionSetup', () => {
           ],
         })
       ).toBe(false);
+    });
+  });
+
+  describe('normalizePostgresConnectionIdentity', () => {
+    it('strips JDBC prefix', () => {
+      expect(
+        normalizePostgresConnectionIdentity(
+          'jdbc:postgresql://user:pass@host.example.com:5432/db'
+        )
+      ).toBe('postgresql://user:pass@host.example.com:5432/db');
+    });
+
+    it('strips query parameters', () => {
+      expect(
+        normalizePostgresConnectionIdentity(
+          'postgresql://user:pass@host.example.com:5432/db?sslmode=require&application_name=rails'
+        )
+      ).toBe('postgresql://user:pass@host.example.com:5432/db');
+    });
+
+    it('lowercases host', () => {
+      expect(
+        normalizePostgresConnectionIdentity(
+          'postgresql://User:Pass@Host.Example.COM:5432/DB'
+        )
+      ).toBe('postgresql://user:pass@host.example.com:5432/db');
+    });
+
+    it('is invariant to trailing whitespace', () => {
+      const bare = 'postgresql://user:pass@host.example.com:5432/db';
+      expect(normalizePostgresConnectionIdentity(`  ${bare}  \n`)).toBe(bare);
+    });
+  });
+
+  describe('findDuplicateService', () => {
+    const base = 'postgresql://user:pass@host.example.com:5432/db';
+
+    it('returns the conflicting service when identity matches another in snapshot', () => {
+      const snapshot = [
+        { service: 'accounts' as const, identity: base },
+        { service: 'users' as const, identity: base },
+      ];
+      expect(findDuplicateService(snapshot, 'users', base)).toBe('accounts');
+    });
+
+    it('excludes the current service', () => {
+      const snapshot = [{ service: 'accounts' as const, identity: base }];
+      expect(findDuplicateService(snapshot, 'accounts', base)).toBeNull();
+    });
+
+    it('returns null on empty candidate', () => {
+      const snapshot = [{ service: 'accounts' as const, identity: base }];
+      expect(findDuplicateService(snapshot, 'users', '')).toBeNull();
+      expect(findDuplicateService(snapshot, 'users', '   ')).toBeNull();
+    });
+
+    it('is case-insensitive on host', () => {
+      const snapshot = [{ service: 'accounts' as const, identity: base }];
+      expect(
+        findDuplicateService(
+          snapshot,
+          'users',
+          'postgresql://user:pass@HOST.example.com:5432/DB'
+        )
+      ).toBe('accounts');
     });
   });
 });
