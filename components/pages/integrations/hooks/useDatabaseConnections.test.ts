@@ -168,3 +168,88 @@ describe('useDatabaseConnections handleChange — clear-on-edit pathway', () => 
     expect(result.current.connectionNotices.users).toBeNull();
   });
 });
+
+describe('useDatabaseConnections handleConnect — backend 409 rendering (RAI-71)', () => {
+  beforeEach(() => {
+    listMock.mockReset();
+    saveMock.mockReset();
+    listMock.mockResolvedValue(emptyListResponse);
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  const buildDuplicateError = () =>
+    Object.assign(new Error('This connection string is already in use by another service.'), {
+      status: 409,
+      body: {
+        error: {
+          code: 'DUPLICATE_CONNECTION_STRING',
+          conflicting_service: 'accounts',
+        },
+        message: 'This connection string is already in use by another service.',
+      },
+    });
+
+  it('routes 409 duplicate into connectionNotices, not setError', async () => {
+    saveMock.mockRejectedValue(buildDuplicateError());
+    const { result } = renderHookWithDefaults();
+    await waitFor(() => expect(result.current.initialCheckComplete).toBe(true));
+
+    act(() => {
+      result.current.handleChange('users', 'postgresql://user:pass@host.example.com:5432/db');
+    });
+    await act(async () => {
+      await result.current.handleConnect('users');
+    });
+
+    expect(result.current.connectionNotices.users).toBe(
+      DUPLICATE_CONNECTION_NOTICE(
+        displayNameForService('accounts'),
+        displayNameForService('users')
+      )
+    );
+    expect(result.current.error).toBeNull();
+  });
+
+  it('clears the 409 duplicate notice on next edit', async () => {
+    saveMock.mockRejectedValue(buildDuplicateError());
+    const { result } = renderHookWithDefaults();
+    await waitFor(() => expect(result.current.initialCheckComplete).toBe(true));
+
+    act(() => {
+      result.current.handleChange('users', 'postgresql://user:pass@host.example.com:5432/db');
+    });
+    await act(async () => {
+      await result.current.handleConnect('users');
+    });
+    expect(result.current.connectionNotices.users).not.toBeNull();
+
+    act(() => {
+      result.current.handleChange('users', 'postgresql://user:pass@other.example.com:5432/db');
+    });
+    expect(result.current.connectionNotices.users).toBeNull();
+  });
+
+  it('falls back to generic error for non-duplicate 409 body', async () => {
+    saveMock.mockRejectedValue(
+      Object.assign(new Error('Some other conflict occurred.'), {
+        status: 409,
+        body: { error: { code: 'OTHER_CONFLICT' }, message: 'Some other conflict occurred.' },
+      })
+    );
+    const { result } = renderHookWithDefaults();
+    await waitFor(() => expect(result.current.initialCheckComplete).toBe(true));
+
+    act(() => {
+      result.current.handleChange('users', 'postgresql://user:pass@host.example.com:5432/db');
+    });
+    await act(async () => {
+      await result.current.handleConnect('users');
+    });
+
+    expect(result.current.connectionNotices.users).toBeNull();
+    expect(result.current.error).toBe('Some other conflict occurred.');
+  });
+});
