@@ -29,6 +29,7 @@ import {
 } from '@/lib/databaseConnectionSetup';
 import {
   databaseConnectionsApi,
+  isDuplicateConnectionError,
   refreshDatabaseHealth,
   type DatabaseConnectionInfo,
   type DatabaseConnectionMigrationRunResponse,
@@ -382,7 +383,18 @@ export function useDatabaseConnections({
       statusRef.current = { ...statusRef.current, [key]: wasConnected ? 'connected' : 'idle' };
       setStatus({ ...statusRef.current });
       publishGlobalHealthIfIdle();
-      setError(err instanceof Error ? err.message : 'Failed to save database connection.');
+      const duplicate = isDuplicateConnectionError(err);
+      if (duplicate) {
+        setConnectionNotices((prev) => ({
+          ...prev,
+          [key]: DUPLICATE_CONNECTION_NOTICE(
+            displayNameForService(duplicate.conflictingService),
+            displayNameForService(key)
+          ),
+        }));
+      } else {
+        setError(err instanceof Error ? err.message : 'Failed to save database connection.');
+      }
     } finally {
       setSavingService((current) => (current === key ? null : current));
     }
