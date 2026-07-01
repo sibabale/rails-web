@@ -6,9 +6,13 @@ import {
   type ConnectionUiStatus,
   type SetupOutcomeState,
   buildConnectionsResponseFromStatuses,
+  buildDuplicateSnapshot,
   computeInteractionsLocked,
   connectionSetupNotice,
   connectionUiStatusFromApi,
+  displayNameForService,
+  DUPLICATE_CONNECTION_NOTICE,
+  findDuplicateService,
   isPostgresConnectionString,
   isUnchangedSaveResponse,
   listSavedConnectionServices,
@@ -294,6 +298,21 @@ export function useDatabaseConnections({
     }
     if (!isPostgresConnectionString(next)) {
       setError('Enter a valid postgres:// or postgresql:// connection string.');
+      return;
+    }
+
+    // FR-5 client guard: catch same-session duplicates before hitting the network.
+    // Cross-session duplicates fall through to the backend 409 (see 409 catch arm).
+    const duplicateSnapshot = buildDuplicateSnapshot(connections, serviceKeys);
+    const conflictingService = findDuplicateService(duplicateSnapshot, key, next);
+    if (conflictingService) {
+      setConnectionNotices((prev) => ({
+        ...prev,
+        [key]: DUPLICATE_CONNECTION_NOTICE(
+          displayNameForService(conflictingService),
+          displayNameForService(key)
+        ),
+      }));
       return;
     }
 
