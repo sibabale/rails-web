@@ -136,3 +136,35 @@ describe('useDatabaseConnections handleConnect — client-side duplicate guard (
     expect(result.current.error).toBe('Paste a PostgreSQL connection string before connecting.');
   });
 });
+
+describe('useDatabaseConnections handleChange — clear-on-edit pathway', () => {
+  beforeEach(() => {
+    listMock.mockReset();
+    saveMock.mockReset();
+    listMock.mockResolvedValue(emptyListResponse);
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('clears the connection notice on next edit', async () => {
+    const { result } = renderHookWithDefaults();
+    await waitFor(() => expect(result.current.initialCheckComplete).toBe(true));
+
+    const duplicate = 'postgresql://user:pass@host.example.com:5432/db';
+    act(() => {
+      result.current.handleChange('accounts', duplicate);
+      result.current.handleChange('users', duplicate);
+    });
+    await act(async () => {
+      await result.current.handleConnect('users');
+    });
+    expect(result.current.connectionNotices.users).not.toBeNull();
+
+    act(() => {
+      result.current.handleChange('users', 'postgresql://user:pass@other.example.com:5432/db');
+    });
+    expect(result.current.connectionNotices.users).toBeNull();
+  });
+});
