@@ -5,6 +5,8 @@
 
 import type { Environment } from '../state/slices/environmentSlice';
 import { getClientServerUrl } from './env';
+import { resolveEnvironmentId } from './environment';
+import { ApiRequestError } from './apiRequestError';
 import { getStoreState } from '../state/store';
 
 interface ApiRequestOptions {
@@ -89,20 +91,10 @@ export async function apiRequest<T>(
   requestHeaders['X-Environment'] = currentEnvironment;
 
   // Add environment ID if required (for Users/Accounts services)
-  // Use environment_id from session that matches the current environment type
   if (requiresEnvironment && session) {
-    if (session.environments && session.environments.length > 0) {
-      // Find environment_id that matches the current environment type
-      const matchingEnv = session.environments.find(e => e.type === currentEnvironment);
-      if (matchingEnv) {
-        requestHeaders['X-Environment-Id'] = matchingEnv.id;
-      } else {
-        // Fallback to session.environment_id if no match found
-        requestHeaders['X-Environment-Id'] = session.environment_id;
-      }
-    } else {
-      // Fallback if environments array is not available
-      requestHeaders['X-Environment-Id'] = session.environment_id;
+    const environmentId = resolveEnvironmentId(session, currentEnvironment);
+    if (environmentId) {
+      requestHeaders['X-Environment-Id'] = environmentId;
     }
   }
 
@@ -144,7 +136,11 @@ export async function apiRequest<T>(
       if (errorMessage === 'An error occurred while processing your request.') {
         errorMessage = `Request failed (HTTP ${status}).`;
       }
-      throw new Error(errorMessage);
+      throw new ApiRequestError(errorMessage, {
+        status,
+        path,
+        correlationId,
+      });
     }
 
     const contentType = response.headers.get('content-type');
@@ -257,9 +253,20 @@ export interface DatabaseConnectionInfo {
 }
 
 export interface DatabaseConnectionsResponse {
+  /** Live, demotable view: every required service in `connections` is currently `connected`. */
   all_connected: boolean;
   connections: DatabaseConnectionInfo[];
+  /** Write-once milestone: first time all four services reached the onboarding bar. Never cleared. */
   dbs_setup_completed_at?: string | null;
+  /** Write-once milestone: first-ever API key creation timestamp for the environment. Never cleared. */
+  api_key_first_created_at?: string | null;
+  /**
+   * Write-once milestone: first time the SDK successfully authenticated against
+   * this environment with an API key. Stamped server-side by the auth context
+   * after API-key validation; never cleared. The Overview reads this to drive
+   * the "Send first request" step instead of trusting localStorage.
+   */
+  first_request_sent_at?: string | null;
 }
 
 export interface DatabaseConnectionMigrationInfo {

@@ -52,6 +52,7 @@ test.describe('BYOD full journey', () => {
   });
 
   test('registration → connect → login restore → edit', async ({ page }) => {
+    test.setTimeout(120_000);
     const runId = Date.now();
     const email = `byod-journey-${runId}@example.com`;
     const password = 'Password123!';
@@ -68,6 +69,14 @@ test.describe('BYOD full journey', () => {
       await page.getByLabel('Password').fill(password);
       await page.getByTestId('register-submit').click();
       await expect(page).toHaveURL(/\/dashboard/, { timeout: 30_000 });
+      await page.evaluate(() => {
+        localStorage.removeItem('rails_onboarding');
+        for (const key of Object.keys(localStorage)) {
+          if (key.startsWith('rails_database_setup_completed')) {
+            localStorage.removeItem(key);
+          }
+        }
+      });
     });
 
     await test.step('Fresh user sees database onboarding required', async () => {
@@ -97,6 +106,21 @@ test.describe('BYOD full journey', () => {
 
         await expect(section.getByText('Connected', { exact: true })).toBeVisible({ timeout: 15_000 });
       }
+    });
+
+    await test.step('Overview Step 1 still incomplete before migrations apply', async () => {
+      console.log('[BYOD-JOURNEY] Step 3a — Milestone gated until apply');
+      await page.goto('/dashboard');
+      const connectStep = page
+        .getByRole('heading', { name: 'Connect Databases', exact: true })
+        .locator('..');
+      await expectOrLog('milestone-incomplete-before-apply', async () => {
+        await expect(connectStep.getByRole('button', { name: 'Connected' })).toHaveCount(0);
+        await expect(connectStep.getByText('Configure Integrations')).toBeVisible({
+          timeout: 10_000,
+        });
+      });
+      await page.goto('/dashboard/integrations');
     });
 
     await test.step('Apply database schema updates', async () => {
@@ -187,7 +211,7 @@ test.describe('BYOD full journey', () => {
         .getByRole('textbox', { name: /Accounts Database connection/i })
         .fill(savedConnectionStrings.accounts);
 
-      await accountsSection.getByRole('button', { name: /Save replacement/i }).click();
+      await accountsSection.getByRole('button', { name: /^Save$/i }).click();
 
       await expectOrLog('edit-unchanged-notice', async () => {
         const notice = accountsSection.getByText(/same connection string already saved/i);
@@ -218,7 +242,7 @@ test.describe('BYOD full journey', () => {
       await accountsSection
         .getByRole('textbox', { name: /Accounts Database connection/i })
         .fill(replacement);
-      await accountsSection.getByRole('button', { name: /Save replacement/i }).click();
+      await accountsSection.getByRole('button', { name: /^Save$/i }).click();
 
       await expectOrLog('edit-changed-shows-phases', async () => {
         await expect(accountsSection.getByText('Validating')).toBeVisible({ timeout: 5_000 });

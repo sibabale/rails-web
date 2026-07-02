@@ -92,10 +92,8 @@ const isInvalidConnectionString = (value: string) =>
 const persistDbsSetupIfReady = () => {
   if (dbsSetupCompletedAt) return;
   const allConnected = REQUIRED_SERVICES.every((service) => connections[service] === 'connected');
-  // Mirrors the backend's `baseline_milestone_ready` invariant: every
-  // required service must be connected AND have at least one applied
-  // baseline migration. The mock collapses "baseline applied" into
-  // `migrationsApplied` (it has no per-service tracking).
+  // Mirrors backend `environment_onboarding_milestone_ready`: all four
+  // pools connected and migrations fully applied (`migrationsApplied`).
   if (allConnected && migrationsApplied) {
     dbsSetupCompletedAt = new Date().toISOString();
   }
@@ -305,6 +303,7 @@ export async function tryHandleDatabaseConnectionsRoute(
 
     if (!failedService) {
       migrationsApplied = true;
+      persistDbsSetupIfReady();
     }
 
     await fulfillJson(route, {
