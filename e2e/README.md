@@ -20,6 +20,46 @@ Interactive UI:
 npm run test:e2e:ui
 ```
 
+Merged BYOD journey (register → connect → login → edit) in **headed** realtime browser:
+
+```bash
+npm run test:e2e:journey
+```
+
+Mock-only — fast, no BFF/enterprise. Soft failures → `e2e/artifacts/byod-journey-bugs.jsonl`.
+
+### True E2E (live stack)
+
+Real `rails-web` → `rails-client-server` → `rails-enterprise`, real Postgres URLs, new business registration:
+
+```bash
+# Terminal 1 — enterprise gateway
+cd ../rails-enterprise && make dev
+
+# Terminal 2 — headed live journey (starts BFF + web if needed)
+cd rails-web && npm run test:e2e:journey:live
+```
+
+Requires database URLs in `rails-enterprise/.env` or `.env.local`. Soft failures → `e2e/artifacts/byod-journey-live-bugs.jsonl`. Videos under `recordings-output/` (gitignored).
+
+### Live database URL precedence
+
+Live scripts (`scripts/run-live-*.sh`) and `playwright.live.config.ts` load env in this order:
+
+1. `rails-enterprise/.env` — platform/service `USERS_DATABASE_URL`, `ACCOUNTS_DATABASE_URL`, `LEDGER_DATABASE_URL`, `AUDIT_DATABASE_URL`
+2. `rails-enterprise/.env.local` — **wins over `.env`** for the same logical service
+
+Use **`BYOD_*_DATABASE_URL`** keys in `.env.local` when you have a separate Neon branch for E2E (recommended for Users after RAI-49):
+
+| `.env.local` key | Fallback in `.env` | Playwright env var |
+| --- | --- | --- |
+| `BYOD_USERS_DATABASE_URL` | `USERS_DATABASE_URL` | `LIVE_DB_USERS_URL` |
+| `BYOD_ACCOUNTS_DATABASE_URL` | `ACCOUNTS_DATABASE_URL` | `LIVE_DB_ACCOUNTS_URL` |
+| `BYOD_LEDGER_DATABASE_URL` | `LEDGER_DATABASE_URL` | `LIVE_DB_LEDGER_URL` |
+| `BYOD_AUDIT_DATABASE_URL` | `AUDIT_DATABASE_URL` | `LIVE_DB_AUDIT_URL` |
+
+When `BYOD_USERS_DATABASE_URL` is set, live registration-connect specs **hard-fail** Users connect (soft-fail disabled). To force soft-fail anyway (platform DB collision debugging): `LIVE_USERS_CONNECT_SOFT_FAIL=1`.
+
 ## Configuration
 
 - `playwright.config.ts` — `webServer` (`npm run dev`), `baseURL`, and E2E-only `NEXT_PUBLIC_*` vars. Client env reads use static `process.env.*` keys in `lib/env.ts` so Turbopack can inline them.

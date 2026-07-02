@@ -1,5 +1,6 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { getClientServerUrl } from '../lib/env';
+import { resolveEnvironmentId } from '../lib/environment';
 import { useAppSelector } from '../state/hooks';
 
 type ApiKeyStatus = 'active' | 'revoked' | 'none';
@@ -25,24 +26,40 @@ interface ApiKeyManagerProps {
   session?: {
     access_token?: string;
     environment_id?: string;
+    environments?: { id: string; type: string }[];
   };
+  canCreate?: boolean;
+  blockedReason?: string;
+  onActiveKeyChange?: (hasActiveKey: boolean) => void;
 }
 
-const ApiKeyManager: React.FC<ApiKeyManagerProps> = ({ session }) => {
+const ApiKeyManager: React.FC<ApiKeyManagerProps> = ({
+  session,
+  canCreate = true,
+  blockedReason = 'Complete setup before creating an API key.',
+  onActiveKeyChange,
+}) => {
   const environment = useAppSelector((state) => state.environment.current);
   const [isCreating, setIsCreating] = useState(false);
   const [isRevoking, setIsRevoking] = useState(false);
   const [isLoadingKeys, setIsLoadingKeys] = useState(false);
+  const [hasLoadedKeys, setHasLoadedKeys] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const [keys, setKeys] = useState<ApiKeyInfo[]>([]);
+  const onActiveKeyChangeRef = useRef(onActiveKeyChange);
+  const hasLoadedKeysRef = useRef(false);
+
+  useEffect(() => {
+    onActiveKeyChangeRef.current = onActiveKeyChange;
+  }, [onActiveKeyChange]);
 
   const [showPlaintextModal, setShowPlaintextModal] = useState(false);
   const [plaintextKey, setPlaintextKey] = useState<string | null>(null);
   const [copyFeedback, setCopyFeedback] = useState<'idle' | 'copied' | 'failed'>('idle');
 
   const CLIENT_SERVER_URL = getClientServerUrl() || '';
-  const environmentId = session?.environment_id;
+  const environmentId = resolveEnvironmentId(session, environment);
   const accessToken = session?.access_token;
 
   const canCallApi = Boolean(accessToken && environmentId && CLIENT_SERVER_URL);
@@ -61,17 +78,18 @@ const ApiKeyManager: React.FC<ApiKeyManagerProps> = ({ session }) => {
     if (s === 'revoked') return 'revoked';
     return 'active';
   }, [currentKey]);
-  const isLoadingTokenRow = isLoadingKeys && !isRevoking;
+  const isLoadingTokenRow = isLoadingKeys && !hasLoadedKeys && !isRevoking;
 
   const maskedPlaceholder = useMemo(() => {
     if (!apiKeyId) return null;
     return '********************************';
   }, [apiKeyId]);
 
-  const fetchKeys = async () => {
+  const fetchKeys = useCallback(async () => {
     if (!canCallApi) return;
     setError(null);
-    setIsLoadingKeys(true);
+    const showRowLoader = !hasLoadedKeysRef.current;
+    if (showRowLoader) setIsLoadingKeys(true);
     try {
       const response = await fetch(`${CLIENT_SERVER_URL.replace(/\/$/, '')}/api/v1/api-keys`, {
         method: 'GET',
@@ -97,6 +115,11 @@ const ApiKeyManager: React.FC<ApiKeyManagerProps> = ({ session }) => {
 
       const data = (await response.json()) as ApiKeyInfo[];
       const fromApi = Array.isArray(data) ? data : [];
+      const hasActiveKey = fromApi.some(
+        (key) =>
+          (key.environment_id || '') === (environmentId || '') && (key.status || '').toLowerCase() === 'active'
+      );
+      onActiveKeyChangeRef.current?.(hasActiveKey);
       // Preserve any revoked keys we have in state that the API might not return
       setKeys((prev) => {
         const revokedOnlyInState = prev.filter(
@@ -107,17 +130,32 @@ const ApiKeyManager: React.FC<ApiKeyManagerProps> = ({ session }) => {
     } catch (e: any) {
       setError(e?.message || 'Failed to load API keys.');
     } finally {
+      hasLoadedKeysRef.current = true;
+      setHasLoadedKeys(true);
       setIsLoadingKeys(false);
     }
-  };
+  }, [canCallApi, CLIENT_SERVER_URL, accessToken, environmentId, environment]);
 
   useEffect(() => {
-    if (!canCallApi) return;
-    fetchKeys();
+    if (!canCallApi) {
+      hasLoadedKeysRef.current = false;
+      setHasLoadedKeys(false);
+      setKeys([]);
+      return;
+    }
+    hasLoadedKeysRef.current = false;
+    setHasLoadedKeys(false);
+    void fetchKeys();
+    // Refetch when auth/environment changes; fetchKeys identity is derived from these inputs.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [accessToken, environmentId, environment]); // ✅ Refetch when environment changes
+  }, [canCallApi, environmentId, environment, accessToken]);
 
   const handleCreate = async () => {
+    if (!canCreate) {
+      setError(blockedReason);
+      return;
+    }
+
     if (!canCallApi) {
       setError('Missing session token or environment id.');
       return;
@@ -157,6 +195,7 @@ const ApiKeyManager: React.FC<ApiKeyManagerProps> = ({ session }) => {
 
       setPlaintextKey(data.key);
       setShowPlaintextModal(true);
+      onActiveKeyChange?.(true);
 
       await fetchKeys();
     } catch (e: any) {
@@ -212,6 +251,7 @@ const ApiKeyManager: React.FC<ApiKeyManagerProps> = ({ session }) => {
           k.id === apiKeyId ? { ...k, status: 'revoked', revoked_at: new Date().toISOString() } : k
         )
       );
+      onActiveKeyChange?.(false);
       await fetchKeys();
     } catch (e: any) {
       setError(e?.message || 'Failed to revoke API key.');
@@ -221,56 +261,64 @@ const ApiKeyManager: React.FC<ApiKeyManagerProps> = ({ session }) => {
   };
 
   return (
-    <section className="space-y-6 border border-zinc-200 bg-white p-8 transition-colors dark:border-zinc-800 dark:bg-[#050505]">
+    <section
+      id="api-keys"
+      data-testid="api-key-manager"
+      className="space-y-6 border border-zinc-200 bg-white p-4 transition-colors dark:border-zinc-800 dark:bg-[#050505] sm:p-6 lg:p-8"
+    >
       <h4 className="mb-4 text-[10px] font-mono font-semibold uppercase tracking-widest text-zinc-500">Security Credentials</h4>
 
       <div className="space-y-4">
-        <div className="border border-zinc-200 bg-zinc-50 p-4 transition-colors dark:border-zinc-800 dark:bg-[#050505]">
-          <div className="mb-2 flex items-center justify-between">
+        <div className="border border-zinc-200 bg-zinc-50 p-3 transition-colors dark:border-zinc-800 dark:bg-[#050505] sm:p-4">
+          <div className="mb-2 flex flex-wrap items-center gap-2">
             <span className="text-[9px] font-mono font-semibold uppercase tracking-widest text-zinc-500">API Token</span>
 
             {apiKeyStatus === 'active' && apiKeyId ? (
-              <span className="text-[9px] font-mono text-emerald-500 uppercase font-bold tracking-tighter flex items-center gap-1">
-                <span className="w-1 h-1 bg-emerald-500 rounded-full animate-pulse"></span>
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[9px] font-mono font-bold uppercase tracking-tighter text-emerald-700 dark:border-emerald-900/50 dark:bg-emerald-950/30 dark:text-emerald-300">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
                 Active
               </span>
             ) : apiKeyStatus === 'revoked' && apiKeyId ? (
-              <span className="text-[9px] font-mono text-amber-500 uppercase font-bold tracking-tighter flex items-center gap-1">
-                <span className="w-1 h-1 bg-amber-500 rounded-full"></span>
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[9px] font-mono font-bold uppercase tracking-tighter text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-300">
+                <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
                 Revoked
               </span>
             ) : (
-              <span className="text-[9px] font-mono text-zinc-400 uppercase font-bold tracking-tighter flex items-center gap-1">
-                <span className="w-1 h-1 bg-zinc-400 rounded-full"></span>
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-zinc-200 bg-zinc-100 px-2 py-0.5 text-[9px] font-mono font-bold uppercase tracking-tighter text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400">
+                <span className="h-1.5 w-1.5 rounded-full bg-zinc-400" />
                 Not Created
               </span>
             )}
           </div>
 
           <div
-            className="flex items-center gap-3"
+            className="flex flex-col gap-3 sm:flex-row sm:items-center"
             aria-busy={isLoadingTokenRow}
             aria-label={isLoadingTokenRow ? 'Loading API token' : undefined}
             role={isLoadingTokenRow ? 'status' : undefined}
           >
-            <div className="flex-1 min-w-0">
+            <div className="min-w-0 flex-1">
               {isLoadingTokenRow ? (
                 <>
                   <span className="sr-only">Loading API token</span>
                   <div className="h-3 w-full animate-pulse bg-zinc-200 dark:bg-zinc-800" />
                 </>
               ) : (
-                <p className="truncate text-xs font-mono text-zinc-600 dark:text-zinc-300">
+                <p
+                  className={`text-xs font-mono text-zinc-600 dark:text-zinc-300 ${
+                    apiKeyId ? 'truncate' : 'break-words leading-relaxed'
+                  }`}
+                >
                   {apiKeyId ? maskedPlaceholder : 'No API key has been generated for this environment.'}
                 </p>
               )}
             </div>
 
             {isLoadingTokenRow ? (
-              <div className="h-7 w-20 shrink-0 animate-pulse border border-zinc-200 bg-zinc-100 dark:border-zinc-800 dark:bg-zinc-900" />
+              <div className="h-7 w-full shrink-0 animate-pulse border border-zinc-200 bg-zinc-100 dark:border-zinc-800 dark:bg-zinc-900 sm:w-20" />
             ) : apiKeyStatus === 'active' && apiKeyId ? (
               <button
-                className="h-7 border border-zinc-200 bg-white px-2.5 text-[10px] font-mono font-semibold uppercase tracking-widest text-zinc-600 transition-colors hover:bg-zinc-50 hover:text-black disabled:cursor-not-allowed disabled:opacity-60 dark:border-zinc-800 dark:bg-black dark:text-zinc-300 dark:hover:bg-zinc-900 dark:hover:text-white"
+                className="h-7 w-full shrink-0 border border-zinc-200 bg-white px-2.5 text-[10px] font-mono font-semibold uppercase tracking-widest text-zinc-600 transition-colors hover:bg-zinc-50 hover:text-black disabled:cursor-not-allowed disabled:opacity-60 dark:border-zinc-800 dark:bg-black dark:text-zinc-300 dark:hover:bg-zinc-900 dark:hover:text-white sm:w-auto"
                 onClick={handleRevoke}
                 disabled={isRevoking || isCreating}
               >
@@ -283,9 +331,9 @@ const ApiKeyManager: React.FC<ApiKeyManagerProps> = ({ session }) => {
               </button>
             ) : (
               <button
-                className="h-7 border border-zinc-200 bg-white px-2.5 text-[10px] font-mono font-semibold uppercase tracking-widest text-zinc-600 transition-colors hover:bg-zinc-50 hover:text-black disabled:cursor-not-allowed disabled:opacity-60 dark:border-zinc-800 dark:bg-black dark:text-zinc-300 dark:hover:bg-zinc-900 dark:hover:text-white"
+                className="h-7 w-full shrink-0 border border-zinc-200 bg-white px-2.5 text-[10px] font-mono font-semibold uppercase tracking-widest text-zinc-600 transition-colors hover:bg-zinc-50 hover:text-black disabled:cursor-not-allowed disabled:opacity-60 dark:border-zinc-800 dark:bg-black dark:text-zinc-300 dark:hover:bg-zinc-900 dark:hover:text-white sm:w-auto"
                 onClick={handleCreate}
-                disabled={isCreating || isRevoking}
+                disabled={isCreating || isRevoking || !canCreate}
               >
                 <span className="inline-flex items-center gap-2">
                   {isCreating && (
@@ -298,7 +346,7 @@ const ApiKeyManager: React.FC<ApiKeyManagerProps> = ({ session }) => {
           </div>
 
           {error && (
-            <div className="mt-3 text-[10px] font-mono text-red-500">
+            <div className="mt-3 break-words text-[10px] font-mono leading-relaxed text-red-500">
               {error}
             </div>
           )}

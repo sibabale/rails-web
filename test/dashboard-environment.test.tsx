@@ -88,7 +88,7 @@ describe('Dashboard environment selector', () => {
 
     expect(screen.getByText('PRODUCTION')).toBeInTheDocument();
     expect(
-      screen.getByText('Live Production Environment — Real Assets at Risk')
+      screen.getByText('Live Production Environment')
     ).toBeInTheDocument();
   });
 

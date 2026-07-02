@@ -5,6 +5,8 @@
 
 import type { Environment } from '../state/slices/environmentSlice';
 import { getClientServerUrl } from './env';
+import { resolveEnvironmentId } from './environment';
+import { ApiRequestError } from './apiRequestError';
 import { getStoreState } from '../state/store';
 
 interface ApiRequestOptions {
@@ -89,20 +91,10 @@ export async function apiRequest<T>(
   requestHeaders['X-Environment'] = currentEnvironment;
 
   // Add environment ID if required (for Users/Accounts services)
-  // Use environment_id from session that matches the current environment type
   if (requiresEnvironment && session) {
-    if (session.environments && session.environments.length > 0) {
-      // Find environment_id that matches the current environment type
-      const matchingEnv = session.environments.find(e => e.type === currentEnvironment);
-      if (matchingEnv) {
-        requestHeaders['X-Environment-Id'] = matchingEnv.id;
-      } else {
-        // Fallback to session.environment_id if no match found
-        requestHeaders['X-Environment-Id'] = session.environment_id;
-      }
-    } else {
-      // Fallback if environments array is not available
-      requestHeaders['X-Environment-Id'] = session.environment_id;
+    const environmentId = resolveEnvironmentId(session, currentEnvironment);
+    if (environmentId) {
+      requestHeaders['X-Environment-Id'] = environmentId;
     }
   }
 
@@ -144,7 +136,11 @@ export async function apiRequest<T>(
       if (errorMessage === 'An error occurred while processing your request.') {
         errorMessage = `Request failed (HTTP ${status}).`;
       }
-      throw new Error(errorMessage);
+      throw new ApiRequestError(errorMessage, {
+        status,
+        path,
+        correlationId,
+      });
     }
 
     const contentType = response.headers.get('content-type');
@@ -235,6 +231,126 @@ export const transactionsApi = {
   
   get: (id: string, session: Session | null): Promise<Transaction> =>
     apiRequest<Transaction>(`/api/v1/transactions/${id}`, { method: 'GET' }, session),
+};
+
+export type DatabaseConnectionService = 'accounts' | 'users' | 'ledger' | 'audit';
+
+export interface DatabaseConnectionSetupResult {
+  migration_status: string;
+  pending_count: number;
+  applied_count: number;
+  error?: string | null;
+  message?: string | null;
+}
+
+export interface DatabaseConnectionInfo {
+  service: DatabaseConnectionService;
+  status: 'connected' | 'invalid' | 'missing';
+  last_validated_at?: string | null;
+  updated_at?: string | null;
+  setup?: DatabaseConnectionSetupResult | null;
+  unchanged?: boolean;
+}
+
+export interface DatabaseConnectionsResponse {
+  all_connected: boolean;
+  connections: DatabaseConnectionInfo[];
+  dbs_setup_completed_at?: string | null;
+}
+
+export interface DatabaseConnectionMigrationInfo {
+  service: DatabaseConnectionService;
+  connection_status?: 'connected' | 'invalid' | 'missing' | string;
+  pending_count: number;
+  failed_count: number;
+  latest_version?: string | null;
+  latest_status?: 'not_connected' | 'not_checked' | 'pending' | 'running' | 'applied' | 'failed' | string | null;
+  latest_updated_at?: string | null;
+}
+
+export interface DatabaseConnectionMigrationStatusResponse {
+  has_pending_updates: boolean;
+  requires_manual_update: boolean;
+  services: DatabaseConnectionMigrationInfo[];
+  dbs_setup_completed_at?: string | null;
+}
+
+export interface DatabaseConnectionMigrationRunInfo {
+  service: DatabaseConnectionService;
+  status: 'applied' | 'failed' | 'skipped' | string;
+  pending_count: number;
+  applied_count: number;
+  error?: string | null;
+}
+
+export interface DatabaseConnectionMigrationRunResponse {
+  has_failures: boolean;
+  services: DatabaseConnectionMigrationRunInfo[];
+}
+
+export const databaseConnectionsApi = {
+  list: (session: Session | null): Promise<DatabaseConnectionsResponse> =>
+    apiRequest<DatabaseConnectionsResponse>('/api/v1/database-connections', { method: 'GET' }, session),
+
+  save: (
+    session: Session | null,
+    service: DatabaseConnectionService,
+    connectionString: string
+  ): Promise<DatabaseConnectionInfo> =>
+    apiRequest<DatabaseConnectionInfo>(
+      '/api/v1/database-connections',
+      {
+        method: 'POST',
+        body: { service, connection_string: connectionString },
+      },
+      session
+    ),
+
+  validate: (session: Session | null): Promise<DatabaseConnectionsResponse> =>
+    apiRequest<DatabaseConnectionsResponse>(
+      '/api/v1/database-connections/validate',
+      { method: 'POST', body: {} },
+      session
+    ),
+
+  migrations: (session: Session | null): Promise<DatabaseConnectionMigrationStatusResponse> =>
+    apiRequest<DatabaseConnectionMigrationStatusResponse>(
+      '/api/v1/database-connections/migrations',
+      { method: 'GET' },
+      session
+    ),
+
+  runMigrations: (session: Session | null): Promise<DatabaseConnectionMigrationRunResponse> =>
+    apiRequest<DatabaseConnectionMigrationRunResponse>(
+      '/api/v1/database-connections/migrations/run',
+      { method: 'POST', body: {} },
+      session
+    ),
+};
+
+export async function refreshDatabaseHealth(session: Session): Promise<{
+  summary: DatabaseConnectionsResponse;
+  migrations: DatabaseConnectionMigrationStatusResponse;
+}> {
+  const summary = await databaseConnectionsApi.validate(session);
+  const migrations = await databaseConnectionsApi.migrations(session);
+  return { summary, migrations };
+}
+
+export interface ApiKeyInfo {
+  id: string;
+  business_id: string;
+  environment_id: string | null;
+  status: string;
+  last_used_at: string | null;
+  created_at: string;
+  revoked_at: string | null;
+  created_by_user_id: string | null;
+}
+
+export const apiKeysApi = {
+  list: (session: Session | null): Promise<ApiKeyInfo[]> =>
+    apiRequest<ApiKeyInfo[]>('/api/v1/api-keys', { method: 'GET' }, session),
 };
 
 export interface PaginationMeta {

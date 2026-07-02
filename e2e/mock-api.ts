@@ -1,5 +1,9 @@
 import type { BrowserContext, Route } from '@playwright/test';
 import { MOCK_API_ORIGIN } from './constants';
+import { resetDatabaseMockState, tryHandleDatabaseConnectionsRoute } from './mock-database-state';
+
+export const E2E_SANDBOX_ENV_ID = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+export const E2E_PROD_ENV_ID = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
 
 const corsHeaders: Record<string, string> = {
   'Access-Control-Allow-Origin': '*',
@@ -29,23 +33,55 @@ const emptyPage = (page: number, perPage: number) => ({
   },
 });
 
-const authSuccessBody = () => ({
+const environments = () => [
+  { id: E2E_SANDBOX_ENV_ID, type: 'sandbox' },
+  { id: E2E_PROD_ENV_ID, type: 'production' },
+];
+
+const resolveSelectedEnvironmentId = (requestedId?: string | null) => {
+  if (requestedId === E2E_PROD_ENV_ID) {
+    return E2E_PROD_ENV_ID;
+  }
+  return E2E_SANDBOX_ENV_ID;
+};
+
+const authSuccessBody = (requestedEnvironmentId?: string | null) => ({
   access_token: 'e2e-access-token',
   refresh_token: 'e2e-refresh-token',
   expires_in: 3600,
-  selected_environment_id: 'env-sandbox-1',
-  environments: [{ id: 'env-sandbox-1', type: 'sandbox' }],
+  selected_environment_id: resolveSelectedEnvironmentId(requestedEnvironmentId),
+  environments: environments(),
 });
 
-const meBody = () => ({
-  user: {
-    id: 'user-1',
-    name: 'E2E User',
-    email: 'e2e@example.com',
-    role: 'admin',
-  },
-  business: { name: 'E2E Corp', website: 'https://e2e.example.com' },
-});
+const meBodyForEnvironment = (environmentId: string | null) => {
+  const isProduction = environmentId === E2E_PROD_ENV_ID;
+  const envId = isProduction ? E2E_PROD_ENV_ID : E2E_SANDBOX_ENV_ID;
+  const envType = isProduction ? 'production' : 'sandbox';
+
+  return {
+    user: {
+      id: 'user-1',
+      name: 'E2E User',
+      email: 'e2e@example.com',
+      role: 'admin',
+      environment_id: envId,
+    },
+    business: { name: 'E2E Corp', website: 'https://e2e.example.com' },
+    environment: {
+      id: envId,
+      type: envType,
+      status: 'active',
+    },
+  };
+};
+
+const readJsonBody = (route: Route): Record<string, unknown> => {
+  try {
+    return route.request().postDataJSON() as Record<string, unknown>;
+  } catch {
+    return {};
+  }
+};
 
 export async function handleMockApi(route: Route) {
   const req = route.request();
@@ -59,7 +95,10 @@ export async function handleMockApi(route: Route) {
   const method = req.method();
 
   if (method === 'POST' && path === '/api/v1/auth/login') {
-    await fulfillJson(route, authSuccessBody());
+    const body = readJsonBody(route);
+    const requestedEnvironmentId =
+      typeof body.environment_id === 'string' ? body.environment_id : null;
+    await fulfillJson(route, authSuccessBody(requestedEnvironmentId));
     return;
   }
 
@@ -84,7 +123,12 @@ export async function handleMockApi(route: Route) {
   }
 
   if (method === 'GET' && path === '/api/v1/me') {
-    await fulfillJson(route, meBody());
+    const environmentId = req.headers()['x-environment-id'] ?? null;
+    await fulfillJson(route, meBodyForEnvironment(environmentId));
+    return;
+  }
+
+  if (await tryHandleDatabaseConnectionsRoute(route, fulfillJson)) {
     return;
   }
 
@@ -151,15 +195,29 @@ export async function handleMockApi(route: Route) {
   }
 
   if (method === 'GET' && path === '/api/v1/api-keys') {
-    await fulfillJson(route, []);
+    const environmentId = req.headers()['x-environment-id'] ?? E2E_SANDBOX_ENV_ID;
+    await fulfillJson(route, [
+      {
+        id: `key-${environmentId}`,
+        business_id: 'biz-1',
+        environment_id: environmentId,
+        status: 'active',
+        last_used_at: null,
+        created_at: new Date().toISOString(),
+        revoked_at: null,
+        created_by_user_id: 'user-1',
+      },
+    ]);
     return;
   }
 
   if (method === 'POST' && path === '/api/v1/api-keys') {
+    const environmentId = req.headers()['x-environment-id'] ?? E2E_SANDBOX_ENV_ID;
     await fulfillJson(route, {
-      id: 'api-key-1',
-      key: 'pk_e2e_plaintext_key',
+      id: `key-new-${environmentId}`,
+      key: `rails_test_${environmentId.slice(0, 8)}`,
       status: 'active',
+      environment_id: environmentId,
     });
     return;
   }
@@ -169,7 +227,6 @@ export async function handleMockApi(route: Route) {
     return;
   }
 
-  // Default: avoid accidental network calls
   await fulfillJson(
     route,
     {
@@ -182,5 +239,15 @@ export async function handleMockApi(route: Route) {
 }
 
 export async function installApiMocksOnContext(context: BrowserContext) {
+  resetDatabaseMockState();
   await context.route(`${MOCK_API_ORIGIN}/**`, handleMockApi);
 }
+
+export const e2eSessionWithBothEnvironments = () => ({
+  access_token: 'e2e-access-token',
+  refresh_token: 'e2e-refresh-token',
+  expires_in: 3600,
+  timestamp: Date.now(),
+  environment_id: E2E_SANDBOX_ENV_ID,
+  environments: environments(),
+});
