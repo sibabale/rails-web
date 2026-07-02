@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { REHYDRATE } from 'redux-persist';
-import reducer, { setEnvironment } from '../state/slices/environmentSlice';
+import reducer, { setEnvironment } from './environmentSlice';
 
 describe('environmentSlice', () => {
   it('defaults to sandbox', () => {

@@ -28,7 +28,7 @@ describe('analytics', () => {
   });
 
   it('returns PostHog options for provider', async () => {
-    const { getPostHogOptions } = await import('../lib/analytics');
+    const { getPostHogOptions } = await import('./analytics');
     const options = getPostHogOptions();
 
     expect(options).toMatchObject({
@@ -44,7 +44,7 @@ describe('analytics', () => {
     vi.stubEnv('NEXT_PUBLIC_POSTHOG_KEY', 'test_key');
     vi.stubEnv('NEXT_PUBLIC_ENABLE_ANALYTICS', 'true');
     vi.resetModules();
-    const { isAnalyticsEnabled } = await import('../lib/analytics');
+    const { isAnalyticsEnabled } = await import('./analytics');
     expect(isAnalyticsEnabled()).toBe(true);
   });
 
@@ -52,13 +52,13 @@ describe('analytics', () => {
     vi.stubEnv('NEXT_PUBLIC_POSTHOG_KEY', 'test_key');
     vi.stubEnv('NEXT_PUBLIC_ENABLE_ANALYTICS', 'false');
     vi.resetModules();
-    const { isAnalyticsEnabled } = await import('../lib/analytics');
+    const { isAnalyticsEnabled } = await import('./analytics');
     expect(isAnalyticsEnabled()).toBe(false);
   });
 
   it('captures events with landing metadata', async () => {
     const posthog = (await import('posthog-js')).default as unknown as { capture: ReturnType<typeof vi.fn> };
-    const { trackEvent } = await import('../lib/analytics');
+    const { trackEvent } = await import('./analytics');
 
     trackEvent('landing_click', { label: 'Join the Waitlist' });
 
@@ -75,7 +75,7 @@ describe('analytics', () => {
     sessionStorage.clear();
     const posthog = (await import('posthog-js')).default as unknown as { capture: ReturnType<typeof vi.fn> };
     posthog.capture.mockClear();
-    const { trackMarketingCopyExposure } = await import('../lib/analytics');
+    const { trackMarketingCopyExposure } = await import('./analytics');
 
     trackMarketingCopyExposure('a');
     trackMarketingCopyExposure('a');
@@ -94,7 +94,7 @@ describe('analytics', () => {
       getFeatureFlag: ReturnType<typeof vi.fn>;
     };
     posthog.getFeatureFlag.mockReturnValue('d');
-    const { getMarketingCopyExperimentVariant } = await import('../lib/analytics');
+    const { getMarketingCopyExperimentVariant } = await import('./analytics');
     expect(getMarketingCopyExperimentVariant()).toBe('d');
   });
 
@@ -103,7 +103,7 @@ describe('analytics', () => {
       getFeatureFlag: ReturnType<typeof vi.fn>;
     };
     posthog.getFeatureFlag.mockReturnValue('control');
-    const { getMarketingCopyExperimentVariant } = await import('../lib/analytics');
+    const { getMarketingCopyExperimentVariant } = await import('./analytics');
     expect(getMarketingCopyExperimentVariant()).toBe('a');
   });
 
@@ -112,7 +112,7 @@ describe('analytics', () => {
       getFeatureFlag: ReturnType<typeof vi.fn>;
     };
     posthog.getFeatureFlag.mockReturnValue(false);
-    const { getMarketingCopyExperimentVariant } = await import('../lib/analytics');
+    const { getMarketingCopyExperimentVariant } = await import('./analytics');
     expect(getMarketingCopyExperimentVariant()).toBe(null);
   });
 
@@ -120,7 +120,7 @@ describe('analytics', () => {
     vi.stubEnv('NEXT_PUBLIC_POSTHOG_KEY', '');
     vi.resetModules();
     vi.stubEnv('NEXT_PUBLIC_ENABLE_ANALYTICS', 'true');
-    const { onMarketingCopyFlagsReady, isAnalyticsEnabled } = await import('../lib/analytics');
+    const { onMarketingCopyFlagsReady, isAnalyticsEnabled } = await import('./analytics');
     expect(isAnalyticsEnabled()).toBe(false);
     const cb = vi.fn();
     onMarketingCopyFlagsReady(cb);
@@ -129,7 +129,7 @@ describe('analytics', () => {
 
   it('registerMarketingCopyVariant calls posthog.register', async () => {
     const posthog = (await import('posthog-js')).default as unknown as { register: ReturnType<typeof vi.fn> };
-    const { registerMarketingCopyVariant } = await import('../lib/analytics');
+    const { registerMarketingCopyVariant } = await import('./analytics');
     registerMarketingCopyVariant('a');
     expect(posthog.register).toHaveBeenCalledWith({ marketing_copy_variant: 'a' });
   });
