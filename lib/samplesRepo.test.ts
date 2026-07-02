@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { samplesFolderUrl, SDK_SAMPLE_FOLDERS } from '../lib/samplesRepo';
+import { samplesFolderUrl, SDK_SAMPLE_FOLDERS } from './samplesRepo';
 
 describe('samplesRepo', () => {
   it('builds GitHub tree URL for a folder', () => {

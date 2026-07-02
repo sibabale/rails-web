@@ -3,9 +3,9 @@ import { render, screen, within, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
-import { ledgerApi, accountsApi, transactionsApi } from '../lib/api';
-import Dashboard from '@/components/organisms/Dashboard/Dashboard';
-import environmentReducer from '../state/slices/environmentSlice';
+import { ledgerApi, accountsApi, transactionsApi } from '@/lib/api';
+import Dashboard from './Dashboard';
+import environmentReducer from '@/state/slices/environmentSlice';
 
 vi.mock('@/components/molecules/DashboardMaterialThemeToggle/DashboardMaterialThemeToggle', () => ({
   DashboardMaterialThemeToggle: () => (
@@ -24,8 +24,8 @@ vi.mock('next/navigation', () => ({
   }),
 }));
 
-vi.mock('../lib/api', async () => {
-  const actual = await vi.importActual<typeof import('../lib/api')>('../lib/api');
+vi.mock('@/lib/api', async () => {
+  const actual = await vi.importActual<typeof import('@/lib/api')>('@/lib/api');
   return {
     ...actual,
     accountsApi: {
