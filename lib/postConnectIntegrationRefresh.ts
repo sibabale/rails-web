@@ -48,12 +48,17 @@ export async function refreshIntegrationStateAfterSave(
     if (summary.all_connected) {
       let listed: DatabaseConnectionsResponse | null = null;
       for (let attempt = 0; attempt < 5; attempt += 1) {
-        listed = await databaseConnectionsApi.list(session);
-        ctx.applyListSnapshot(listed);
-        if (isDatabaseSetupCompletedFromBackend(listed) || attempt === 4) {
+        try {
+          listed = await databaseConnectionsApi.list(session);
+          ctx.applyListSnapshot(listed);
+          if (isDatabaseSetupCompletedFromBackend(listed) || attempt === 4) {
+            break;
+          }
+          await delay(1500);
+        } catch {
+          // Best effort: keep last known snapshot, stop polling on failure.
           break;
         }
-        await delay(1500);
       }
       if (listed && ctx.migrationStatusRef.current) {
         ctx.recomputeOnboarding(listed, ctx.migrationStatusRef.current);

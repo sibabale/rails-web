@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import ClientsBackendPage from '@/components/marketing/pages/infrastructure/ClientsBackendPage';
+import ClientsBackendPage from '@/components/pages/marketing/infrastructure/ClientsBackendPage';
 
 export const metadata: Metadata = {
   title: 'Backend SDKs | Rails Infra',

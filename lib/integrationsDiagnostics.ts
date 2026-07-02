@@ -54,28 +54,3 @@ export function formatIntegrationsLoadError(
 
   return 'Failed to load database connections.';
 }
-
-export function formatIntegrationsRefreshWarning(
-  err: unknown,
-  context: IntegrationsErrorContext
-): string {
-  if (isApiRequestError(err)) {
-    logIntegrationsDebug('Background refresh failure', {
-      operation: context.operation,
-      status: err.status,
-      path: err.path,
-      correlationId: err.correlationId,
-      environment: context.environment,
-      environmentId: context.environmentId,
-    });
-  } else {
-    logIntegrationsDebug('Background refresh failure', {
-      operation: context.operation,
-      environment: context.environment,
-      environmentId: context.environmentId,
-      message: err instanceof Error ? err.message : String(err),
-    });
-  }
-
-  return 'Saved connections are shown, but migration health could not be refreshed. Retry by switching tabs or reloading the page.';
-}

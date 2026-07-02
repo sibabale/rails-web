@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import RailsApiPage from '@/components/marketing/pages/infrastructure/RailsApiPage';
+import RailsApiPage from '@/components/pages/marketing/infrastructure/RailsApiPage';
 
 export const metadata: Metadata = {
   title: 'Rails API | Rails Infra',

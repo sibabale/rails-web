@@ -128,6 +128,17 @@ export async function handleMockApi(route: Route) {
     return;
   }
 
+  if (method === 'POST' && path === '/api/v1/api-keys') {
+    const environmentId = req.headers()['x-environment-id'] ?? E2E_SANDBOX_ENV_ID;
+    await fulfillJson(route, {
+      id: `key-new-${environmentId}`,
+      key: `rails_test_${environmentId.slice(0, 8)}`,
+      status: 'active',
+      environment_id: environmentId,
+    });
+    return;
+  }
+
   if (await tryHandleDatabaseConnectionsRoute(route, fulfillJson)) {
     return;
   }
@@ -208,17 +219,6 @@ export async function handleMockApi(route: Route) {
         created_by_user_id: 'user-1',
       },
     ]);
-    return;
-  }
-
-  if (method === 'POST' && path === '/api/v1/api-keys') {
-    const environmentId = req.headers()['x-environment-id'] ?? E2E_SANDBOX_ENV_ID;
-    await fulfillJson(route, {
-      id: `key-new-${environmentId}`,
-      key: `rails_test_${environmentId.slice(0, 8)}`,
-      status: 'active',
-      environment_id: environmentId,
-    });
     return;
   }
 
