@@ -120,6 +120,12 @@ const DashboardOverviewV2: React.FC<DashboardOverviewV2Props> = ({
 
   React.useEffect(() => {
     if (!session) return;
+    // Hard-reset stale env data synchronously so the previous environment's
+    // connections / api-key state never bleeds into the incoming environment's
+    // render (RAI-60).  The evaluator treats null connections as "all locked",
+    // which renders as a neutral pending/skeleton state until the fetch lands.
+    setConnections(null);
+    setHasActiveApiKey(false);
     let isActive = true;
     Promise.all([databaseConnectionsApi.list(session), apiKeysApi.list(session)])
       .then(([snapshot, keys]) => {
