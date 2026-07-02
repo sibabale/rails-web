@@ -8,6 +8,8 @@ import { resetToSandbox } from '../../../state/slices/environmentSlice';
 import { getClientServerUrl } from '../../../lib/env';
 import { clearRailsSession, readValidRailsSession } from '../../../lib/authSession';
 import type { RailsSession } from '../../../lib/authSession';
+import { resolveEnvironmentId } from '../../../lib/environment';
+import { getStoreState } from '../../../state/store';
 import Dashboard from '@/components/organisms/Dashboard/Dashboard';
 
 interface UserProfile {
@@ -75,13 +77,16 @@ const buildUserProfile = (user: MeUserProfile, business: MeBusinessProfile | und
 const mapMeResponseToProfile = (data: MeResponse): UserProfile => buildUserProfile(getMeUser(data), data.business);
 
 const fetchIdentityProfile = async (clientServerUrl: string, session: RailsSession) => {
+  const currentEnvironment = getStoreState().environment.current ?? 'sandbox';
+  const environmentId = resolveEnvironmentId(session, currentEnvironment) ?? session.environment_id;
+
   const response = await fetch(`${clientServerUrl.replace(/\/$/, '')}/api/v1/me`, {
     method: 'GET',
     headers: {
       Authorization: `Bearer ${session.access_token}`,
       Accept: 'application/json',
-      'X-Environment-Id': session.environment_id,
-      'X-Environment': 'sandbox',
+      'X-Environment-Id': environmentId,
+      'X-Environment': currentEnvironment,
     },
   });
 
