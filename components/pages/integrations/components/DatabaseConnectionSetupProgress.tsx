@@ -39,7 +39,11 @@ export default function DatabaseConnectionSetupProgress({
       <ol className="space-y-3">
         {DATABASE_SETUP_STEPS.map((step, index) => {
           const isFailedStep = isTerminalFailed && index === failedIndex;
-          const isComplete = isTerminalFailed ? index < failedIndex : index < activeIndex;
+          const isComplete = isTerminalFailed
+            ? index < failedIndex
+            : outcome === 'succeeded'
+              ? true
+              : index < activeIndex;
           const isActive = !isTerminalFailed && index === activeIndex;
           return (
             <li key={step.id} className="flex items-start gap-3">

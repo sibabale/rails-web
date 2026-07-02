@@ -29,7 +29,11 @@ load_live_db_urls_from_file() {
     line="${line#"${line%%[![:space:]]*}"}"
     [[ -n "$line" ]] || continue
     [[ "$line" == *=* ]] || continue
-    load_live_db_url_line "${line%%=*}" "${line#*=}" "$from_local"
+    local key="${line%%=*}"
+    local value="${line#*=}"
+    value="${value%$'\r'}"
+    value="${value%\"}"; value="${value#\"}"
+    load_live_db_url_line "$key" "$value" "$from_local"
   done < "$env_file"
 }
 

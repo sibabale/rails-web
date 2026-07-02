@@ -13,6 +13,7 @@ import {
   type OnboardingStages,
 } from '@/lib/onboarding/evaluateOnboardingStages';
 import { useAppSelector } from '@/state/hooks';
+import { resolveEnvironmentId } from '@/lib/environment';
 
 interface DashboardOverviewV2Props {
   overviewStats?: {
@@ -61,9 +62,7 @@ const DashboardOverviewV2: React.FC<DashboardOverviewV2Props> = ({
   session,
 }) => {
   const environment = useAppSelector((reduxState) => reduxState.environment.current);
-  const environmentId =
-    session?.environments?.find((item: { id: string; type: string }) => item.type === environment)?.id ??
-    session?.environment_id;
+  const environmentId = resolveEnvironmentId(session, environment);
   // `useOnboarding` continues to back the `dismissed` UI gesture only. Every
   // onboarding milestone (DB, API key, first request) is now derived from the
   // env-level DB snapshot returned by GET /api/v1/database-connections.

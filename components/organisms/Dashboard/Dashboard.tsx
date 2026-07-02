@@ -35,6 +35,7 @@ import {
   type DatabaseConnectionsResponse,
 } from '@/lib/api';
 import { getMarketingDocsCtaUrl } from '@/lib/env';
+import { resolveEnvironmentId } from '@/lib/environment';
 
 function isDocsExternalHref(href: string): boolean {
   return /^https?:\/\//i.test(href) || href.startsWith('//');
@@ -480,8 +481,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, session, profile, isLoa
   const pathname = usePathname();
   const router = useRouter();
   const prevPathnameRef = useRef<string | null>(null);
-  const currentEnvironmentId =
-    session?.environments?.find((item) => item.type === environment)?.id ?? session?.environment_id;
+  const currentEnvironmentId = resolveEnvironmentId(session, environment);
 
   const activeTab = useMemo(() => dashboardTabFromPathname(pathname), [pathname]);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
