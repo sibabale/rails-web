@@ -18,6 +18,7 @@ import type {
   DatabaseConnectionMigrationStatusResponse,
   DatabaseConnectionsResponse,
 } from '@/lib/api';
+import type { Environment } from '@/state/slices/environmentSlice';
 
 interface DatabaseDescriptor {
   key: ConnectionKey;
@@ -77,7 +78,7 @@ interface Session {
 
 interface DatabasesPanelProps {
   session?: Session | null;
-  environment: string;
+  environment: Environment;
   currentEnvironmentId: string | null;
   isProductionUnavailable: boolean;
   updateOnboardingStep: (step: 'dbsConnected', value: boolean) => void;
