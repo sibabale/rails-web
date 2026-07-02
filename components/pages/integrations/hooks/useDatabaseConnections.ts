@@ -6,9 +6,13 @@ import {
   type ConnectionUiStatus,
   type SetupOutcomeState,
   buildConnectionsResponseFromStatuses,
+  buildDuplicateSnapshot,
   computeInteractionsLocked,
   connectionSetupNotice,
   connectionUiStatusFromApi,
+  displayNameForService,
+  DUPLICATE_CONNECTION_NOTICE,
+  findDuplicateService,
   isPostgresConnectionString,
   isUnchangedSaveResponse,
   listSavedConnectionServices,
@@ -25,6 +29,7 @@ import {
 } from '@/lib/databaseConnectionSetup';
 import {
   databaseConnectionsApi,
+  isDuplicateConnectionError,
   refreshDatabaseHealth,
   type DatabaseConnectionInfo,
   type DatabaseConnectionMigrationRunResponse,
@@ -275,8 +280,13 @@ export function useDatabaseConnections({
     return 'invalid' as const;
   };
 
-  const handleChange = (key: ConnectionKey, value: string) =>
+  const handleChange = (key: ConnectionKey, value: string) => {
     setConnections((p) => ({ ...p, [key]: value }));
+    setConnectionNotices((p) => {
+      if (p[key] == null) return p;
+      return { ...p, [key]: null };
+    });
+  };
 
   const handleCopy = async (value: string) => {
     if (!value || typeof navigator === 'undefined' || !navigator.clipboard) return;
@@ -295,6 +305,21 @@ export function useDatabaseConnections({
     }
     if (!isPostgresConnectionString(next)) {
       setError('Enter a valid postgres:// or postgresql:// connection string.');
+      return;
+    }
+
+    // FR-5 client guard: catch same-session duplicates before hitting the network.
+    // Cross-session duplicates fall through to the backend 409 (see 409 catch arm).
+    const duplicateSnapshot = buildDuplicateSnapshot(connections, serviceKeys);
+    const conflictingService = findDuplicateService(duplicateSnapshot, key, next);
+    if (conflictingService) {
+      setConnectionNotices((prev) => ({
+        ...prev,
+        [key]: DUPLICATE_CONNECTION_NOTICE(
+          displayNameForService(conflictingService),
+          displayNameForService(key)
+        ),
+      }));
       return;
     }
 
@@ -359,7 +384,18 @@ export function useDatabaseConnections({
       statusRef.current = { ...statusRef.current, [key]: wasConnected ? 'connected' : 'idle' };
       setStatus({ ...statusRef.current });
       publishGlobalHealthIfIdle();
-      setError(err instanceof Error ? err.message : 'Failed to save database connection.');
+      const duplicate = isDuplicateConnectionError(err);
+      if (duplicate) {
+        setConnectionNotices((prev) => ({
+          ...prev,
+          [key]: DUPLICATE_CONNECTION_NOTICE(
+            displayNameForService(duplicate.conflictingService),
+            displayNameForService(key)
+          ),
+        }));
+      } else {
+        setError(err instanceof Error ? err.message : 'Failed to save database connection.');
+      }
     } finally {
       setSavingService((current) => (current === key ? null : current));
     }

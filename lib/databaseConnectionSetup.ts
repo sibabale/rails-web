@@ -203,6 +203,82 @@ export function isPostgresConnectionString(value: string): boolean {
   return trimmed.startsWith('postgres://') || trimmed.startsWith('postgresql://');
 }
 
+/**
+ * TS port of `normalize_postgres_connection_identity` (rails-enterprise): produces
+ * the comparison key used to detect duplicate connection strings across services.
+ * Lowercases, strips optional `jdbc:` prefix, drops query string, trims whitespace.
+ * NOT a security boundary — the backend re-normalizes on save (see RAI-69).
+ */
+export function normalizePostgresConnectionIdentity(value: string): string {
+  const trimmed = value.trim();
+  const withoutJdbc = trimmed.replace(/^jdbc:/i, '');
+  const base = withoutJdbc.split('?')[0];
+  return base.toLowerCase();
+}
+
+export interface DuplicateSnapshotEntry {
+  service: DatabaseConnectionService;
+  identity: string;
+}
+
+/**
+ * Scans the in-memory snapshot for another service already using the same
+ * normalized identity as `candidate`. Returns the conflicting service or null.
+ * Only reasons about plaintext held in-session; already-saved sibling services
+ * are opaque here and fall through to the backend 409 surface (RAI-71).
+ */
+export function findDuplicateService(
+  snapshot: DuplicateSnapshotEntry[],
+  currentService: DatabaseConnectionService,
+  candidate: string
+): DatabaseConnectionService | null {
+  const candidateIdentity = normalizePostgresConnectionIdentity(candidate);
+  if (!candidateIdentity) return null;
+  const match = snapshot.find(
+    (entry) => entry.service !== currentService && entry.identity === candidateIdentity
+  );
+  return match?.service ?? null;
+}
+
+/** Shared copy for the duplicate-connection-string surface (client guard + 409). */
+export const DUPLICATE_CONNECTION_NOTICE = (
+  otherServiceDisplayName: string,
+  currentServiceDisplayName: string
+): string =>
+  `This connection string is already in use by the ${otherServiceDisplayName} database. Choose a different database for ${currentServiceDisplayName}.`;
+
+const DATABASE_SERVICE_DISPLAY_NAMES: Record<DatabaseConnectionService, string> = {
+  accounts: 'Accounts',
+  users: 'Users',
+  ledger: 'Ledger',
+  audit: 'Audit services',
+};
+
+export function displayNameForService(service: DatabaseConnectionService): string {
+  return DATABASE_SERVICE_DISPLAY_NAMES[service] ?? service;
+}
+
+/**
+ * Build the duplicate-check snapshot from in-memory connection form values.
+ * Empty strings are ignored (nothing to compare against yet); already-saved
+ * services that only hold plaintext once are opaque and skipped — the backend
+ * 409 catches those on the next save attempt.
+ */
+export function buildDuplicateSnapshot(
+  connections: Record<DatabaseConnectionService, string>,
+  serviceKeys: readonly DatabaseConnectionService[]
+): DuplicateSnapshotEntry[] {
+  return serviceKeys
+    .map((service) => {
+      const value = connections[service];
+      if (!value) return null;
+      const identity = normalizePostgresConnectionIdentity(value);
+      if (!identity) return null;
+      return { service, identity };
+    })
+    .filter((entry): entry is DuplicateSnapshotEntry => entry !== null);
+}
+
 export type ConnectionUiStatus = 'idle' | 'connecting' | 'connected' | 'invalid' | 'missing';
 
 export function connectionUiStatusFromApi(
