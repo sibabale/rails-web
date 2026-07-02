@@ -40,6 +40,7 @@ import {
 } from '@/lib/databaseSetupState';
 import { refreshIntegrationStateAfterSave } from '@/lib/postConnectIntegrationRefresh';
 import { formatIntegrationsLoadError } from '@/lib/integrationsDiagnostics';
+import type { Environment } from '@/state/slices/environmentSlice';
 
 export type ConnectionKey = DatabaseConnectionService;
 
@@ -51,7 +52,7 @@ interface Session {
 
 interface UseDatabaseConnectionsArgs {
   session?: Session | null;
-  environment: string;
+  environment: Environment;
   currentEnvironmentId: string | null;
   serviceKeys: readonly ConnectionKey[];
   isProductionUnavailable: boolean;
