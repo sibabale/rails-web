@@ -119,7 +119,7 @@ describe('Dashboard environment selector', () => {
     );
   });
 
-  it('places API key management below the overview metrics', async () => {
+  it('places API key onboarding step above the overview metrics and Rails Platform below both', async () => {
     renderDashboard({
       access_token: 'token',
       environment_id: 'env-1',
@@ -127,11 +127,13 @@ describe('Dashboard environment selector', () => {
     });
 
     const metrics = await screen.findByTestId('dashboard-overview-stat-active-accounts');
-    const credentialsHeading = screen.getByText('Security Credentials');
+    const apiKeyStep = screen.getByTestId('onboarding-step-apikey');
     const platformHeading = screen.getByText('Rails Platform');
 
-    expect(metrics.compareDocumentPosition(credentialsHeading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(credentialsHeading.compareDocumentPosition(platformHeading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    // Onboarding cards render above the stats tiles
+    expect(apiKeyStep.compareDocumentPosition(metrics) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    // Stats tiles render above the Rails Platform section
+    expect(metrics.compareDocumentPosition(platformHeading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it('counts completed transactions for the overview tile', async () => {
