@@ -23,7 +23,7 @@ vi.mock('@/lib/api', async () => {
 });
 
 vi.mock('@/lib/postConnectIntegrationRefresh', () => ({
-  refreshIntegrationStateAfterSave: vi.fn().mockResolvedValue(undefined),
+  refreshIntegrationStateAfterSave: vi.fn().mockResolvedValue(),
 }));
 
 vi.mock('@/lib/databaseSetupState', async () => {
@@ -63,7 +63,7 @@ const renderHookWithDefaults = () =>
       currentEnvironmentId: session.environment_id,
       serviceKeys: SERVICE_KEYS,
       isProductionUnavailable: false,
-      updateOnboardingStep: () => undefined,
+      updateOnboardingStep: () => {},
     })
   );
 
