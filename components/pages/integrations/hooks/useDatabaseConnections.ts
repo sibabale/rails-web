@@ -29,7 +29,6 @@ import {
 } from '@/lib/databaseConnectionSetup';
 import {
   databaseConnectionsApi,
-  isDuplicateConnectionError,
   refreshDatabaseHealth,
   type DatabaseConnectionInfo,
   type DatabaseConnectionMigrationRunResponse,
@@ -37,6 +36,7 @@ import {
   type DatabaseConnectionsResponse,
   type DatabaseConnectionService,
 } from '@/lib/api';
+import { isApiRequestError } from '@/lib/apiRequestError';
 import {
   isDatabaseSetupCompletedFromBackend,
   markDatabaseSetupCompleted,
@@ -329,10 +329,27 @@ export function useDatabaseConnections({
     setSetupOutcomes((p) => ({ ...p, [key]: null }));
     setSavingService(key);
 
+    const saveConnectionForService = (connectionString: string): Promise<DatabaseConnectionInfo> => {
+      switch (key) {
+        case 'accounts':
+          return databaseConnectionsApi.saveAccountsConnection(session, connectionString);
+        case 'users':
+          return databaseConnectionsApi.saveUsersConnection(session, connectionString);
+        case 'ledger':
+          return databaseConnectionsApi.saveLedgerConnection(session, connectionString);
+        case 'audit':
+          return databaseConnectionsApi.saveAuditConnection(session, connectionString);
+        default: {
+          const _exhaustive: never = key;
+          throw new Error(`Unknown database service key: ${_exhaustive}`);
+        }
+      }
+    };
+
     try {
       let saved: DatabaseConnectionInfo | undefined;
       if (wasConnected) {
-        saved = await databaseConnectionsApi.save(session, key, next);
+        saved = await saveConnectionForService(next);
         if (isUnchangedSaveResponse(saved)) {
           setConnectionNotices((p) => ({ ...p, [key]: unchangedConnectionNotice() }));
           setConnections((p) => ({ ...p, [key]: '' }));
@@ -348,7 +365,7 @@ export function useDatabaseConnections({
       } else {
         await runConnectionSetupFlow(key, 'validating', async (advance) => {
           await advance('connecting');
-          saved = await databaseConnectionsApi.save(session, key, next);
+          saved = await saveConnectionForService(next);
           await advance('setting_up');
           return null;
         });
@@ -384,15 +401,22 @@ export function useDatabaseConnections({
       statusRef.current = { ...statusRef.current, [key]: wasConnected ? 'connected' : 'idle' };
       setStatus({ ...statusRef.current });
       publishGlobalHealthIfIdle();
-      const duplicate = isDuplicateConnectionError(err);
-      if (duplicate) {
+      const fallbackConflictMessage =
+        err && typeof err === 'object' && 'status' in err && (err as { status?: unknown }).status === 409
+          ? err instanceof Error
+            ? err.message
+            : null
+          : null;
+      const conflictMessage =
+        isApiRequestError(err) && err.status === 409
+          ? err.message
+          : fallbackConflictMessage;
+      if (conflictMessage) {
         setConnectionNotices((prev) => ({
           ...prev,
-          [key]: DUPLICATE_CONNECTION_NOTICE(
-            displayNameForService(duplicate.conflictingService),
-            displayNameForService(key)
-          ),
+          [key]: conflictMessage,
         }));
+        setError(null);
       } else {
         setError(err instanceof Error ? err.message : 'Failed to save database connection.');
       }
