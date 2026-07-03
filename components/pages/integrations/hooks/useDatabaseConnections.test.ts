@@ -10,7 +10,10 @@ vi.mock('@/lib/api', async () => {
     ...actual,
     databaseConnectionsApi: {
       list: vi.fn(),
-      save: vi.fn(),
+      saveAccountsConnection: vi.fn(),
+      saveUsersConnection: vi.fn(),
+      saveLedgerConnection: vi.fn(),
+      saveAuditConnection: vi.fn(),
       validate: vi.fn(),
       migrations: vi.fn(),
       runMigrations: vi.fn(),
@@ -65,12 +68,18 @@ const renderHookWithDefaults = () =>
   );
 
 const listMock = vi.mocked(databaseConnectionsApi.list);
-const saveMock = vi.mocked(databaseConnectionsApi.save);
+const saveAccountsMock = vi.mocked(databaseConnectionsApi.saveAccountsConnection);
+const saveUsersMock = vi.mocked(databaseConnectionsApi.saveUsersConnection);
+const saveLedgerMock = vi.mocked(databaseConnectionsApi.saveLedgerConnection);
+const saveAuditMock = vi.mocked(databaseConnectionsApi.saveAuditConnection);
 
 describe('useDatabaseConnections handleConnect — client-side duplicate guard (RAI-70)', () => {
   beforeEach(() => {
     listMock.mockReset();
-    saveMock.mockReset();
+    saveAccountsMock.mockReset();
+    saveUsersMock.mockReset();
+    saveLedgerMock.mockReset();
+    saveAuditMock.mockReset();
     listMock.mockResolvedValue(emptyListResponse);
   });
 
@@ -92,7 +101,10 @@ describe('useDatabaseConnections handleConnect — client-side duplicate guard (
       await result.current.handleConnect('users');
     });
 
-    expect(saveMock).not.toHaveBeenCalled();
+    expect(saveAccountsMock).not.toHaveBeenCalled();
+    expect(saveUsersMock).not.toHaveBeenCalled();
+    expect(saveLedgerMock).not.toHaveBeenCalled();
+    expect(saveAuditMock).not.toHaveBeenCalled();
     expect(result.current.connectionNotices.users).toBe(
       DUPLICATE_CONNECTION_NOTICE(
         displayNameForService('accounts'),
@@ -103,7 +115,7 @@ describe('useDatabaseConnections handleConnect — client-side duplicate guard (
   });
 
   it('proceeds to network when no duplicate in client snapshot', async () => {
-    saveMock.mockResolvedValue({
+    saveUsersMock.mockResolvedValue({
       service: 'users',
       status: 'connected',
       setup: { migration_status: 'applied', pending_count: 0, applied_count: 1 },
@@ -119,7 +131,7 @@ describe('useDatabaseConnections handleConnect — client-side duplicate guard (
       await result.current.handleConnect('users');
     });
 
-    expect(saveMock).toHaveBeenCalledTimes(1);
+    expect(saveUsersMock).toHaveBeenCalledTimes(1);
     expect(result.current.connectionNotices.users).toBeNull();
   });
 
@@ -131,7 +143,10 @@ describe('useDatabaseConnections handleConnect — client-side duplicate guard (
       await result.current.handleConnect('users');
     });
 
-    expect(saveMock).not.toHaveBeenCalled();
+    expect(saveAccountsMock).not.toHaveBeenCalled();
+    expect(saveUsersMock).not.toHaveBeenCalled();
+    expect(saveLedgerMock).not.toHaveBeenCalled();
+    expect(saveAuditMock).not.toHaveBeenCalled();
     expect(result.current.connectionNotices.users).toBeNull();
     expect(result.current.error).toBe('Paste a PostgreSQL connection string before connecting.');
   });
@@ -140,7 +155,10 @@ describe('useDatabaseConnections handleConnect — client-side duplicate guard (
 describe('useDatabaseConnections handleChange — clear-on-edit pathway', () => {
   beforeEach(() => {
     listMock.mockReset();
-    saveMock.mockReset();
+    saveAccountsMock.mockReset();
+    saveUsersMock.mockReset();
+    saveLedgerMock.mockReset();
+    saveAuditMock.mockReset();
     listMock.mockResolvedValue(emptyListResponse);
   });
 
@@ -172,7 +190,10 @@ describe('useDatabaseConnections handleChange — clear-on-edit pathway', () => 
 describe('useDatabaseConnections handleConnect — backend 409 rendering (RAI-71)', () => {
   beforeEach(() => {
     listMock.mockReset();
-    saveMock.mockReset();
+    saveAccountsMock.mockReset();
+    saveUsersMock.mockReset();
+    saveLedgerMock.mockReset();
+    saveAuditMock.mockReset();
     listMock.mockResolvedValue(emptyListResponse);
   });
 
@@ -184,16 +205,15 @@ describe('useDatabaseConnections handleConnect — backend 409 rendering (RAI-71
     Object.assign(new Error('This connection string is already in use by another service.'), {
       status: 409,
       body: {
-        error: {
-          code: 'DUPLICATE_CONNECTION_STRING',
-          conflicting_service: 'accounts',
-        },
+        status: 409,
         message: 'This connection string is already in use by another service.',
+        correlationId: 'cid-test',
+        timestamp: '2026-07-03T00:00:00.000Z',
       },
     });
 
   it('routes 409 duplicate into connectionNotices, not setError', async () => {
-    saveMock.mockRejectedValue(buildDuplicateError());
+    saveUsersMock.mockRejectedValue(buildDuplicateError());
     const { result } = renderHookWithDefaults();
     await waitFor(() => expect(result.current.initialCheckComplete).toBe(true));
 
@@ -205,16 +225,13 @@ describe('useDatabaseConnections handleConnect — backend 409 rendering (RAI-71
     });
 
     expect(result.current.connectionNotices.users).toBe(
-      DUPLICATE_CONNECTION_NOTICE(
-        displayNameForService('accounts'),
-        displayNameForService('users')
-      )
+      'This connection string is already in use by another service.'
     );
     expect(result.current.error).toBeNull();
   });
 
   it('clears the 409 duplicate notice on next edit', async () => {
-    saveMock.mockRejectedValue(buildDuplicateError());
+    saveUsersMock.mockRejectedValue(buildDuplicateError());
     const { result } = renderHookWithDefaults();
     await waitFor(() => expect(result.current.initialCheckComplete).toBe(true));
 
@@ -232,11 +249,16 @@ describe('useDatabaseConnections handleConnect — backend 409 rendering (RAI-71
     expect(result.current.connectionNotices.users).toBeNull();
   });
 
-  it('falls back to generic error for non-duplicate 409 body', async () => {
-    saveMock.mockRejectedValue(
+  it('uses the same notice surface for all 409 responses', async () => {
+    saveUsersMock.mockRejectedValue(
       Object.assign(new Error('Some other conflict occurred.'), {
         status: 409,
-        body: { error: { code: 'OTHER_CONFLICT' }, message: 'Some other conflict occurred.' },
+        body: {
+          status: 409,
+          message: 'Some other conflict occurred.',
+          correlationId: 'cid-test',
+          timestamp: '2026-07-03T00:00:00.000Z',
+        },
       })
     );
     const { result } = renderHookWithDefaults();
@@ -249,7 +271,7 @@ describe('useDatabaseConnections handleConnect — backend 409 rendering (RAI-71
       await result.current.handleConnect('users');
     });
 
-    expect(result.current.connectionNotices.users).toBeNull();
-    expect(result.current.error).toBe('Some other conflict occurred.');
+    expect(result.current.connectionNotices.users).toBe('Some other conflict occurred.');
+    expect(result.current.error).toBeNull();
   });
 });

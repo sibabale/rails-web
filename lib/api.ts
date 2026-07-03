@@ -301,87 +301,58 @@ export interface DatabaseConnectionMigrationRunResponse {
   services: DatabaseConnectionMigrationRunInfo[];
 }
 
-const DATABASE_CONNECTION_KEYS: readonly DatabaseConnectionService[] = [
-  'accounts',
-  'users',
-  'ledger',
-  'audit',
-];
-
-function isValidConnectionKey(value: string): value is DatabaseConnectionService {
-  return (DATABASE_CONNECTION_KEYS as readonly string[]).includes(value);
-}
-
-/**
- * Classifies backend errors thrown by `databaseConnectionsApi.save`. Returns
- * the conflicting service when the response is the RAI-69 409 contract:
- *
- *   HTTP 409
- *   {
- *     "error": {
- *       "code": "DUPLICATE_CONNECTION_STRING",
- *       "conflicting_service": "<DatabaseConnectionService>"
- *     },
- *     "message": "..."
- *   }
- *
- * Any deviation (missing fields, unrelated 409 codes, non-409 status, unknown
- * service key) returns null and callers should fall through to their generic
- * error surface. See RAI-71 / RAI-73 for the shared UI copy.
- */
-export function isDuplicateConnectionError(
-  err: unknown
-): { conflictingService: DatabaseConnectionService } | null {
-  if (!err || typeof err !== 'object') return null;
-  const e = err as { status?: unknown; body?: unknown };
-  if (e.status !== 409) return null;
-  const body = e.body as
-    | { error?: { code?: unknown; conflicting_service?: unknown } }
-    | undefined;
-  if (body?.error?.code !== 'DUPLICATE_CONNECTION_STRING') return null;
-  const svc = body.error.conflicting_service;
-  if (typeof svc !== 'string' || !isValidConnectionKey(svc)) return null;
-  return { conflictingService: svc };
-}
-
 export const databaseConnectionsApi = {
   list: (session: Session | null): Promise<DatabaseConnectionsResponse> =>
     apiRequest<DatabaseConnectionsResponse>('/api/v1/database-connections', { method: 'GET' }, session),
 
-  /**
-   * Persists a database connection string for the given service.
-   *
-   * ## 409 duplicate contract (RAI-69 / RAI-71 / RAI-73)
-   *
-   * The backend rejects a save when the same normalized identity is already
-   * in use by another service in this environment. The rejection is thrown
-   * as an `ApiRequestError` with `status: 409` and a structured JSON body:
-   *
-   * ```json
-   * {
-   *   "error": {
-   *     "code": "DUPLICATE_CONNECTION_STRING",
-   *     "conflicting_service": "<accounts|users|ledger|audit>"
-   *   },
-   *   "message": "This connection string is already in use by another service."
-   * }
-   * ```
-   *
-   * Callers MUST route the rejection through `isDuplicateConnectionError`
-   * to render the shared UI copy via `DUPLICATE_CONNECTION_NOTICE` instead
-   * of the generic error surface. There is no retry — the user must edit
-   * the field, which clears the notice through `handleChange`.
-   */
-  save: (
+  saveAccountsConnection: (
     session: Session | null,
-    service: DatabaseConnectionService,
     connectionString: string
   ): Promise<DatabaseConnectionInfo> =>
     apiRequest<DatabaseConnectionInfo>(
       '/api/v1/database-connections',
       {
         method: 'POST',
-        body: { service, connection_string: connectionString },
+        body: { service: 'accounts', connection_string: connectionString },
+      },
+      session
+    ),
+
+  saveUsersConnection: (
+    session: Session | null,
+    connectionString: string
+  ): Promise<DatabaseConnectionInfo> =>
+    apiRequest<DatabaseConnectionInfo>(
+      '/api/v1/database-connections',
+      {
+        method: 'POST',
+        body: { service: 'users', connection_string: connectionString },
+      },
+      session
+    ),
+
+  saveLedgerConnection: (
+    session: Session | null,
+    connectionString: string
+  ): Promise<DatabaseConnectionInfo> =>
+    apiRequest<DatabaseConnectionInfo>(
+      '/api/v1/database-connections',
+      {
+        method: 'POST',
+        body: { service: 'ledger', connection_string: connectionString },
+      },
+      session
+    ),
+
+  saveAuditConnection: (
+    session: Session | null,
+    connectionString: string
+  ): Promise<DatabaseConnectionInfo> =>
+    apiRequest<DatabaseConnectionInfo>(
+      '/api/v1/database-connections',
+      {
+        method: 'POST',
+        body: { service: 'audit', connection_string: connectionString },
       },
       session
     ),
