@@ -9,10 +9,12 @@
 import React from 'react';
 import { describe, it, expect, beforeEach, vi, type MockedFunction } from 'vitest';
 import { render, screen, waitFor, act } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
 import DashboardOverviewV2 from './DashboardOverviewV2';
 import environmentReducer, { setEnvironment } from '@/state/slices/environmentSlice';
+import onboardingReducer, { setOnboardingSnapshot } from '@/state/slices/onboardingSlice';
 import { databaseConnectionsApi, apiKeysApi, type DatabaseConnectionsResponse } from '@/lib/api';
 import type { Environment } from '@/types';
 
@@ -29,19 +31,18 @@ vi.mock('@/components/organisms/OnboardingStepCard/OnboardingStepCard', () => ({
     title,
     state: stepState,
     testId,
+    cta,
   }: {
     title: string;
     state: string;
     testId?: string;
+    cta?: React.ReactNode;
   }) => (
     <div data-testid={testId ?? 'onboarding-step'} data-state={stepState}>
       {title}
+      {cta}
     </div>
   ),
-}));
-
-vi.mock('@/hooks/useOnboarding', () => ({
-  useOnboarding: () => ({ state: { dismissed: false }, updateStep: vi.fn() }),
 }));
 
 vi.mock('next/link', () => ({
@@ -57,6 +58,7 @@ vi.mock('@/lib/api', async () => {
     databaseConnectionsApi: {
       ...actual.databaseConnectionsApi,
       list: vi.fn(),
+      markFirstRequestSent: vi.fn(),
     },
     apiKeysApi: {
       ...actual.apiKeysApi,
@@ -113,8 +115,8 @@ const emptySnapshot = (): DatabaseConnectionsResponse => ({
 
 const makeStore = (initial: Environment = 'sandbox') =>
   configureStore({
-    reducer: { environment: environmentReducer },
-    preloadedState: { environment: { current: initial } },
+    reducer: { environment: environmentReducer, onboarding: onboardingReducer },
+    preloadedState: { environment: { current: initial }, onboarding: { byEnvironmentId: {} } },
   });
 
 const renderOverview = (store: ReturnType<typeof makeStore>, session = makeSession()) =>
@@ -125,6 +127,9 @@ const renderOverview = (store: ReturnType<typeof makeStore>, session = makeSessi
   );
 
 const listMock = databaseConnectionsApi.list as MockedFunction<typeof databaseConnectionsApi.list>;
+const markFirstRequestMock = databaseConnectionsApi.markFirstRequestSent as MockedFunction<
+  typeof databaseConnectionsApi.markFirstRequestSent
+>;
 const keysMock = apiKeysApi.list as MockedFunction<typeof apiKeysApi.list>;
 
 // ── Tests ────────────────────────────────────────────────────────────────────
@@ -132,6 +137,7 @@ const keysMock = apiKeysApi.list as MockedFunction<typeof apiKeysApi.list>;
 describe('DashboardOverviewV2', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    markFirstRequestMock.mockResolvedValue({ first_request_sent_at: '2026-01-03T00:00:00Z' });
   });
 
   // ── Initial render ────────────────────────────────────────────────────────
@@ -158,9 +164,32 @@ describe('DashboardOverviewV2', () => {
       keysMock.mockReturnValue(new Promise(() => {}));
 
       renderOverview(makeStore());
+      expect(screen.getByTestId('dashboard-overview-onboarding-skeleton')).toBeInTheDocument();
       expect(screen.getByTestId('onboarding-step-dbs')).toHaveAttribute('data-state', 'locked');
       expect(screen.getByTestId('onboarding-step-apikey')).toHaveAttribute('data-state', 'locked');
       expect(screen.getByTestId('onboarding-step-first-request')).toHaveAttribute('data-state', 'locked');
+    });
+
+    it('uses cached onboarding state and skips skeleton while live fetch is pending', () => {
+      listMock.mockReturnValue(new Promise(() => {}));
+      keysMock.mockReturnValue(new Promise(() => {}));
+      const store = makeStore('sandbox');
+      store.dispatch(
+        setOnboardingSnapshot({
+          environmentId: SANDBOX_ENV_ID,
+          dbsConnected: true,
+          apiKeyGenerated: false,
+          firstRequestSent: false,
+        })
+      );
+
+      renderOverview(store, makeSession(SANDBOX_ENV_ID));
+      expect(screen.queryByTestId('dashboard-overview-onboarding-skeleton')).not.toBeInTheDocument();
+      expect(screen.getByTestId('onboarding-step-dbs')).toHaveAttribute('data-state', 'complete');
+      expect(screen.getByTestId('dashboard-overview-onboarding')).toHaveAttribute(
+        'data-snapshot-loaded',
+        'true'
+      );
     });
 
     it('advances dbs step to complete once all four services are connected and milestone is stamped', async () => {
@@ -207,6 +236,20 @@ describe('DashboardOverviewV2', () => {
       });
     });
 
+    it('hides onboarding when all steps are complete', async () => {
+      listMock.mockResolvedValue({
+        ...connectedSnapshot({ withApiKey: true }),
+        first_request_sent_at: '2026-01-03T00:00:00Z',
+      });
+      keysMock.mockResolvedValue([]);
+
+      renderOverview(makeStore());
+
+      await waitFor(() => {
+        expect(screen.queryByTestId('dashboard-overview-onboarding')).not.toBeInTheDocument();
+      });
+    });
+
     it('renders all three overview metric tiles', () => {
       listMock.mockReturnValue(new Promise(() => {}));
       keysMock.mockReturnValue(new Promise(() => {}));
@@ -222,6 +265,33 @@ describe('DashboardOverviewV2', () => {
       keysMock.mockReturnValue(new Promise(() => {}));
       renderOverview(makeStore());
       expect(screen.getByTestId('docs-cta')).toBeInTheDocument();
+    });
+
+    it('opens docs in a new tab, persists first-request completion, and hides onboarding once complete', async () => {
+      listMock.mockResolvedValue(connectedSnapshot({ withApiKey: true }));
+      keysMock.mockResolvedValue([]);
+      const windowOpenSpy = vi.spyOn(window, 'open').mockImplementation(() => null);
+      const store = makeStore('sandbox');
+
+      renderOverview(store, makeSession(SANDBOX_ENV_ID));
+      await waitFor(() =>
+        expect(screen.getByTestId('onboarding-step-first-request')).toHaveAttribute(
+          'data-state',
+          'active'
+        )
+      );
+
+      await userEvent.click(screen.getByRole('button', { name: 'Open Docs' }));
+
+      expect(windowOpenSpy).toHaveBeenCalledWith('/docs', '_blank', 'noopener,noreferrer');
+      await waitFor(() => expect(markFirstRequestMock).toHaveBeenCalledTimes(1));
+      await waitFor(() =>
+        expect(store.getState().onboarding.byEnvironmentId[SANDBOX_ENV_ID]?.firstRequestSent).toBe(true)
+      );
+      await waitFor(() =>
+        expect(screen.queryByTestId('dashboard-overview-onboarding')).not.toBeInTheDocument()
+      );
+      windowOpenSpy.mockRestore();
     });
 
     it('does not call fetch APIs when session is null', () => {
@@ -258,6 +328,7 @@ describe('DashboardOverviewV2', () => {
           'true'
         )
       );
+      expect(screen.queryByTestId('dashboard-overview-onboarding-skeleton')).not.toBeInTheDocument();
     });
   });
 
@@ -349,6 +420,40 @@ describe('DashboardOverviewV2', () => {
       await waitFor(() =>
         expect(screen.getByTestId('onboarding-step-dbs')).toHaveAttribute('data-state', 'complete')
       );
+    });
+
+    it('shows cached sandbox progress immediately when switching back before refetch resolves', async () => {
+      listMock
+        .mockResolvedValueOnce(connectedSnapshot()) // initial sandbox load
+        .mockResolvedValueOnce(emptySnapshot()) // production load
+        .mockReturnValueOnce(new Promise(() => {})); // sandbox refetch hangs
+      keysMock.mockResolvedValue([]);
+
+      const store = makeStore('sandbox');
+      renderOverview(store, makeSession(SANDBOX_ENV_ID));
+
+      await waitFor(() =>
+        expect(screen.getByTestId('onboarding-step-dbs')).toHaveAttribute('data-state', 'complete')
+      );
+
+      act(() => {
+        store.dispatch(setEnvironment('production'));
+      });
+      await waitFor(() =>
+        expect(screen.getByTestId('onboarding-step-dbs')).toHaveAttribute('data-state', 'active')
+      );
+
+      act(() => {
+        store.dispatch(setEnvironment('sandbox'));
+      });
+      await waitFor(() =>
+        expect(screen.getByTestId('onboarding-step-dbs')).toHaveAttribute('data-state', 'complete')
+      );
+      expect(screen.getByTestId('dashboard-overview-onboarding')).toHaveAttribute(
+        'data-snapshot-loaded',
+        'true'
+      );
+      expect(screen.queryByTestId('dashboard-overview-onboarding-skeleton')).not.toBeInTheDocument();
     });
 
     it('does not carry sandbox api-key-complete flag into production view', async () => {

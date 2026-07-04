@@ -4,8 +4,6 @@ import { useCallback } from 'react';
 import ApiKeyManager from '@/components/organisms/ApiKeyManager/ApiKeyManager';
 import Banner from '@/components/molecules/Banner/Banner';
 import SecondaryButton from '@/components/atoms/SecondaryButton/SecondaryButton';
-import { isMigrationStatusCurrent } from '@/lib/databaseReadiness';
-import type { DatabaseConnectionMigrationStatusResponse } from '@/lib/api';
 
 interface Session {
   access_token: string;
@@ -16,7 +14,7 @@ interface Session {
 interface ApiKeyPanelProps {
   session?: Session | null;
   dbsConnected: boolean;
-  migrationStatus: DatabaseConnectionMigrationStatusResponse | null;
+  migrationsApplied: boolean;
   pendingMigrationCount: number;
   onSwitchToDatabases: () => void;
   updateOnboardingStep: (step: 'apiKeyGenerated', value: boolean) => void;
@@ -25,16 +23,16 @@ interface ApiKeyPanelProps {
 export default function ApiKeyPanel({
   session,
   dbsConnected,
-  migrationStatus,
+  migrationsApplied,
   pendingMigrationCount,
   onSwitchToDatabases,
   updateOnboardingStep,
 }: ApiKeyPanelProps) {
-  const canCreateApiKey = dbsConnected && isMigrationStatusCurrent(migrationStatus);
+  const canCreateApiKey = dbsConnected && migrationsApplied;
 
   const blockedReason = !dbsConnected
     ? 'Connect all required database integrations before creating an API key.'
-    : !isMigrationStatusCurrent(migrationStatus)
+    : !migrationsApplied
       ? 'Apply database updates before creating an API key.'
       : 'Complete setup before creating an API key.';
 
@@ -44,7 +42,7 @@ export default function ApiKeyPanel({
           title: 'Database setup required',
           body: 'API key creation is disabled until every required database is connected for this environment. Connect Accounts, Users, Ledger, and Audit on the Databases tab, then return here to issue a key.',
         }
-      : !isMigrationStatusCurrent(migrationStatus)
+      : !migrationsApplied
         ? {
             title: 'Database updates required',
             body:

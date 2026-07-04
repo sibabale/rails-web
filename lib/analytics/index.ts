@@ -5,8 +5,8 @@ import {
   getPostHogKeyEnv,
   getPostHogMarketingCopyFlagKey,
   isAnalyticsExplicitlyDisabled,
-} from './env';
-import type { MarketingCopyVariantId } from './marketingCopyVariant';
+} from '../env';
+import type { MarketingCopyVariantId } from '../marketingCopyVariant';
 
 const DEFAULT_POSTHOG_HOST = 'https://eu.i.posthog.com';
 

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   isDatabaseSetupCompletedFromBackend,
   resolveDbsConnectedOnboardingAction,
-} from './databaseSetupState';
+} from './index';
 
 describe('isDatabaseSetupCompletedFromBackend', () => {
   it('returns false when response is null or undefined', () => {

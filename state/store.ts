@@ -2,6 +2,7 @@ import { configureStore } from '@reduxjs/toolkit';
 import { persistStore, persistReducer, PersistConfig } from 'redux-persist';
 import createWebStorage from 'redux-persist/lib/storage/createWebStorage';
 import environmentReducer, { Environment } from './slices/environmentSlice';
+import onboardingReducer from './slices/onboardingSlice';
 
 const createNoopStorage = () => ({
   getItem() {
@@ -37,10 +38,32 @@ const persistedEnvironmentReducer = persistReducer(
   environmentReducer
 );
 
+type OnboardingPersistState = {
+  byEnvironmentId: Record<
+    string,
+    {
+      dbsConnected: boolean;
+      migrationsApplied: boolean;
+      apiKeyGenerated: boolean;
+      firstRequestSent: boolean;
+      dismissed: boolean;
+      dbSetupCompletedSticky: boolean;
+    }
+  >;
+};
+
+const onboardingPersistConfig: PersistConfig<OnboardingPersistState> = {
+  key: 'onboarding',
+  storage,
+};
+
+const persistedOnboardingReducer = persistReducer(onboardingPersistConfig, onboardingReducer);
+
 // Configure store
 export const store = configureStore({
   reducer: {
     environment: persistedEnvironmentReducer,
+    onboarding: persistedOnboardingReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

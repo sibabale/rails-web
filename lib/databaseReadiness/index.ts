@@ -1,4 +1,4 @@
-import type { DatabaseConnectionMigrationStatusResponse } from './api';
+import type { DatabaseConnectionMigrationStatusResponse } from '../api';
 
 export const isMigrationStatusCurrent = (status: DatabaseConnectionMigrationStatusResponse | null | undefined) =>
   Boolean(

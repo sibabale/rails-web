@@ -55,6 +55,18 @@ const emptyListResponse = {
   })),
 };
 
+const emptyMigrationResponse = {
+  has_pending_updates: false,
+  requires_manual_update: false,
+  services: SERVICE_KEYS.map((service) => ({
+    service,
+    connection_status: 'missing' as const,
+    pending_count: 0,
+    failed_count: 0,
+    latest_status: 'not_connected' as const,
+  })),
+};
+
 const renderHookWithDefaults = () =>
   renderHook(() =>
     useDatabaseConnections({
@@ -68,6 +80,7 @@ const renderHookWithDefaults = () =>
   );
 
 const listMock = vi.mocked(databaseConnectionsApi.list);
+const migrationsMock = vi.mocked(databaseConnectionsApi.migrations);
 const saveAccountsMock = vi.mocked(databaseConnectionsApi.saveAccountsConnection);
 const saveUsersMock = vi.mocked(databaseConnectionsApi.saveUsersConnection);
 const saveLedgerMock = vi.mocked(databaseConnectionsApi.saveLedgerConnection);
@@ -76,11 +89,13 @@ const saveAuditMock = vi.mocked(databaseConnectionsApi.saveAuditConnection);
 describe('useDatabaseConnections handleConnect — client-side duplicate guard (RAI-70)', () => {
   beforeEach(() => {
     listMock.mockReset();
+    migrationsMock.mockReset();
     saveAccountsMock.mockReset();
     saveUsersMock.mockReset();
     saveLedgerMock.mockReset();
     saveAuditMock.mockReset();
     listMock.mockResolvedValue(emptyListResponse);
+    migrationsMock.mockResolvedValue(emptyMigrationResponse);
   });
 
   afterEach(() => {
@@ -155,11 +170,13 @@ describe('useDatabaseConnections handleConnect — client-side duplicate guard (
 describe('useDatabaseConnections handleChange — clear-on-edit pathway', () => {
   beforeEach(() => {
     listMock.mockReset();
+    migrationsMock.mockReset();
     saveAccountsMock.mockReset();
     saveUsersMock.mockReset();
     saveLedgerMock.mockReset();
     saveAuditMock.mockReset();
     listMock.mockResolvedValue(emptyListResponse);
+    migrationsMock.mockResolvedValue(emptyMigrationResponse);
   });
 
   afterEach(() => {
@@ -190,11 +207,13 @@ describe('useDatabaseConnections handleChange — clear-on-edit pathway', () => 
 describe('useDatabaseConnections handleConnect — backend 409 rendering (RAI-71)', () => {
   beforeEach(() => {
     listMock.mockReset();
+    migrationsMock.mockReset();
     saveAccountsMock.mockReset();
     saveUsersMock.mockReset();
     saveLedgerMock.mockReset();
     saveAuditMock.mockReset();
     listMock.mockResolvedValue(emptyListResponse);
+    migrationsMock.mockResolvedValue(emptyMigrationResponse);
   });
 
   afterEach(() => {

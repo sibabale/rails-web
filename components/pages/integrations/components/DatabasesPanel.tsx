@@ -81,12 +81,12 @@ interface DatabasesPanelProps {
   environment: Environment;
   currentEnvironmentId: string | null;
   isProductionUnavailable: boolean;
-  updateOnboardingStep: (step: 'dbsConnected', value: boolean) => void;
+  updateOnboardingStep: (step: 'dbsConnected' | 'migrationsApplied', value: boolean) => void;
   onMigrationStatusChange?: (status: DatabaseConnectionMigrationStatusResponse) => void;
   onDatabaseHealthChange?: (status: DatabaseConnectionsResponse) => void;
 }
 
-interface MigrationToneArgs {
+export interface MigrationToneArgs {
   isConnectedPool: boolean;
   isSetupFailed: boolean;
   status: string;
@@ -96,7 +96,7 @@ interface MigrationToneArgs {
   serviceNotice: string | null;
 }
 
-function migrationToneFor({
+export function migrationToneFor({
   isConnectedPool,
   isSetupFailed,
   failedCount,
@@ -111,10 +111,11 @@ function migrationToneFor({
   else if (latestStatus === 'applied') tone = 'success';
   else tone = 'neutral';
   if (serviceNotice === unchangedConnectionNotice()) tone = 'warning';
+  if (serviceNotice && !isConnectedPool && !isSetupFailed && status !== 'connected') tone = 'warning';
   return tone;
 }
 
-interface MigrationCopyArgs {
+export interface MigrationCopyArgs {
   isSettingUp: boolean;
   isConnectedPool: boolean;
   isSetupFailed: boolean;
@@ -125,7 +126,7 @@ interface MigrationCopyArgs {
   latestStatus?: string | null;
 }
 
-function migrationCopyFor({
+export function migrationCopyFor({
   isSettingUp,
   isConnectedPool,
   isSetupFailed,
@@ -136,7 +137,9 @@ function migrationCopyFor({
   latestStatus,
 }: MigrationCopyArgs): string {
   if (isSettingUp) return 'Schema setup runs after the connection pool is ready.';
-  if (serviceNotice && (isConnectedPool || isSetupFailed)) return serviceNotice;
+  if (serviceNotice && (isConnectedPool || isSetupFailed || status !== 'connected')) {
+    return serviceNotice;
+  }
   if (!isConnectedPool && !isSetupFailed && status !== 'connected') {
     return 'Migrations will be checked after this database is connected.';
   }

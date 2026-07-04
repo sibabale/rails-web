@@ -77,6 +77,83 @@ test.describe('Environment membership (RAI-65.11)', () => {
     await expect(page.getByText(/don't have permission/i)).toHaveCount(0);
   });
 
+  test('onboarding progress stays environment-scoped via persisted redux state', async ({
+    page,
+  }) => {
+    const session = e2eSessionWithBothEnvironments();
+
+    await page.route(`${MOCK_API_ORIGIN}/api/v1/database-connections`, async (route) => {
+      await route.fulfill({
+        status: 503,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: 'unavailable in test' }),
+      });
+    });
+    await page.route(`${MOCK_API_ORIGIN}/api/v1/api-keys`, async (route) => {
+      await route.fulfill({
+        status: 503,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: 'unavailable in test' }),
+      });
+    });
+
+    await page.context().addCookies([
+      {
+        name: 'rails_session_present',
+        value: '1',
+        url: `${E2E_APP_ORIGIN}/`,
+      },
+    ]);
+    await page.addInitScript(
+      ({
+        payload,
+        sandboxId,
+        prodId,
+      }: {
+        payload: ReturnType<typeof e2eSessionWithBothEnvironments>;
+        sandboxId: string;
+        prodId: string;
+      }) => {
+        window.localStorage.setItem('rails_session', JSON.stringify(payload));
+        window.localStorage.setItem(
+          'persist:onboarding',
+          JSON.stringify({
+            byEnvironmentId: JSON.stringify({
+              [sandboxId]: {
+                dbsConnected: true,
+                migrationsApplied: true,
+                apiKeyGenerated: true,
+                firstRequestSent: false,
+                dismissed: false,
+                dbSetupCompletedSticky: true,
+              },
+              [prodId]: {
+                dbsConnected: false,
+                migrationsApplied: false,
+                apiKeyGenerated: false,
+                firstRequestSent: false,
+                dismissed: false,
+                dbSetupCompletedSticky: false,
+              },
+            }),
+            _persist: JSON.stringify({ version: -1, rehydrated: true }),
+          })
+        );
+      },
+      { payload: session, sandboxId: E2E_SANDBOX_ENV_ID, prodId: E2E_PROD_ENV_ID }
+    );
+
+    await page.goto('/dashboard');
+    const dbStep = page.getByRole('heading', { name: 'Connect Databases', exact: true }).locator('..');
+    await expect(dbStep.getByRole('button', { name: 'Connected' })).toBeVisible();
+
+    await page.getByRole('button', { name: 'PROD' }).click();
+    await expect(dbStep.getByRole('link', { name: 'Configure Integrations' })).toBeVisible();
+
+    await page.getByRole('button', { name: 'SANDBOX' }).click();
+    await expect(dbStep.getByRole('button', { name: 'Connected' })).toBeVisible();
+  });
+
   test('mobile navigation drawer opens and closes', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.context().addCookies([

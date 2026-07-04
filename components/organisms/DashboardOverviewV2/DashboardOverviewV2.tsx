@@ -11,9 +11,16 @@ import {
 import {
   evaluateOnboardingStages,
   type OnboardingStages,
+  type OnboardingStepState,
 } from '@/lib/onboarding/evaluateOnboardingStages';
-import { useAppSelector } from '@/state/hooks';
+import { shouldHideOnboardingFlow } from '@/lib/onboarding/shouldHideOnboardingFlow';
+import { useAppDispatch, useAppSelector } from '@/state/hooks';
 import { resolveEnvironmentId } from '@/lib/environment';
+import { getMarketingDocsCtaUrl } from '@/lib/env';
+import {
+  selectEnvironmentOnboardingProgress,
+  setOnboardingSnapshot,
+} from '@/state/slices/onboardingSlice';
 
 interface DashboardOverviewV2Props {
   overviewStats?: {
@@ -55,67 +62,117 @@ const OverviewMetricLoader = ({
   </div>
 );
 
+const OnboardingFlowSkeleton = () => (
+  <div
+    className="pointer-events-none absolute inset-0 z-20 p-2"
+    data-testid="dashboard-overview-onboarding-skeleton"
+    aria-hidden="true"
+  >
+    <div className="grid h-full grid-cols-1 gap-6 lg:grid-cols-2 xl:grid-cols-3">
+      {Array.from({ length: 3 }).map((_, index) => (
+        <div
+          key={`onboarding-skeleton-${index}`}
+          className="border border-zinc-200 bg-zinc-50 p-6 dark:border-zinc-800 dark:bg-zinc-900/40"
+        >
+          <div className="mb-5 flex items-center justify-between">
+            <span className="h-7 w-7 animate-pulse rounded-full bg-zinc-200 dark:bg-zinc-800" />
+            <span className="h-4 w-20 animate-pulse rounded-full bg-zinc-200 dark:bg-zinc-800" />
+          </div>
+          <div className="mb-3 h-4 w-32 animate-pulse bg-zinc-200 dark:bg-zinc-800" />
+          <div className="mb-2 h-3 w-full animate-pulse bg-zinc-200 dark:bg-zinc-800" />
+          <div className="mb-6 h-3 w-5/6 animate-pulse bg-zinc-200 dark:bg-zinc-800" />
+          <div className="h-9 w-full animate-pulse bg-zinc-200 dark:bg-zinc-800" />
+        </div>
+      ))}
+    </div>
+  </div>
+);
+
+const cachedStagesFromProgress = (
+  progress: {
+    dbsConnected: boolean;
+    apiKeyGenerated: boolean;
+    firstRequestSent: boolean;
+  } | null
+): OnboardingStages => {
+  if (!progress) {
+    return { dbs: 'locked', apiKey: 'locked', firstRequest: 'locked' };
+  }
+  const dbs: OnboardingStepState = progress.dbsConnected ? 'complete' : 'active';
+  const apiKey: OnboardingStepState = progress.apiKeyGenerated
+    ? 'complete'
+    : dbs === 'complete'
+      ? 'active'
+      : 'locked';
+  const firstRequest: OnboardingStepState = progress.firstRequestSent
+    ? 'complete'
+    : apiKey === 'complete'
+      ? 'active'
+      : 'locked';
+  return { dbs, apiKey, firstRequest };
+};
+
 const DashboardOverviewV2: React.FC<DashboardOverviewV2Props> = ({
   overviewStats = { activeAccounts: 0, postedEntries: 0, settledVolume: 0 },
   isLoadingOverviewStats = false,
   overviewCurrency = 'USD',
   session,
 }) => {
+  const dispatch = useAppDispatch();
   const environment = useAppSelector((reduxState) => reduxState.environment.current);
   const environmentId = resolveEnvironmentId(session, environment);
+  const cachedProgress = useAppSelector((state) =>
+    selectEnvironmentOnboardingProgress(state, environmentId)
+  );
   // `useOnboarding` continues to back the `dismissed` UI gesture only. Every
   // onboarding milestone (DB, API key, first request) is now derived from the
   // env-level DB snapshot returned by GET /api/v1/database-connections.
   const { state, updateStep } = useOnboarding(environmentId);
-  const [isSendingRequest, setIsSendingRequest] = useState(false);
   const [connections, setConnections] = useState<DatabaseConnectionsResponse | null>(null);
   const [hasActiveApiKey, setHasActiveApiKey] = useState<boolean>(false);
+  const hasCompletedFirstRequest = cachedProgress?.firstRequestSent ?? false;
 
   const stages: OnboardingStages = useMemo(
-    () =>
-      evaluateOnboardingStages({
+    () => {
+      if (connections === null) {
+        return cachedStagesFromProgress(cachedProgress);
+      }
+      return evaluateOnboardingStages({
         connections,
         hasActiveApiKey,
         apiKeyFirstCreatedAt: connections?.api_key_first_created_at ?? null,
-        firstRequestSent: (connections?.first_request_sent_at ?? null) !== null,
-      }),
-    [connections, hasActiveApiKey]
-  );
-
-  const isComplete =
-    stages.dbs === 'complete' &&
-    stages.apiKey === 'complete' &&
-    stages.firstRequest === 'complete';
-
-  const refreshOnboardingSnapshot = React.useCallback(() => {
-    if (!session) return;
-    Promise.all([databaseConnectionsApi.list(session), apiKeysApi.list(session)])
-      .then(([snapshot, keys]) => {
-        setConnections(snapshot);
-        const activeKey = keys.some(
-          (key) =>
-            (key.environment_id || '') === (environmentId || '') &&
-            (key.status || '').toLowerCase() === 'active'
-        );
-        setHasActiveApiKey(activeKey);
-      })
-      .catch(() => {
-        // Swallow — caller keeps the stale snapshot if the refresh fails;
-        // the next mount or environment switch will re-fetch.
+        firstRequestSent:
+          (connections?.first_request_sent_at ?? null) !== null ||
+          (connections?.user_first_request_sent_at ?? null) !== null ||
+          hasCompletedFirstRequest,
       });
-  }, [session, environmentId]);
+    },
+    [cachedProgress, connections, hasActiveApiKey, hasCompletedFirstRequest]
+  );
+  const hasKnownOnboardingState = connections !== null || cachedProgress !== null;
+  const showOnboardingSkeleton = !hasKnownOnboardingState;
+
+  const isComplete = shouldHideOnboardingFlow(stages);
 
   const handleSendTestRequest = () => {
-    // The DB column `environments.first_request_sent_at` is the source of
-    // truth for this milestone — it is stamped server-side by the auth
-    // middleware on the first authenticated API request. The dashboard no
-    // longer writes to localStorage; instead we refetch the snapshot so the
-    // stage advances as soon as the server-side stamp lands.
-    setIsSendingRequest(true);
-    window.setTimeout(() => {
-      setIsSendingRequest(false);
-      refreshOnboardingSnapshot();
-    }, 1500);
+    window.open(getMarketingDocsCtaUrl(), '_blank', 'noopener,noreferrer');
+    updateStep('firstRequestSent', true);
+    if (!session) return;
+    void databaseConnectionsApi
+      .markFirstRequestSent(session)
+      .then((milestone) => {
+        setConnections((current) => {
+          if (!current) return current;
+          return {
+            ...current,
+            user_first_request_sent_at: milestone.first_request_sent_at,
+          };
+        });
+      })
+      .catch((error: unknown) => {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        console.error(`[ONBOARDING] Failed to persist first request milestone: ${errorMessage}`);
+      });
   };
 
   React.useEffect(() => {
@@ -137,6 +194,25 @@ const DashboardOverviewV2: React.FC<DashboardOverviewV2Props> = ({
             (key.status || '').toLowerCase() === 'active'
         );
         setHasActiveApiKey(activeKey);
+        if (environmentId) {
+          const evaluated = evaluateOnboardingStages({
+            connections: snapshot,
+            hasActiveApiKey: activeKey,
+            apiKeyFirstCreatedAt: snapshot.api_key_first_created_at ?? null,
+            firstRequestSent:
+              (snapshot.first_request_sent_at ?? null) !== null ||
+              (snapshot.user_first_request_sent_at ?? null) !== null ||
+              hasCompletedFirstRequest,
+          });
+          dispatch(
+            setOnboardingSnapshot({
+              environmentId,
+              dbsConnected: evaluated.dbs === 'complete',
+              apiKeyGenerated: evaluated.apiKey === 'complete',
+              firstRequestSent: evaluated.firstRequest === 'complete',
+            })
+          );
+        }
       })
       .catch(() => {
         // Network or auth failure: surface the loading-skeleton path by
@@ -146,7 +222,7 @@ const DashboardOverviewV2: React.FC<DashboardOverviewV2Props> = ({
     return () => {
       isActive = false;
     };
-  }, [session, environment, environmentId]);
+  }, [dispatch, session, environment, environmentId, hasCompletedFirstRequest]);
 
   const overviewTiles = [
     {
@@ -174,7 +250,7 @@ const DashboardOverviewV2: React.FC<DashboardOverviewV2Props> = ({
 
   return (
     <div className="space-y-8 w-full" data-testid="dashboard-overview-v2">
-      {!state.dismissed && (
+      {!state.dismissed && !isComplete && (
         <section className="relative overflow-hidden border border-zinc-200 bg-white p-6 transition-colors dark:border-zinc-800 dark:bg-[#050505] md:p-8">
           <div className="relative z-10">
             <div className="mb-4 flex items-center justify-between gap-4">
@@ -211,112 +287,115 @@ const DashboardOverviewV2: React.FC<DashboardOverviewV2Props> = ({
             </p>
 
             <div
-              className="grid grid-cols-1 gap-6 lg:grid-cols-2 xl:grid-cols-3"
-              aria-busy={connections === null}
+              className="relative grid grid-cols-1 gap-6 lg:grid-cols-2 xl:grid-cols-3"
+              aria-busy={showOnboardingSkeleton}
               data-testid="dashboard-overview-onboarding"
               data-stage-dbs={stages.dbs}
               data-stage-apikey={stages.apiKey}
               data-stage-firstrequest={stages.firstRequest}
-              data-snapshot-loaded={connections !== null ? 'true' : 'false'}
+              data-snapshot-loaded={hasKnownOnboardingState ? 'true' : 'false'}
             >
-              <OnboardingStepCard
-                stepNumber={1}
-                state={stages.dbs}
-                testId="onboarding-step-dbs"
-                title="Connect Databases"
-                description="Provide PostgreSQL connection strings so Rails can work with your own infrastructure."
-                cta={
-                  stages.dbs === 'complete' ? (
-                    <button
-                      type="button"
-                      disabled
-                      className="w-full bg-emerald-100 px-4 py-2.5 text-xs font-semibold text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400"
-                    >
-                      Connected
-                    </button>
-                  ) : (
-                    <Link
-                      href="/dashboard/integrations"
-                      className="block w-full bg-black px-4 py-2.5 text-center text-xs font-semibold text-white transition-colors hover:bg-zinc-800 dark:bg-white dark:text-black dark:hover:bg-zinc-200"
-                    >
-                      Configure Integrations
-                    </Link>
-                  )
-                }
-              />
+              <div className={showOnboardingSkeleton ? 'opacity-0' : ''}>
+                <OnboardingStepCard
+                  stepNumber={1}
+                  state={stages.dbs}
+                  testId="onboarding-step-dbs"
+                  title="Connect Databases"
+                  description="Provide PostgreSQL connection strings so Rails can work with your own infrastructure."
+                  cta={
+                    stages.dbs === 'complete' ? (
+                      <button
+                        type="button"
+                        disabled
+                        className="w-full bg-emerald-100 px-4 py-2.5 text-xs font-semibold text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400"
+                      >
+                        Connected
+                      </button>
+                    ) : (
+                      <Link
+                        href="/dashboard/integrations"
+                        className="block w-full bg-black px-4 py-2.5 text-center text-xs font-semibold text-white transition-colors hover:bg-zinc-800 dark:bg-white dark:text-black dark:hover:bg-zinc-200"
+                      >
+                        Configure Integrations
+                      </Link>
+                    )
+                  }
+                />
+              </div>
 
-              <OnboardingStepCard
-                stepNumber={2}
-                state={stages.apiKey}
-                testId="onboarding-step-apikey"
-                title="Generate API Key"
-                description="Create a secure token to authenticate application requests against the Rails API."
-                cta={
-                  stages.apiKey === 'locked' ? (
-                    <button
-                      type="button"
-                      disabled
-                      className="w-full border border-zinc-200 bg-zinc-50 px-4 py-2.5 text-xs font-semibold text-zinc-400 dark:border-zinc-800 dark:bg-zinc-900/50"
-                    >
-                      Locked
-                    </button>
-                  ) : stages.apiKey === 'complete' ? (
-                    <button
-                      type="button"
-                      disabled
-                      className="w-full bg-emerald-100 px-4 py-2.5 text-xs font-semibold text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400"
-                    >
-                      Key Generated
-                    </button>
-                  ) : (
-                    <Link
-                      href="/dashboard/integrations?tab=api-key"
-                      className="flex w-full items-center justify-center gap-2 bg-black px-4 py-2.5 text-xs font-semibold text-white transition-colors hover:bg-zinc-800 disabled:opacity-60 dark:bg-white dark:text-black dark:hover:bg-zinc-200"
-                    >
-                      Manage API Key
-                    </Link>
-                  )
-                }
-              />
+              <div className={showOnboardingSkeleton ? 'opacity-0' : ''}>
+                <OnboardingStepCard
+                  stepNumber={2}
+                  state={stages.apiKey}
+                  testId="onboarding-step-apikey"
+                  title="Generate API Key"
+                  description="Create a secure token to authenticate application requests against the Rails API."
+                  cta={
+                    stages.apiKey === 'locked' ? (
+                      <button
+                        type="button"
+                        disabled
+                        className="w-full border border-zinc-200 bg-zinc-50 px-4 py-2.5 text-xs font-semibold text-zinc-400 dark:border-zinc-800 dark:bg-zinc-900/50"
+                      >
+                        Locked
+                      </button>
+                    ) : stages.apiKey === 'complete' ? (
+                      <button
+                        type="button"
+                        disabled
+                        className="w-full bg-emerald-100 px-4 py-2.5 text-xs font-semibold text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400"
+                      >
+                        Key Generated
+                      </button>
+                    ) : (
+                      <Link
+                        href="/dashboard/integrations?tab=api-key"
+                        className="flex w-full items-center justify-center gap-2 bg-black px-4 py-2.5 text-xs font-semibold text-white transition-colors hover:bg-zinc-800 disabled:opacity-60 dark:bg-white dark:text-black dark:hover:bg-zinc-200"
+                      >
+                        Manage API Key
+                      </Link>
+                    )
+                  }
+                />
+              </div>
 
-              <OnboardingStepCard
-                stepNumber={3}
-                state={stages.firstRequest}
-                testId="onboarding-step-first-request"
-                title="Send First Request"
-                description="Verify the setup by sending your first test request through the Rails API."
-                cta={
-                  stages.firstRequest === 'locked' ? (
-                    <button
-                      type="button"
-                      disabled
-                      className="w-full border border-zinc-200 bg-zinc-50 px-4 py-2.5 text-xs font-semibold text-zinc-400 dark:border-zinc-800 dark:bg-zinc-900/50"
-                    >
-                      Locked
-                    </button>
-                  ) : stages.firstRequest === 'complete' ? (
-                    <button
-                      type="button"
-                      disabled
-                      className="w-full bg-emerald-100 px-4 py-2.5 text-xs font-semibold text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400"
-                    >
-                      Verified
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={handleSendTestRequest}
-                      disabled={isSendingRequest}
-                      className="flex w-full items-center justify-center gap-2 bg-black px-4 py-2.5 text-xs font-semibold text-white transition-colors hover:bg-zinc-800 disabled:opacity-60 dark:bg-white dark:text-black dark:hover:bg-zinc-200"
-                    >
-                      {isSendingRequest && (
-                        <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/30 border-t-white dark:border-black/20 dark:border-t-black" />
-                      )}
-                      {isSendingRequest ? 'Sending...' : 'Send Test Request'}
-                    </button>
-                  )
-                }
-              />
+              <div className={showOnboardingSkeleton ? 'opacity-0' : ''}>
+                <OnboardingStepCard
+                  stepNumber={3}
+                  state={stages.firstRequest}
+                  testId="onboarding-step-first-request"
+                  title="Send First Request"
+                  description="Verify the setup by sending your first test request through the Rails API."
+                  cta={
+                    stages.firstRequest === 'locked' ? (
+                      <button
+                        type="button"
+                        disabled
+                        className="w-full border border-zinc-200 bg-zinc-50 px-4 py-2.5 text-xs font-semibold text-zinc-400 dark:border-zinc-800 dark:bg-zinc-900/50"
+                      >
+                        Locked
+                      </button>
+                    ) : stages.firstRequest === 'complete' ? (
+                      <button
+                        type="button"
+                        disabled
+                        className="w-full bg-emerald-100 px-4 py-2.5 text-xs font-semibold text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400"
+                      >
+                        Verified
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={handleSendTestRequest}
+                        className="flex w-full items-center justify-center gap-2 bg-black px-4 py-2.5 text-xs font-semibold text-white transition-colors hover:bg-zinc-800 disabled:opacity-60 dark:bg-white dark:text-black dark:hover:bg-zinc-200"
+                      >
+                        Open Docs
+                      </button>
+                    )
+                  }
+                />
+              </div>
+              {showOnboardingSkeleton ? <OnboardingFlowSkeleton /> : null}
             </div>
           </div>
         </section>
