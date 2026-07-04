@@ -121,7 +121,7 @@ test.describe('Environment membership (RAI-65.11)', () => {
             byEnvironmentId: JSON.stringify({
               [sandboxId]: {
                 dbsConnected: true,
-                migrationsApplied: true,
+                initialMigrationsApplied: true,
                 apiKeyGenerated: true,
                 firstRequestSent: false,
                 dismissed: false,
@@ -129,7 +129,7 @@ test.describe('Environment membership (RAI-65.11)', () => {
               },
               [prodId]: {
                 dbsConnected: false,
-                migrationsApplied: false,
+                initialMigrationsApplied: false,
                 apiKeyGenerated: false,
                 firstRequestSent: false,
                 dismissed: false,

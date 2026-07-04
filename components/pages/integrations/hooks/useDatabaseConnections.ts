@@ -62,7 +62,7 @@ interface UseDatabaseConnectionsArgs {
   currentEnvironmentId: string | null;
   serviceKeys: readonly ConnectionKey[];
   isProductionUnavailable: boolean;
-  updateOnboardingStep: (step: 'dbsConnected' | 'migrationsApplied', value: boolean) => void;
+  updateOnboardingStep: (step: 'dbsConnected' | 'initialMigrationsApplied', value: boolean) => void;
   onMigrationStatusChange?: (status: DatabaseConnectionMigrationStatusResponse) => void;
   onDatabaseHealthChange?: (status: DatabaseConnectionsResponse) => void;
 }
@@ -118,7 +118,9 @@ export function useDatabaseConnections({
     summary: DatabaseConnectionsResponse,
     migrations: DatabaseConnectionMigrationStatusResponse
   ) => {
-    updateOnboardingStep('migrationsApplied', isMigrationStatusCurrent(migrations));
+    const initialMigrationsApplied =
+      readDatabaseSetupCompleted(currentEnvironmentId) || isMigrationStatusCurrent(migrations);
+    updateOnboardingStep('initialMigrationsApplied', initialMigrationsApplied);
 
     const action = resolveDbsConnectedOnboardingAction({
       stickyCompleted: readDatabaseSetupCompleted(currentEnvironmentId),
@@ -276,7 +278,7 @@ export function useDatabaseConnections({
       recomputeOnboarding(listed, onboardingMigrations);
       return;
     }
-    updateOnboardingStep('migrationsApplied', false);
+    updateOnboardingStep('initialMigrationsApplied', false);
     if (isDatabaseSetupCompletedFromBackend(listed)) {
       markDatabaseSetupCompleted(currentEnvironmentId);
       updateOnboardingStep('dbsConnected', true);

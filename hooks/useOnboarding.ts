@@ -21,7 +21,7 @@ export function useOnboarding(environmentId?: string | null) {
       scopedProgress
         ? {
             dbsConnected: scopedProgress.dbsConnected,
-            migrationsApplied: scopedProgress.migrationsApplied ?? false,
+            initialMigrationsApplied: scopedProgress.initialMigrationsApplied ?? false,
             apiKeyGenerated: scopedProgress.apiKeyGenerated,
             firstRequestSent: scopedProgress.firstRequestSent,
             dismissed: scopedProgress.dismissed,
