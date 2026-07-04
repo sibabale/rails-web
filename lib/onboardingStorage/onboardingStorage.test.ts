@@ -5,7 +5,7 @@ describe('onboardingStorage', () => {
   it('keeps default onboarding flags false', () => {
     expect(defaultOnboardingState).toEqual({
       dbsConnected: false,
-      migrationsApplied: false,
+      initialMigrationsApplied: false,
       apiKeyGenerated: false,
       firstRequestSent: false,
       dismissed: false,

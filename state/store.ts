@@ -3,6 +3,7 @@ import { persistStore, persistReducer, PersistConfig } from 'redux-persist';
 import createWebStorage from 'redux-persist/lib/storage/createWebStorage';
 import environmentReducer, { Environment } from './slices/environmentSlice';
 import onboardingReducer from './slices/onboardingSlice';
+import migrationsReducer from './slices/migrationsSlice';
 
 const createNoopStorage = () => ({
   getItem() {
@@ -43,7 +44,7 @@ type OnboardingPersistState = {
     string,
     {
       dbsConnected: boolean;
-      migrationsApplied: boolean;
+      initialMigrationsApplied: boolean;
       apiKeyGenerated: boolean;
       firstRequestSent: boolean;
       dismissed: boolean;
@@ -59,11 +60,29 @@ const onboardingPersistConfig: PersistConfig<OnboardingPersistState> = {
 
 const persistedOnboardingReducer = persistReducer(onboardingPersistConfig, onboardingReducer);
 
+type MigrationsPersistState = {
+  byEnvironmentId: Record<
+    string,
+    {
+      pendingMigrationCount: number;
+      hasUpdatesAvailable: boolean;
+    }
+  >;
+};
+
+const migrationsPersistConfig: PersistConfig<MigrationsPersistState> = {
+  key: 'migrations',
+  storage,
+};
+
+const persistedMigrationsReducer = persistReducer(migrationsPersistConfig, migrationsReducer);
+
 // Configure store
 export const store = configureStore({
   reducer: {
     environment: persistedEnvironmentReducer,
     onboarding: persistedOnboardingReducer,
+    migrations: persistedMigrationsReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

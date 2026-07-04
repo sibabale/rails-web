@@ -28,9 +28,9 @@ describe('useOnboarding (redux-persist state model)', () => {
     const productionHook = renderHook(() => useOnboarding(productionId), { wrapper });
 
     expect(sandboxHook.result.current.state.dbsConnected).toBe(false);
-    expect(sandboxHook.result.current.state.migrationsApplied).toBe(false);
+    expect(sandboxHook.result.current.state.initialMigrationsApplied).toBe(false);
     expect(productionHook.result.current.state.dbsConnected).toBe(false);
-    expect(productionHook.result.current.state.migrationsApplied).toBe(false);
+    expect(productionHook.result.current.state.initialMigrationsApplied).toBe(false);
     act(() => {
       sandboxHook.result.current.updateStep('dbsConnected', true);
     });

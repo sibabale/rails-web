@@ -8,6 +8,7 @@ import { setEnvironment } from '@/state/slices/environmentSlice';
 import Pagination from '@/components/molecules/Pagination/Pagination';
 import DashboardOverviewV2 from '@/components/organisms/DashboardOverviewV2/DashboardOverviewV2';
 import DashboardIntegrations from '@/components/pages/integrations/IntegrationsPage';
+import DatabaseUpdatesBanner from '@/components/molecules/DatabaseUpdatesBanner/DatabaseUpdatesBanner';
 import LedgerEntryListSkeleton from '@/components/molecules/LedgerEntryListSkeleton/LedgerEntryListSkeleton';
 import LedgerSummarySkeleton from '@/components/molecules/LedgerSummarySkeleton/LedgerSummarySkeleton';
 import { RailsTrackMark } from '@/components/atoms/RailsTrackMark/RailsTrackMark';
@@ -17,9 +18,16 @@ import {
   markDatabaseSetupCompleted,
   readDatabaseSetupCompleted,
 } from '@/lib/databaseSetupState';
-import { hasAllMigrationTargets, isMigrationStatusCurrent } from '@/lib/databaseReadiness';
+import { isMigrationStatusCurrent } from '@/lib/databaseReadiness';
+import { hasUpdatesAvailableFor, pendingMigrationCountFor } from '@/lib/migrationUpdates';
+import { fetchMigrationUpdatesStatus } from '@/lib/migrationUpdates/api';
 import { agentDebugLog } from '@/lib/agentDebugLog';
 import { listServicesNeedingRepair } from '@/lib/databaseConnectionSetup';
+import {
+  resetAllMigrationUpdates,
+  selectMigrationUpdatesForEnvironment,
+  setMigrationUpdatesForEnvironment,
+} from '@/state/slices/migrationsSlice';
 import {
   accountsApi,
   databaseConnectionsApi,
@@ -516,7 +524,11 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, session, profile, isLoa
   const [databaseHealthError, setDatabaseHealthError] = useState<string | null>(null);
   const [databaseSetupCompleted, setDatabaseSetupCompleted] = useState(false);
   const [migrationStatus, setMigrationStatus] = useState<DatabaseConnectionMigrationStatusResponse | null>(null);
-  const [migrationStatusError, setMigrationStatusError] = useState<string | null>(null);
+  const currentMigrationUpdates = useAppSelector((state) =>
+    selectMigrationUpdatesForEnvironment(state, currentEnvironmentId)
+  );
+  const pendingMigrationCount = currentMigrationUpdates.pendingMigrationCount;
+  const hasUpdatesAvailable = currentMigrationUpdates.hasUpdatesAvailable;
   
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
   const [selectedTransactionId, setSelectedTransactionId] = useState<string | null>(null);
@@ -598,7 +610,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, session, profile, isLoa
       setDatabaseHealth(null);
       setDatabaseHealthError(null);
       setMigrationStatus(null);
-      setMigrationStatusError(null);
+      dispatch(resetAllMigrationUpdates());
       return;
     }
 
@@ -608,20 +620,14 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, session, profile, isLoa
 
     let cancelled = false;
     setDatabaseHealthError(null);
-    setMigrationStatusError(null);
 
     databaseConnectionsApi
       .list(session)
-      .then((health) => databaseConnectionsApi.migrations(session).then((status) => ({ health, status })))
-      .then(async ({ health, status }) => {
+      .then(async (health) => {
         if (cancelled) return;
         setDatabaseHealth(health);
         setDatabaseHealthError(null);
-        setMigrationStatus(status);
-        setMigrationStatusError(null);
-        const backendCompleted =
-          isDatabaseSetupCompletedFromBackend(health) ||
-          isDatabaseSetupCompletedFromBackend(status);
+        const backendCompleted = isDatabaseSetupCompletedFromBackend(health);
         if (backendCompleted) {
           markDatabaseSetupCompleted(currentEnvironmentId);
           setDatabaseSetupCompleted(true);
@@ -634,16 +640,44 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, session, profile, isLoa
           setDatabaseHealthError(
             error instanceof Error ? error.message : 'Unable to validate database connections.'
           );
-          setMigrationStatusError(
-            error instanceof Error ? error.message : 'Unable to check database migrations.'
-          );
         }
       });
 
     return () => {
       cancelled = true;
     };
-  }, [session, environment, currentEnvironmentId, activeTab]);
+  }, [session, environment, currentEnvironmentId, activeTab, dispatch]);
+
+  useEffect(() => {
+    if (!session) {
+      dispatch(resetAllMigrationUpdates());
+      return;
+    }
+
+    let cancelled = false;
+    fetchMigrationUpdatesStatus(session)
+      .then((status) => {
+        if (cancelled) return;
+        setMigrationStatus(status);
+        if (currentEnvironmentId) {
+          dispatch(
+            setMigrationUpdatesForEnvironment({
+              environmentId: currentEnvironmentId,
+              pendingMigrationCount: pendingMigrationCountFor(status),
+              hasUpdatesAvailable: hasUpdatesAvailableFor(status),
+            })
+          );
+        }
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setMigrationStatus(null);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [session, environment, currentEnvironmentId, dispatch]);
 
   // Fetch accounts when Accounts tab is active or environment changes
   useEffect(() => {
@@ -1646,7 +1680,15 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, session, profile, isLoa
             }}
             onMigrationStatusChange={(status) => {
               setMigrationStatus(status);
-              setMigrationStatusError(null);
+              if (currentEnvironmentId) {
+                dispatch(
+                  setMigrationUpdatesForEnvironment({
+                    environmentId: currentEnvironmentId,
+                    pendingMigrationCount: pendingMigrationCountFor(status),
+                    hasUpdatesAvailable: hasUpdatesAvailableFor(status),
+                  })
+                );
+              }
               if (isDatabaseSetupCompletedFromBackend(status) || isMigrationStatusCurrent(status)) {
                 markDatabaseSetupCompleted(currentEnvironmentId);
                 setDatabaseSetupCompleted(true);
@@ -1897,20 +1939,11 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, session, profile, isLoa
     }
   };
 
-  const pendingMigrationCount =
-    migrationStatus?.services.reduce((total, service) => total + service.pending_count + service.failed_count, 0) ?? 0;
   const hasDatabaseHealthBanner = databaseSetupCompleted && (databaseHealthIssues.length > 0 || Boolean(databaseHealthError));
   const databaseHealthBannerCopy = databaseHealthError
     ? 'Unable to validate database connections. Review integrations before processing traffic.'
     : `${healthIssueCopy(databaseHealthIssues)} End-to-end money movement is paused until this is repaired.`;
-  const hasMigrationBanner =
-    (hasAllMigrationTargets(migrationStatus) && Boolean(migrationStatus?.has_pending_updates)) ||
-    ((databaseSetupCompleted || Boolean(databaseHealth?.all_connected)) && Boolean(migrationStatusError));
-  const migrationBannerCopy = migrationStatusError
-    ? 'Unable to check database schema updates. Review integrations before generating production traffic.'
-    : pendingMigrationCount === 1
-      ? '1 database schema update is available for an existing connection.'
-      : `${pendingMigrationCount} database schema updates are available for existing connections.`;
+  const hasMigrationBanner = hasUpdatesAvailable && activeTab !== 'Integrations';
 
   return (
     <div
@@ -2113,35 +2146,21 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, session, profile, isLoa
           ) : null}
 
           {hasMigrationBanner ? (
-            <div
-              role="alert"
-              className="shrink-0 border-b border-amber-200 bg-amber-50 px-4 py-3 dark:border-amber-900/60 dark:bg-amber-950/20 md:px-8"
-            >
-              <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between lg:gap-6">
-                <div className="flex min-w-0 flex-1 items-start gap-3">
-                  <span
-                    className="material-symbols-sharp mt-0.5 shrink-0 text-amber-700 dark:text-amber-300 !text-[18px] leading-none"
-                    aria-hidden
+            <div className="shrink-0">
+              <DatabaseUpdatesBanner
+                pendingMigrationCount={pendingMigrationCount}
+                action={
+                  <Link
+                   href="/dashboard/integrations"
+                   className="inline-flex w-full shrink-0 items-center justify-center gap-2 border border-amber-300 bg-white px-3 py-2 text-[10px] font-mono font-bold uppercase tracking-widest text-amber-950 transition-colors hover:bg-amber-100 dark:border-amber-800 dark:bg-black dark:text-amber-100 dark:hover:bg-amber-950/50 lg:w-auto"
                   >
-                    database
-                  </span>
-                  <div className="min-w-0">
-                    <p className="text-xs font-mono font-bold uppercase tracking-widest text-amber-950 dark:text-amber-100">
-                      Database updates available
-                    </p>
-                    <p className="mt-1 text-sm text-amber-900 dark:text-amber-200">{migrationBannerCopy}</p>
-                  </div>
-                </div>
-                <Link
-                  href="/dashboard/integrations"
-                  className="inline-flex w-full shrink-0 items-center justify-center gap-2 border border-amber-300 bg-white px-3 py-2 text-[10px] font-mono font-bold uppercase tracking-widest text-amber-950 transition-colors hover:bg-amber-100 dark:border-amber-800 dark:bg-black dark:text-amber-100 dark:hover:bg-amber-950/50 lg:w-auto"
-                >
-                  Review migrations
-                  <span className="material-symbols-sharp !text-[16px] leading-none" aria-hidden>
-                    arrow_forward
-                  </span>
-                </Link>
-              </div>
+                   Review updates
+                   <span className="material-symbols-sharp !text-[16px] leading-none" aria-hidden>
+                     arrow_forward
+                   </span>
+                  </Link>
+                }
+              />
             </div>
           ) : null}
 

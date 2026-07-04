@@ -59,17 +59,23 @@ const onboardingSlice = createSlice({
       action: PayloadAction<{
         environmentId: string;
         dbsConnected: boolean;
-        migrationsApplied?: boolean;
+        initialMigrationsApplied?: boolean;
         apiKeyGenerated: boolean;
         firstRequestSent: boolean;
       }>
     ) => {
-      const { environmentId, dbsConnected, migrationsApplied, apiKeyGenerated, firstRequestSent } =
+      const {
+        environmentId,
+        dbsConnected,
+        initialMigrationsApplied,
+        apiKeyGenerated,
+        firstRequestSent,
+      } =
         action.payload;
       const entry = ensureEntry(state, environmentId);
       entry.dbsConnected = dbsConnected;
-      if (migrationsApplied !== undefined) {
-        entry.migrationsApplied = migrationsApplied;
+      if (initialMigrationsApplied !== undefined) {
+        entry.initialMigrationsApplied = initialMigrationsApplied;
       }
       entry.apiKeyGenerated = apiKeyGenerated;
       entry.firstRequestSent = firstRequestSent;
@@ -86,7 +92,7 @@ const onboardingSlice = createSlice({
       const { environmentId } = action.payload;
       const entry = ensureEntry(state, environmentId);
       entry.dbsConnected = true;
-      entry.migrationsApplied = true;
+      entry.initialMigrationsApplied = true;
       entry.dbSetupCompletedSticky = true;
     },
   },

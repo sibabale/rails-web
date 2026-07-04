@@ -1,13 +1,19 @@
 'use client';
-
-import { useMemo, useState } from 'react';
 import IntegrationsTabs from '@/components/pages/integrations/components/IntegrationsTabs';
 import DatabasesPanel from '@/components/pages/integrations/components/DatabasesPanel';
 import ApiKeyPanel from '@/components/pages/integrations/components/ApiKeyPanel';
 import { useIntegrationsTab } from '@/components/pages/integrations/hooks/useIntegrationsTab';
 import { useOnboarding } from '@/hooks/useOnboarding';
-import { useAppSelector } from '@/state/hooks';
+import { useAppDispatch, useAppSelector } from '@/state/hooks';
+import {
+  selectMigrationUpdatesForEnvironment,
+  setMigrationUpdatesForEnvironment,
+} from '@/state/slices/migrationsSlice';
 import { resolveEnvironmentId } from '@/lib/environment';
+import {
+  hasUpdatesAvailableFor,
+  pendingMigrationCountFor,
+} from '@/lib/migrationUpdates';
 import type {
   DatabaseConnectionMigrationStatusResponse,
   DatabaseConnectionsResponse,
@@ -29,25 +35,27 @@ export default function IntegrationsPage({
   onDatabaseHealthChange,
 }: IntegrationsPageProps) {
   const tab = useIntegrationsTab();
+  const dispatch = useAppDispatch();
   const environment = useAppSelector((state) => state.environment.current);
   const currentEnvironmentId = resolveEnvironmentId(session, environment);
+  const pendingMigrationCount = useAppSelector((state) =>
+    selectMigrationUpdatesForEnvironment(state, currentEnvironmentId).pendingMigrationCount
+  );
   const isProductionUnavailable = environment === 'production' && !currentEnvironmentId;
   const { state: onboardingState, updateStep } = useOnboarding(currentEnvironmentId);
 
-  const [latestMigrationStatus, setLatestMigrationStatus] =
-    useState<DatabaseConnectionMigrationStatusResponse | null>(null);
-
-  const pendingMigrationCount = useMemo(
-    () =>
-      latestMigrationStatus?.services.reduce(
-        (t, s) => t + s.pending_count + s.failed_count,
-        0
-      ) ?? 0,
-    [latestMigrationStatus]
-  );
-
   const handleMigrationStatusChange = (status: DatabaseConnectionMigrationStatusResponse) => {
-    setLatestMigrationStatus(status);
+    const pendingMigrationCount = pendingMigrationCountFor(status);
+    const hasUpdatesAvailable = hasUpdatesAvailableFor(status);
+    if (currentEnvironmentId) {
+      dispatch(
+        setMigrationUpdatesForEnvironment({
+          environmentId: currentEnvironmentId,
+          pendingMigrationCount,
+          hasUpdatesAvailable,
+        })
+      );
+    }
     onMigrationStatusChange?.(status);
   };
 
@@ -69,7 +77,7 @@ export default function IntegrationsPage({
         <ApiKeyPanel
           session={session}
           dbsConnected={onboardingState.dbsConnected}
-          migrationsApplied={onboardingState.migrationsApplied}
+          initialMigrationsApplied={onboardingState.initialMigrationsApplied}
           pendingMigrationCount={pendingMigrationCount}
           onSwitchToDatabases={() => tab.select('databases')}
           updateOnboardingStep={updateStep}

@@ -236,6 +236,33 @@ test.describe('Environment-switch isolation (RAI-62)', () => {
     await expect(page.getByText(/don't have permission/i)).toHaveCount(0);
   });
 
+  test('database updates banner persists across navigation and refresh', async ({ page }) => {
+    seedSavedConnectedDatabases({ migrationsApplied: false, withMilestone: true });
+
+    const updatesBannerTitle = page.getByText('Database updates available');
+
+    await openOverview(page);
+    await expect(updatesBannerTitle.first()).toBeVisible({ timeout: 15_000 });
+
+    await page.getByRole('link', { name: /^Integrations$/i }).click();
+    await expect(page.getByRole('heading', { name: 'Integrations', exact: true })).toBeVisible({
+      timeout: 10_000,
+    });
+    await expect(updatesBannerTitle).toHaveCount(1);
+
+    await page.getByRole('tab', { name: /API Key/i }).click();
+    await expect(updatesBannerTitle).toHaveCount(0);
+
+    await page.getByRole('link', { name: /^Overview$/i }).click();
+    await expect(page.getByRole('heading', { name: 'Overview', exact: true })).toBeVisible({
+      timeout: 10_000,
+    });
+    await expect(updatesBannerTitle.first()).toBeVisible({ timeout: 10_000 });
+
+    await page.reload();
+    await expect(updatesBannerTitle.first()).toBeVisible({ timeout: 15_000 });
+  });
+
   // ── X-Environment-Id header correctness ──────────────────────────────────
 
   test('AC-3: API requests in production mode carry the production environment UUID in X-Environment header', async ({

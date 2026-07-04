@@ -7,6 +7,7 @@ import { ledgerApi, accountsApi, transactionsApi } from '@/lib/api';
 import Dashboard from './Dashboard';
 import environmentReducer from '@/state/slices/environmentSlice';
 import onboardingReducer from '@/state/slices/onboardingSlice';
+import migrationsReducer from '@/state/slices/migrationsSlice';
 
 vi.mock('@/components/molecules/DashboardMaterialThemeToggle/DashboardMaterialThemeToggle', () => ({
   DashboardMaterialThemeToggle: () => (
@@ -49,6 +50,7 @@ const renderDashboard = (session: any = null) => {
     reducer: {
       environment: environmentReducer,
       onboarding: onboardingReducer,
+      migrations: migrationsReducer,
     },
   });
 

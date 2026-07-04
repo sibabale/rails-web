@@ -1,6 +1,6 @@
 export interface OnboardingState {
   dbsConnected: boolean;
-  migrationsApplied: boolean;
+  initialMigrationsApplied: boolean;
   apiKeyGenerated: boolean;
   firstRequestSent: boolean;
   dismissed: boolean;
@@ -8,7 +8,7 @@ export interface OnboardingState {
 
 export const defaultOnboardingState: OnboardingState = {
   dbsConnected: false,
-  migrationsApplied: false,
+  initialMigrationsApplied: false,
   apiKeyGenerated: false,
   firstRequestSent: false,
   dismissed: false,

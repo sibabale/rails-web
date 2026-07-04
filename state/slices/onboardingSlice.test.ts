@@ -41,7 +41,7 @@ describe('onboardingSlice', () => {
 
     expect(state.byEnvironmentId[sandboxId]).toMatchObject({
       dbsConnected: true,
-      migrationsApplied: false,
+      initialMigrationsApplied: false,
       apiKeyGenerated: true,
       firstRequestSent: false,
       dbSetupCompletedSticky: true,
@@ -56,7 +56,7 @@ describe('onboardingSlice', () => {
 
     expect(state.byEnvironmentId[sandboxId]).toMatchObject({
       dbsConnected: true,
-      migrationsApplied: true,
+      initialMigrationsApplied: true,
       dbSetupCompletedSticky: true,
     });
     expect(state.byEnvironmentId[productionId]).toBeUndefined();
@@ -83,7 +83,7 @@ describe('onboardingSlice', () => {
 
     expect(state.byEnvironmentId[sandboxId]).toMatchObject({
       dbsConnected: false,
-      migrationsApplied: false,
+      initialMigrationsApplied: false,
       apiKeyGenerated: false,
       firstRequestSent: false,
       dismissed: false,
