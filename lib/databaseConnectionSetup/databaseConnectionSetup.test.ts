@@ -31,7 +31,7 @@ import {
   mergeConnectionStatusForService,
   mergeMigrationRunForService,
   resolveRetryStartPhase,
-} from './databaseConnectionSetup';
+} from './index';
 describe('databaseConnectionSetup', () => {
   it('accepts postgres and postgresql URLs', () => {
     expect(isPostgresConnectionString('postgres://user:pass@host/db')).toBe(true);

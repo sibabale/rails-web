@@ -3,11 +3,11 @@
 
 // Removed ApiConfig interface - we only use client-server now
 
-import type { Environment } from '../state/slices/environmentSlice';
-import { getClientServerUrl } from './env';
-import { resolveEnvironmentId } from './environment';
-import { ApiRequestError } from './apiRequestError';
-import { getStoreState } from '../state/store';
+import type { Environment } from '../../state/slices/environmentSlice';
+import { getClientServerUrl } from '../env';
+import { resolveEnvironmentId } from '../environment';
+import { ApiRequestError } from '../apiRequestError';
+import { getStoreState } from '../../state/store';
 
 interface ApiRequestOptions {
   method?: 'GET' | 'POST' | 'PATCH' | 'DELETE';
@@ -269,6 +269,12 @@ export interface DatabaseConnectionsResponse {
    * the "Send first request" step instead of trusting localStorage.
    */
   first_request_sent_at?: string | null;
+  /** User-scoped onboarding milestone set by dashboard action. */
+  user_first_request_sent_at?: string | null;
+}
+
+export interface MarkFirstRequestSentResponse {
+  first_request_sent_at: string;
 }
 
 export interface DatabaseConnectionMigrationInfo {
@@ -304,6 +310,15 @@ export interface DatabaseConnectionMigrationRunResponse {
 export const databaseConnectionsApi = {
   list: (session: Session | null): Promise<DatabaseConnectionsResponse> =>
     apiRequest<DatabaseConnectionsResponse>('/api/v1/database-connections', { method: 'GET' }, session),
+
+  markFirstRequestSent: (
+    session: Session | null
+  ): Promise<MarkFirstRequestSentResponse> =>
+    apiRequest<MarkFirstRequestSentResponse>(
+      '/api/v1/database-connections/first-request',
+      { method: 'POST', body: {} },
+      session
+    ),
 
   saveAccountsConnection: (
     session: Session | null,

@@ -3,7 +3,7 @@
  * Next/Webpack/Turbopack inlines `NEXT_PUBLIC_*` at compile time; dynamic
  * `process.env[variable]` is never replaced and is always undefined in the browser.
  */
-import { RAILSINFRA_GITHUB_ORG_REPOSITORIES_URL } from './railsinfraGithub';
+import { RAILSINFRA_GITHUB_ORG_REPOSITORIES_URL } from '../railsinfraGithub';
 
 const nonEmpty = (value: string | undefined): value is string =>
   typeof value === 'string' && value.length > 0;

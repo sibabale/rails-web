@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { databaseConnectionsApi } from './api';
+import { databaseConnectionsApi } from './index';
 
 describe('databaseConnectionsApi service-specific save methods', () => {
   it('exposes dedicated save methods per database service', () => {

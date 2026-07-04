@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import MaterialIcon from '@/components/atoms/MaterialIcon/MaterialIcon';
 
 interface ConnectionStringFieldProps {
@@ -9,7 +9,7 @@ interface ConnectionStringFieldProps {
   placeholder: string;
   ariaLabel: string;
   onChange: (value: string) => void;
-  onCopy: (value: string) => void;
+  onCopy: (value: string) => void | Promise<void>;
 }
 
 export default function ConnectionStringField({
@@ -21,6 +21,64 @@ export default function ConnectionStringField({
   onCopy,
 }: ConnectionStringFieldProps) {
   const [show, setShow] = useState(false);
+  const [isCopying, setIsCopying] = useState(false);
+  const [copySucceeded, setCopySucceeded] = useState(false);
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
+  const resetTimerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
+      return;
+    }
+
+    const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const handleChange = () => setPrefersReducedMotion(mediaQuery.matches);
+
+    handleChange();
+    mediaQuery.addEventListener('change', handleChange);
+    return () => mediaQuery.removeEventListener('change', handleChange);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (resetTimerRef.current !== null) {
+        window.clearTimeout(resetTimerRef.current);
+      }
+    };
+  }, []);
+
+  const handleCopy = async () => {
+    if (!value || isCopying) return;
+
+    if (resetTimerRef.current !== null) {
+      window.clearTimeout(resetTimerRef.current);
+      resetTimerRef.current = null;
+    }
+
+    setCopySucceeded(false);
+    setIsCopying(true);
+
+    try {
+      await onCopy(value);
+      setCopySucceeded(true);
+      resetTimerRef.current = window.setTimeout(() => {
+        setCopySucceeded(false);
+        resetTimerRef.current = null;
+      }, 1200);
+    } catch {
+      setCopySucceeded(false);
+    } finally {
+      setIsCopying(false);
+    }
+  };
+
+  const copyIconName = isCopying ? 'progress_activity' : copySucceeded ? 'check' : 'content_copy';
+  const copyButtonLabel = isCopying
+    ? `Copying ${ariaLabel}`
+    : copySucceeded
+      ? `Copied ${ariaLabel}`
+      : `Copy ${ariaLabel}`;
+  const copyIconClassName = isCopying && !prefersReducedMotion ? 'animate-spin' : '';
 
   return (
     <div className="relative min-w-0 flex-1 overflow-hidden border border-zinc-200 bg-zinc-50 dark:border-zinc-800 dark:bg-[#0a0a0a]">
@@ -44,12 +102,12 @@ export default function ConnectionStringField({
         </button>
         <button
           type="button"
-          onClick={() => onCopy(value)}
-          disabled={!value}
-          aria-label={`Copy ${ariaLabel}`}
+          onClick={handleCopy}
+          disabled={!value || isCopying}
+          aria-label={copyButtonLabel}
           className="pointer-events-auto text-zinc-400 transition-colors hover:text-zinc-600 disabled:opacity-50 dark:hover:text-zinc-300"
         >
-          <MaterialIcon name="content_copy" />
+          <MaterialIcon name={copyIconName} className={copyIconClassName} />
         </button>
       </div>
     </div>

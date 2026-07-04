@@ -1,32 +1,16 @@
 'use client';
 
-const databaseSetupStoragePrefix = 'rails_database_setup_completed';
-
-const databaseSetupStorageKey = (environmentId?: string | null) =>
-  environmentId ? `${databaseSetupStoragePrefix}:${environmentId}` : null;
+import { store, getStoreState } from '@/state/store';
+import { markDatabaseSetupCompletedForEnvironment } from '@/state/slices/onboardingSlice';
 
 export const readDatabaseSetupCompleted = (environmentId?: string | null): boolean => {
-  if (typeof window === 'undefined') return false;
-  const key = databaseSetupStorageKey(environmentId);
-  if (!key) return false;
-
-  try {
-    return window.localStorage.getItem(key) === 'true';
-  } catch {
-    return false;
-  }
+  if (!environmentId) return false;
+  return Boolean(getStoreState().onboarding.byEnvironmentId[environmentId]?.dbSetupCompletedSticky);
 };
 
 export const markDatabaseSetupCompleted = (environmentId?: string | null) => {
-  if (typeof window === 'undefined') return;
-  const key = databaseSetupStorageKey(environmentId);
-  if (!key) return;
-
-  try {
-    window.localStorage.setItem(key, 'true');
-  } catch {
-    // Persistence is best effort; live validation still drives the UI.
-  }
+  if (!environmentId) return;
+  store.dispatch(markDatabaseSetupCompletedForEnvironment({ environmentId }));
 };
 
 export const isDatabaseSetupCompletedFromBackend = (
@@ -38,7 +22,7 @@ export const isDatabaseSetupCompletedFromBackend = (
 
 export type DbsConnectedOnboardingAction = 'mark-complete' | 'mark-incomplete' | 'hold';
 
-/** Monotonic Step 1: never regress after sticky localStorage or backend timestamp. */
+/** Monotonic Step 1: never regress after sticky redux snapshot or backend timestamp. */
 export function resolveDbsConnectedOnboardingAction(params: {
   stickyCompleted: boolean;
   summary: { dbs_setup_completed_at?: string | null } | null | undefined;

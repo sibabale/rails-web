@@ -6,6 +6,7 @@ import { configureStore } from '@reduxjs/toolkit';
 import { ledgerApi, accountsApi, transactionsApi } from '@/lib/api';
 import Dashboard from './Dashboard';
 import environmentReducer from '@/state/slices/environmentSlice';
+import onboardingReducer from '@/state/slices/onboardingSlice';
 
 vi.mock('@/components/molecules/DashboardMaterialThemeToggle/DashboardMaterialThemeToggle', () => ({
   DashboardMaterialThemeToggle: () => (
@@ -47,6 +48,7 @@ const renderDashboard = (session: any = null) => {
   const store = configureStore({
     reducer: {
       environment: environmentReducer,
+      onboarding: onboardingReducer,
     },
   });
 

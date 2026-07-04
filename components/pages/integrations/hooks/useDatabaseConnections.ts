@@ -43,6 +43,7 @@ import {
   readDatabaseSetupCompleted,
   resolveDbsConnectedOnboardingAction,
 } from '@/lib/databaseSetupState';
+import { isMigrationStatusCurrent } from '@/lib/databaseReadiness';
 import { refreshIntegrationStateAfterSave } from '@/lib/postConnectIntegrationRefresh';
 import { formatIntegrationsLoadError } from '@/lib/integrationsDiagnostics';
 import type { Environment } from '@/state/slices/environmentSlice';
@@ -61,7 +62,7 @@ interface UseDatabaseConnectionsArgs {
   currentEnvironmentId: string | null;
   serviceKeys: readonly ConnectionKey[];
   isProductionUnavailable: boolean;
-  updateOnboardingStep: (step: 'dbsConnected', value: boolean) => void;
+  updateOnboardingStep: (step: 'dbsConnected' | 'migrationsApplied', value: boolean) => void;
   onMigrationStatusChange?: (status: DatabaseConnectionMigrationStatusResponse) => void;
   onDatabaseHealthChange?: (status: DatabaseConnectionsResponse) => void;
 }
@@ -117,6 +118,8 @@ export function useDatabaseConnections({
     summary: DatabaseConnectionsResponse,
     migrations: DatabaseConnectionMigrationStatusResponse
   ) => {
+    updateOnboardingStep('migrationsApplied', isMigrationStatusCurrent(migrations));
+
     const action = resolveDbsConnectedOnboardingAction({
       stickyCompleted: readDatabaseSetupCompleted(currentEnvironmentId),
       summary,
@@ -251,7 +254,10 @@ export function useDatabaseConnections({
     recomputeOnboarding(summary, migrations);
   };
 
-  const applyListSnapshot = (listed: DatabaseConnectionsResponse) => {
+  const applyListSnapshot = (
+    listed: DatabaseConnectionsResponse,
+    migrations?: DatabaseConnectionMigrationStatusResponse
+  ) => {
     const savedKeys = listSavedConnectionServices(listed) as ConnectionKey[];
     const nextStatus = statusesFromListResponse(listed);
     setSavedConnectionKeys(new Set(savedKeys));
@@ -259,6 +265,18 @@ export function useDatabaseConnections({
     setStatus(nextStatus);
     setInitialCheckComplete(true);
     onDatabaseHealthChange?.(listed);
+
+    const onboardingMigrations = migrations ?? migrationStatusRef.current;
+    if (migrations) {
+      migrationStatusRef.current = migrations;
+      setMigrationStatus(migrations);
+      onMigrationStatusChange?.(migrations);
+    }
+    if (onboardingMigrations) {
+      recomputeOnboarding(listed, onboardingMigrations);
+      return;
+    }
+    updateOnboardingStep('migrationsApplied', false);
     if (isDatabaseSetupCompletedFromBackend(listed)) {
       markDatabaseSetupCompleted(currentEnvironmentId);
       updateOnboardingStep('dbsConnected', true);
@@ -594,9 +612,12 @@ export function useDatabaseConnections({
 
     void (async () => {
       try {
-        const listed = await databaseConnectionsApi.list(session);
+        const [listed, migrations] = await Promise.all([
+          databaseConnectionsApi.list(session),
+          databaseConnectionsApi.migrations(session),
+        ]);
         if (!isCurrent()) return;
-        applyListSnapshot(listed);
+        applyListSnapshot(listed, migrations);
       } catch (err) {
         if (!isCurrent()) return;
         finishAllSetup();

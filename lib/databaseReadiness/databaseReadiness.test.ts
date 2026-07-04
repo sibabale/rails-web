@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { hasAllMigrationTargets, isMigrationStatusCurrent } from './databaseReadiness';
-import type { DatabaseConnectionMigrationStatusResponse } from './api';
+import { hasAllMigrationTargets, isMigrationStatusCurrent } from './index';
+import type { DatabaseConnectionMigrationStatusResponse } from '../api';
 
 const migrationStatus = (
   overrides: Partial<DatabaseConnectionMigrationStatusResponse> = {},

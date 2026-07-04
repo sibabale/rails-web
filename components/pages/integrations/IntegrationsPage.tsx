@@ -69,7 +69,7 @@ export default function IntegrationsPage({
         <ApiKeyPanel
           session={session}
           dbsConnected={onboardingState.dbsConnected}
-          migrationStatus={latestMigrationStatus}
+          migrationsApplied={onboardingState.migrationsApplied}
           pendingMigrationCount={pendingMigrationCount}
           onSwitchToDatabases={() => tab.select('databases')}
           updateOnboardingStep={updateStep}
