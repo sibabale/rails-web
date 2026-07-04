@@ -88,7 +88,7 @@ describe('ConnectionStringField', () => {
         })
     );
 
-    const { container } = render(
+    render(
       <ConnectionStringField
         {...baseProps}
         value="postgres://value"
@@ -136,7 +136,7 @@ describe('ConnectionStringField', () => {
           setTimeout(resolve, 50);
         })
     );
-    const { container } = render(
+    render(
       <ConnectionStringField
         {...baseProps}
         value="postgres://value"
@@ -158,7 +158,7 @@ describe('ConnectionStringField', () => {
       throw new Error('copy failed');
     });
 
-    const { container } = render(
+    render(
       <ConnectionStringField
         {...baseProps}
         value="postgres://value"

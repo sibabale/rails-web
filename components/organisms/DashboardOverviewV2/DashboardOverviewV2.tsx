@@ -69,9 +69,9 @@ const OnboardingFlowSkeleton = () => (
     aria-hidden="true"
   >
     <div className="grid h-full grid-cols-1 gap-6 lg:grid-cols-2 xl:grid-cols-3">
-      {Array.from({ length: 3 }).map((_, index) => (
+      {['dbs', 'api-key', 'first-request'].map((step) => (
         <div
-          key={`onboarding-skeleton-${index}`}
+          key={`onboarding-skeleton-${step}`}
           className="border border-zinc-200 bg-zinc-50 p-6 dark:border-zinc-800 dark:bg-zinc-900/40"
         >
           <div className="mb-5 flex items-center justify-between">
