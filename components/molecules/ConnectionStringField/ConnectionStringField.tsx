@@ -61,6 +61,17 @@ export default function ConnectionStringField({
     try {
       await onCopy(value);
       setCopySucceeded(true);
+      
+      // Add screen reader announcement
+      const announcement = document.createElement('div');
+      announcement.setAttribute('role', 'status');
+      announcement.setAttribute('aria-live', 'polite');
+      announcement.setAttribute('aria-atomic', 'true');
+      announcement.className = 'sr-only';
+      announcement.textContent = copyButtonLabel;
+      document.body.appendChild(announcement);
+      setTimeout(() => announcement.remove(), 100);
+      
       resetTimerRef.current = window.setTimeout(() => {
         setCopySucceeded(false);
         resetTimerRef.current = null;
@@ -105,7 +116,13 @@ export default function ConnectionStringField({
           onClick={handleCopy}
           disabled={!value || isCopying}
           aria-label={copyButtonLabel}
-          className="pointer-events-auto text-zinc-400 transition-colors hover:text-zinc-600 disabled:opacity-50 dark:hover:text-zinc-300"
+          data-testid="connection-string-copy"
+          className={`pointer-events-auto transition-all ${
+            copySucceeded
+              ? 'text-emerald-600 dark:text-emerald-400'
+              : 'text-zinc-400 hover:text-zinc-600 disabled:opacity-50 dark:hover:text-zinc-300'
+          }`}
+          title={copyButtonLabel}
         >
           <MaterialIcon name={copyIconName} className={copyIconClassName} />
         </button>
