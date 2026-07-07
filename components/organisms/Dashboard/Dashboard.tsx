@@ -487,7 +487,6 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, session, profile, isLoa
   const environment = useAppSelector((state) => state.environment.current);
   const isProduction = environment === 'production';
   const pathname = usePathname();
-  const router = useRouter();
   const prevPathnameRef = useRef<string | null>(null);
   const currentEnvironmentId = resolveEnvironmentId(session, environment);
 
@@ -535,9 +534,10 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, session, profile, isLoa
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
   const [isLoadingTransactionDetails, setIsLoadingTransactionDetails] = useState(false);
   const [transactionDetailsError, setTransactionDetailsError] = useState<string | null>(null);
-  const [logs, setLogs] = useState<{id: string, time: string, action: string, status: string, amount: string}[]>([]);
-  
-  const [reserve, setReserve] = useState({ total: 25000000, available: 18450000 });
+  const [logs, setLogs] = useState<{ id: string; time: string; action: string; status: string; amount: string }[]>(
+    []
+  );
+
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [transactionsList, setTransactionsList] = useState<Transaction[]>([]);

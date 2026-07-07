@@ -1,6 +1,5 @@
 import posthog from 'posthog-js';
 import {
-  getDefaultMarketingCopyVariant,
   getPostHogHostEnv,
   getPostHogKeyEnv,
   getPostHogMarketingCopyFlagKey,
