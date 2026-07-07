@@ -14,6 +14,25 @@ npm run test:e2e
 
 The app under test listens on **4000** by default (`http://127.0.0.1:4000`) so it does not collide with a normal `npm run dev` on 3000. To use another port: `PLAYWRIGHT_E2E_PORT=3005 npm run test:e2e`.
 
+Exploratory UX flow audit (investigation + interaction sweep + bug log):
+
+```bash
+npm run test:e2e:audit
+```
+
+This writes:
+- `e2e/artifacts/ui-flow-inventory.json`
+- `e2e/artifacts/ui-flow-audit-bugs.jsonl`
+
+Chaos flow stress test (race clicks, delayed requests, weird inputs, rapid navigation):
+
+```bash
+npm run test:e2e:chaos
+```
+
+This writes:
+- `e2e/artifacts/ui-flow-chaos-bugs.jsonl`
+
 Interactive UI:
 
 ```bash
