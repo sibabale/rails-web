@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import MarketingHome from '@/components/marketing/pages/MarketingHome';
+import MarketingHome from '@/components/pages/marketing/MarketingHome';
 
 export const metadata: Metadata = {
   title: 'spin up a banking core in seconds | Rails Infra',

@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import UseCasesPage from '@/components/marketing/pages/UseCasesPage';
+import UseCasesPage from '@/components/pages/marketing/UseCasesPage';
 
 export const metadata: Metadata = {
   title: 'Use Cases | Rails Infra',

@@ -211,7 +211,7 @@ test.describe('BYOD full journey', () => {
         .getByRole('textbox', { name: /Accounts Database connection/i })
         .fill(savedConnectionStrings.accounts);
 
-      await accountsSection.getByRole('button', { name: /Save replacement/i }).click();
+      await accountsSection.getByRole('button', { name: /^Save$/i }).click();
 
       await expectOrLog('edit-unchanged-notice', async () => {
         const notice = accountsSection.getByText(/same connection string already saved/i);
@@ -242,7 +242,7 @@ test.describe('BYOD full journey', () => {
       await accountsSection
         .getByRole('textbox', { name: /Accounts Database connection/i })
         .fill(replacement);
-      await accountsSection.getByRole('button', { name: /Save replacement/i }).click();
+      await accountsSection.getByRole('button', { name: /^Save$/i }).click();
 
       await expectOrLog('edit-changed-shows-phases', async () => {
         await expect(accountsSection.getByText('Validating')).toBeVisible({ timeout: 5_000 });

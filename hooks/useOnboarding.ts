@@ -1,35 +1,50 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useMemo } from 'react';
+import { defaultOnboardingState, type OnboardingState } from '@/lib/onboardingStorage';
+import { useAppDispatch, useAppSelector } from '@/state/hooks';
 import {
-  defaultOnboardingState,
-  readOnboardingStateForEnvironment,
-  writeOnboardingStateForEnvironment,
-  type OnboardingState,
-} from '@/lib/onboardingStorage';
+  resetOnboardingForEnvironment,
+  selectEnvironmentOnboardingProgress,
+  setOnboardingStep,
+} from '@/state/slices/onboardingSlice';
 
 export type { OnboardingState };
 
 export function useOnboarding(environmentId?: string | null) {
-  const [state, setState] = useState<OnboardingState>(() =>
-    readOnboardingStateForEnvironment(environmentId)
+  const dispatch = useAppDispatch();
+  const scopedProgress = useAppSelector((state) =>
+    selectEnvironmentOnboardingProgress(state, environmentId)
+  );
+  const state = useMemo<OnboardingState>(
+    () =>
+      scopedProgress
+        ? {
+            dbsConnected: scopedProgress.dbsConnected,
+            initialMigrationsApplied: scopedProgress.initialMigrationsApplied ?? false,
+            apiKeyGenerated: scopedProgress.apiKeyGenerated,
+            firstRequestSent: scopedProgress.firstRequestSent,
+            dismissed: scopedProgress.dismissed,
+          }
+        : { ...defaultOnboardingState },
+    [scopedProgress]
   );
 
-  useEffect(() => {
-    setState(readOnboardingStateForEnvironment(environmentId));
-  }, [environmentId]);
-
-  useEffect(() => {
-    writeOnboardingStateForEnvironment(environmentId, state);
-  }, [environmentId, state]);
-
   const updateStep = useCallback((key: keyof OnboardingState, value: boolean) => {
-    setState((prev) => (prev[key] === value ? prev : { ...prev, [key]: value }));
-  }, []);
+    if (!environmentId) return;
+    dispatch(
+      setOnboardingStep({
+        environmentId,
+        step: key,
+        value,
+      })
+    );
+  }, [dispatch, environmentId]);
 
   const resetOnboarding = useCallback(() => {
-    setState({ ...defaultOnboardingState });
-  }, []);
+    if (!environmentId) return;
+    dispatch(resetOnboardingForEnvironment({ environmentId }));
+  }, [dispatch, environmentId]);
 
   const isComplete = state.dbsConnected && state.apiKeyGenerated && state.firstRequestSent;
 

@@ -2,6 +2,8 @@ import { configureStore } from '@reduxjs/toolkit';
 import { persistStore, persistReducer, PersistConfig } from 'redux-persist';
 import createWebStorage from 'redux-persist/lib/storage/createWebStorage';
 import environmentReducer, { Environment } from './slices/environmentSlice';
+import onboardingReducer from './slices/onboardingSlice';
+import migrationsReducer from './slices/migrationsSlice';
 
 const createNoopStorage = () => ({
   getItem() {
@@ -37,10 +39,50 @@ const persistedEnvironmentReducer = persistReducer(
   environmentReducer
 );
 
+type OnboardingPersistState = {
+  byEnvironmentId: Record<
+    string,
+    {
+      dbsConnected: boolean;
+      initialMigrationsApplied: boolean;
+      apiKeyGenerated: boolean;
+      firstRequestSent: boolean;
+      dismissed: boolean;
+      dbSetupCompletedSticky: boolean;
+    }
+  >;
+};
+
+const onboardingPersistConfig: PersistConfig<OnboardingPersistState> = {
+  key: 'onboarding',
+  storage,
+};
+
+const persistedOnboardingReducer = persistReducer(onboardingPersistConfig, onboardingReducer);
+
+type MigrationsPersistState = {
+  byEnvironmentId: Record<
+    string,
+    {
+      pendingMigrationCount: number;
+      hasUpdatesAvailable: boolean;
+    }
+  >;
+};
+
+const migrationsPersistConfig: PersistConfig<MigrationsPersistState> = {
+  key: 'migrations',
+  storage,
+};
+
+const persistedMigrationsReducer = persistReducer(migrationsPersistConfig, migrationsReducer);
+
 // Configure store
 export const store = configureStore({
   reducer: {
     environment: persistedEnvironmentReducer,
+    onboarding: persistedOnboardingReducer,
+    migrations: persistedMigrationsReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

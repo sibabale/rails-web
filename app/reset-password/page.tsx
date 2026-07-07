@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { isAuthViewsEnabled } from '../../lib/env';
-import ResetPasswordPage from '../../components/ResetPasswordPage';
+import ResetPasswordPage from '@/components/organisms/ResetPasswordPage/ResetPasswordPage';
 
 export default function ResetPasswordRoute() {
   const router = useRouter();

@@ -29,7 +29,11 @@ function loadEnvFile(filePath: string, fromLocal = false): void {
     const eq = trimmed.indexOf('=');
     if (eq < 0) continue;
     const key = trimmed.slice(0, eq);
-    const value = trimmed.slice(eq + 1);
+    const value = trimmed
+      .slice(eq + 1)
+      .trim()
+      .replace(/\r$/, '')
+      .replace(/^['"]|['"]$/g, '');
     applyEnvLine(key, value);
     if (fromLocal && key === 'BYOD_USERS_DATABASE_URL' && value.trim()) {
       process.env.LIVE_BYOD_USERS_CONFIGURED = '1';
