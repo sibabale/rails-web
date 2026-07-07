@@ -62,7 +62,7 @@ const businessFields: RegisterFieldConfig[] = [
     name: 'name',
     label: 'Company Name',
     type: 'text',
-    placeholder: 'Acme Institutional',
+    placeholder: 'Your company name',
     required: true,
   },
   {
@@ -74,7 +74,7 @@ const businessFields: RegisterFieldConfig[] = [
       </>
     ),
     type: 'url',
-    placeholder: 'https://acme.com',
+    placeholder: 'https://yourcompany.com',
   },
 ];
 
@@ -84,7 +84,7 @@ const adminNameFields: RegisterFieldConfig[] = [
     name: 'admin_first_name',
     label: 'Admin First Name',
     type: 'text',
-    placeholder: 'Alice',
+    placeholder: 'Jane',
     required: true,
   },
   {
@@ -92,7 +92,7 @@ const adminNameFields: RegisterFieldConfig[] = [
     name: 'admin_last_name',
     label: 'Admin Last Name',
     type: 'text',
-    placeholder: 'Admin',
+    placeholder: 'Doe',
     required: true,
   },
 ];
@@ -104,7 +104,7 @@ const adminCredentialFields: RegisterFieldConfig[] = [
     label: 'Admin Email',
     type: 'email',
     autoComplete: 'email',
-    placeholder: 'admin@acme.com',
+    placeholder: 'name@yourcompany.com',
     required: true,
   },
   {
@@ -113,7 +113,7 @@ const adminCredentialFields: RegisterFieldConfig[] = [
     label: 'Password',
     type: 'password',
     autoComplete: 'new-password',
-    placeholder: '••••••••••••',
+    placeholder: 'Create a strong password',
     required: true,
   },
 ];
@@ -335,7 +335,7 @@ const RegisterError = ({ error, title }: { error: string | null; title: string |
       </span>
       <div className="flex-1 text-left">
         <p className="font-mono font-semibold mb-1 text-[10px] uppercase tracking-wide">
-          {title ?? 'Infrastructure error'}
+          {title ?? 'Registration failed'}
         </p>
         <p className="leading-relaxed">{error}</p>
       </div>

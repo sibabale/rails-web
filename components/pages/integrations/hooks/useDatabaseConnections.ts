@@ -6,9 +6,13 @@ import {
   type ConnectionUiStatus,
   type SetupOutcomeState,
   buildConnectionsResponseFromStatuses,
+  buildDuplicateSnapshot,
   computeInteractionsLocked,
   connectionSetupNotice,
   connectionUiStatusFromApi,
+  displayNameForService,
+  DUPLICATE_CONNECTION_NOTICE,
+  findDuplicateService,
   isPostgresConnectionString,
   isUnchangedSaveResponse,
   listSavedConnectionServices,
@@ -32,12 +36,14 @@ import {
   type DatabaseConnectionsResponse,
   type DatabaseConnectionService,
 } from '@/lib/api';
+import { isApiRequestError } from '@/lib/apiRequestError';
 import {
   isDatabaseSetupCompletedFromBackend,
   markDatabaseSetupCompleted,
   readDatabaseSetupCompleted,
   resolveDbsConnectedOnboardingAction,
 } from '@/lib/databaseSetupState';
+import { isMigrationStatusCurrent } from '@/lib/databaseReadiness';
 import { refreshIntegrationStateAfterSave } from '@/lib/postConnectIntegrationRefresh';
 import { formatIntegrationsLoadError } from '@/lib/integrationsDiagnostics';
 import type { Environment } from '@/state/slices/environmentSlice';
@@ -56,7 +62,7 @@ interface UseDatabaseConnectionsArgs {
   currentEnvironmentId: string | null;
   serviceKeys: readonly ConnectionKey[];
   isProductionUnavailable: boolean;
-  updateOnboardingStep: (step: 'dbsConnected', value: boolean) => void;
+  updateOnboardingStep: (step: 'dbsConnected' | 'initialMigrationsApplied', value: boolean) => void;
   onMigrationStatusChange?: (status: DatabaseConnectionMigrationStatusResponse) => void;
   onDatabaseHealthChange?: (status: DatabaseConnectionsResponse) => void;
 }
@@ -112,6 +118,10 @@ export function useDatabaseConnections({
     summary: DatabaseConnectionsResponse,
     migrations: DatabaseConnectionMigrationStatusResponse
   ) => {
+    const initialMigrationsApplied =
+      readDatabaseSetupCompleted(currentEnvironmentId) || isMigrationStatusCurrent(migrations);
+    updateOnboardingStep('initialMigrationsApplied', initialMigrationsApplied);
+
     const action = resolveDbsConnectedOnboardingAction({
       stickyCompleted: readDatabaseSetupCompleted(currentEnvironmentId),
       summary,
@@ -246,7 +256,10 @@ export function useDatabaseConnections({
     recomputeOnboarding(summary, migrations);
   };
 
-  const applyListSnapshot = (listed: DatabaseConnectionsResponse) => {
+  const applyListSnapshot = (
+    listed: DatabaseConnectionsResponse,
+    migrations?: DatabaseConnectionMigrationStatusResponse
+  ) => {
     const savedKeys = listSavedConnectionServices(listed) as ConnectionKey[];
     const nextStatus = statusesFromListResponse(listed);
     setSavedConnectionKeys(new Set(savedKeys));
@@ -254,6 +267,18 @@ export function useDatabaseConnections({
     setStatus(nextStatus);
     setInitialCheckComplete(true);
     onDatabaseHealthChange?.(listed);
+
+    const onboardingMigrations = migrations ?? migrationStatusRef.current;
+    if (migrations) {
+      migrationStatusRef.current = migrations;
+      setMigrationStatus(migrations);
+      onMigrationStatusChange?.(migrations);
+    }
+    if (onboardingMigrations) {
+      recomputeOnboarding(listed, onboardingMigrations);
+      return;
+    }
+    updateOnboardingStep('initialMigrationsApplied', false);
     if (isDatabaseSetupCompletedFromBackend(listed)) {
       markDatabaseSetupCompleted(currentEnvironmentId);
       updateOnboardingStep('dbsConnected', true);
@@ -275,8 +300,13 @@ export function useDatabaseConnections({
     return 'invalid' as const;
   };
 
-  const handleChange = (key: ConnectionKey, value: string) =>
+  const handleChange = (key: ConnectionKey, value: string) => {
     setConnections((p) => ({ ...p, [key]: value }));
+    setConnectionNotices((p) => {
+      if (p[key] == null) return p;
+      return { ...p, [key]: null };
+    });
+  };
 
   const handleCopy = async (value: string) => {
     if (!value || typeof navigator === 'undefined' || !navigator.clipboard) return;
@@ -298,16 +328,48 @@ export function useDatabaseConnections({
       return;
     }
 
+    // FR-5 client guard: catch same-session duplicates before hitting the network.
+    // Cross-session duplicates fall through to the backend 409 (see 409 catch arm).
+    const duplicateSnapshot = buildDuplicateSnapshot(connections, serviceKeys);
+    const conflictingService = findDuplicateService(duplicateSnapshot, key, next);
+    if (conflictingService) {
+      setConnectionNotices((prev) => ({
+        ...prev,
+        [key]: DUPLICATE_CONNECTION_NOTICE(
+          displayNameForService(conflictingService),
+          displayNameForService(key)
+        ),
+      }));
+      return;
+    }
+
     const wasConnected = statusRef.current[key] === 'connected';
     const generation = fetchGenerationRef.current;
     setError(null);
     setSetupOutcomes((p) => ({ ...p, [key]: null }));
     setSavingService(key);
 
+    const saveConnectionForService = (connectionString: string): Promise<DatabaseConnectionInfo> => {
+      switch (key) {
+        case 'accounts':
+          return databaseConnectionsApi.saveAccountsConnection(session, connectionString);
+        case 'users':
+          return databaseConnectionsApi.saveUsersConnection(session, connectionString);
+        case 'ledger':
+          return databaseConnectionsApi.saveLedgerConnection(session, connectionString);
+        case 'audit':
+          return databaseConnectionsApi.saveAuditConnection(session, connectionString);
+        default: {
+          const _exhaustive: never = key;
+          throw new Error(`Unknown database service key: ${_exhaustive}`);
+        }
+      }
+    };
+
     try {
       let saved: DatabaseConnectionInfo | undefined;
       if (wasConnected) {
-        saved = await databaseConnectionsApi.save(session, key, next);
+        saved = await saveConnectionForService(next);
         if (isUnchangedSaveResponse(saved)) {
           setConnectionNotices((p) => ({ ...p, [key]: unchangedConnectionNotice() }));
           setConnections((p) => ({ ...p, [key]: '' }));
@@ -323,7 +385,7 @@ export function useDatabaseConnections({
       } else {
         await runConnectionSetupFlow(key, 'validating', async (advance) => {
           await advance('connecting');
-          saved = await databaseConnectionsApi.save(session, key, next);
+          saved = await saveConnectionForService(next);
           await advance('setting_up');
           return null;
         });
@@ -359,7 +421,25 @@ export function useDatabaseConnections({
       statusRef.current = { ...statusRef.current, [key]: wasConnected ? 'connected' : 'idle' };
       setStatus({ ...statusRef.current });
       publishGlobalHealthIfIdle();
-      setError(err instanceof Error ? err.message : 'Failed to save database connection.');
+      const fallbackConflictMessage =
+        err && typeof err === 'object' && 'status' in err && (err as { status?: unknown }).status === 409
+          ? err instanceof Error
+            ? err.message
+            : null
+          : null;
+      const conflictMessage =
+        isApiRequestError(err) && err.status === 409
+          ? err.message
+          : fallbackConflictMessage;
+      if (conflictMessage) {
+        setConnectionNotices((prev) => ({
+          ...prev,
+          [key]: conflictMessage,
+        }));
+        setError(null);
+      } else {
+        setError(err instanceof Error ? err.message : 'Failed to save database connection.');
+      }
     } finally {
       setSavingService((current) => (current === key ? null : current));
     }
@@ -534,9 +614,12 @@ export function useDatabaseConnections({
 
     void (async () => {
       try {
-        const listed = await databaseConnectionsApi.list(session);
+        const [listed, migrations] = await Promise.all([
+          databaseConnectionsApi.list(session),
+          databaseConnectionsApi.migrations(session),
+        ]);
         if (!isCurrent()) return;
-        applyListSnapshot(listed);
+        applyListSnapshot(listed, migrations);
       } catch (err) {
         if (!isCurrent()) return;
         finishAllSetup();

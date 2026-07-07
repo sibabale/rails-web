@@ -16,7 +16,7 @@ export default function ButtonLoadingContent({
   loadingText,
   spinnerSize = 14,
 }: ButtonLoadingContentProps) {
-  if (!loading) return <>{children}</>;
+  if (!loading) return children;
 
   if (loadingText) {
     return (

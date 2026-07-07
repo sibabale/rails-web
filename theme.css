@@ -112,3 +112,15 @@ a:focus,
 a:focus-visible {
   outline: none;
 }
+
+/* Touch target accessibility: ensure min 44×44px on mobile */
+@media (max-width: 768px) {
+  button:not(.no-min-touch),
+  a:not(.no-min-touch),
+  input[type="checkbox"],
+  input[type="radio"],
+  select {
+    min-height: 2.75rem;
+    min-width: 2.75rem;
+  }
+}

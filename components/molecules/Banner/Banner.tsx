@@ -24,10 +24,10 @@ const TONE: Record<BannerTone, { wrapper: string; icon: string; title: string; b
     body: 'text-zinc-600 dark:text-zinc-400',
   },
   info: {
-    wrapper: 'border-emerald-200 bg-emerald-50 dark:border-emerald-900/50 dark:bg-emerald-950/20',
-    icon: 'text-emerald-600 dark:text-emerald-400',
-    title: 'text-emerald-900 dark:text-emerald-300',
-    body: 'text-emerald-700 dark:text-emerald-400/90',
+   wrapper: 'border-blue-200 bg-blue-50 dark:border-blue-900/50 dark:bg-blue-950/20',
+   icon: 'text-blue-600 dark:text-blue-400',
+   title: 'text-blue-900 dark:text-blue-300',
+   body: 'text-blue-700 dark:text-blue-400/90',
   },
   success: {
     wrapper: 'border-emerald-200 bg-emerald-50 dark:border-emerald-900/50 dark:bg-emerald-950/20',

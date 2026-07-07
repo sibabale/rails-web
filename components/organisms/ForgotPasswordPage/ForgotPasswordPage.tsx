@@ -32,6 +32,14 @@ const ForgotPasswordPage: React.FC<ForgotPasswordPageProps> = ({ onSuccess }) =>
     try {
       await passwordResetApi.request(email);
       setSuccess(true);
+      // Add accessibility announcement for success
+      const announcement = document.createElement('div');
+      announcement.setAttribute('role', 'status');
+      announcement.setAttribute('aria-live', 'polite');
+      announcement.className = 'sr-only';
+      announcement.textContent = 'Password reset link sent successfully to ' + email;
+      document.body.appendChild(announcement);
+      setTimeout(() => announcement.remove(), 100);
     } catch (err: any) {
       console.error('Password reset request error:', err);
       setError(err.message || 'Failed to request password reset. Please try again.');
@@ -51,23 +59,24 @@ const ForgotPasswordPage: React.FC<ForgotPasswordPageProps> = ({ onSuccess }) =>
             <span>Back to login</span>
           </Link>
 
-          <div className={AUTH_SUCCESS_BOX}>
+          <div className={AUTH_SUCCESS_BOX} data-testid="forgot-success">
             <div className="mb-6 flex justify-center">
               <span className="material-symbols-sharp text-emerald-600 dark:text-emerald-400" style={{ fontSize: '3rem' }}>
                 check_circle
               </span>
             </div>
-            <Heading level={2} className="!text-3xl mb-4">
+            <Heading level={2} className="!text-3xl mb-4" data-testid="forgot-success-heading">
               Check your email
             </Heading>
             <Text variant="p" className="!text-sm mb-6">
-              If an account exists with that email, a password reset link has been sent.
+              If an account exists with that email, a password reset link has been sent to{' '}
+              <span className="font-semibold">{email}</span>.
             </Text>
             <Text variant="micro" className="!text-zinc-500">
               The link will expire in 1 hour.
             </Text>
             <div className="mt-8">
-              <Button type="button" variant="secondary" className="px-6" onClick={() => onSuccess()}>
+              <Button type="button" variant="secondary" className="px-6" onClick={() => onSuccess()} data-testid="forgot-success-return">
                 Return to sign in
               </Button>
             </div>

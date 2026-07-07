@@ -2,6 +2,7 @@
 
 import DatabaseConnectionCard from '@/components/pages/integrations/components/DatabaseConnectionCard';
 import Banner from '@/components/molecules/Banner/Banner';
+import DatabaseUpdatesBanner from '@/components/molecules/DatabaseUpdatesBanner/DatabaseUpdatesBanner';
 import PrimaryButton from '@/components/atoms/PrimaryButton/PrimaryButton';
 import MaterialIcon from '@/components/atoms/MaterialIcon/MaterialIcon';
 import {
@@ -14,6 +15,8 @@ import {
   unchangedConnectionNotice,
 } from '@/lib/databaseConnectionSetup';
 import { hasAllMigrationTargets } from '@/lib/databaseReadiness';
+import { useAppSelector } from '@/state/hooks';
+import { selectMigrationUpdatesForEnvironment } from '@/state/slices/migrationsSlice';
 import type {
   DatabaseConnectionMigrationStatusResponse,
   DatabaseConnectionsResponse,
@@ -81,12 +84,12 @@ interface DatabasesPanelProps {
   environment: Environment;
   currentEnvironmentId: string | null;
   isProductionUnavailable: boolean;
-  updateOnboardingStep: (step: 'dbsConnected', value: boolean) => void;
+  updateOnboardingStep: (step: 'dbsConnected' | 'initialMigrationsApplied', value: boolean) => void;
   onMigrationStatusChange?: (status: DatabaseConnectionMigrationStatusResponse) => void;
   onDatabaseHealthChange?: (status: DatabaseConnectionsResponse) => void;
 }
 
-interface MigrationToneArgs {
+export interface MigrationToneArgs {
   isConnectedPool: boolean;
   isSetupFailed: boolean;
   status: string;
@@ -96,7 +99,7 @@ interface MigrationToneArgs {
   serviceNotice: string | null;
 }
 
-function migrationToneFor({
+export function migrationToneFor({
   isConnectedPool,
   isSetupFailed,
   failedCount,
@@ -111,10 +114,11 @@ function migrationToneFor({
   else if (latestStatus === 'applied') tone = 'success';
   else tone = 'neutral';
   if (serviceNotice === unchangedConnectionNotice()) tone = 'warning';
+  if (serviceNotice && !isConnectedPool && !isSetupFailed && status !== 'connected') tone = 'warning';
   return tone;
 }
 
-interface MigrationCopyArgs {
+export interface MigrationCopyArgs {
   isSettingUp: boolean;
   isConnectedPool: boolean;
   isSetupFailed: boolean;
@@ -125,7 +129,7 @@ interface MigrationCopyArgs {
   latestStatus?: string | null;
 }
 
-function migrationCopyFor({
+export function migrationCopyFor({
   isSettingUp,
   isConnectedPool,
   isSetupFailed,
@@ -136,7 +140,9 @@ function migrationCopyFor({
   latestStatus,
 }: MigrationCopyArgs): string {
   if (isSettingUp) return 'Schema setup runs after the connection pool is ready.';
-  if (serviceNotice && (isConnectedPool || isSetupFailed)) return serviceNotice;
+  if (serviceNotice && (isConnectedPool || isSetupFailed || status !== 'connected')) {
+    return serviceNotice;
+  }
   if (!isConnectedPool && !isSetupFailed && status !== 'connected') {
     return 'Migrations will be checked after this database is connected.';
   }
@@ -164,6 +170,11 @@ export default function DatabasesPanel(props: DatabasesPanelProps) {
     onDatabaseHealthChange: props.onDatabaseHealthChange,
   });
   const transient = useTransientSuccess(SERVICE_KEYS);
+  
+  // Use persisted Redux state as immediate fallback while async API call completes
+  const reduxMigrationUpdates = useAppSelector((state) =>
+    selectMigrationUpdatesForEnvironment(state, props.currentEnvironmentId)
+  );
 
   const pendingMigrationCount =
     conns.migrationStatus?.services.reduce(
@@ -172,6 +183,12 @@ export default function DatabasesPanel(props: DatabasesPanelProps) {
     ) ?? 0;
   const appliedMigrationCount =
     conns.migrationRunResult?.services.reduce((t, s) => t + s.applied_count, 0) ?? 0;
+  
+  // Use either the fresh API data or persisted Redux state for immediate display
+  const hasPendingUpdates =
+    (conns.migrationStatus?.has_pending_updates ?? false) ||
+    reduxMigrationUpdates.hasUpdatesAvailable;
+  const showBanner = hasPendingUpdates;
 
   return (
     <>
@@ -219,12 +236,9 @@ export default function DatabasesPanel(props: DatabasesPanelProps) {
             {conns.error}
           </Banner>
         ) : null}
-        {hasAllMigrationTargets(conns.migrationStatus) &&
-        conns.migrationStatus?.has_pending_updates ? (
-          <Banner
-            tone="warning"
-            icon="database"
-            title="Database updates available"
+        {showBanner ? (
+          <DatabaseUpdatesBanner
+            pendingMigrationCount={pendingMigrationCount || reduxMigrationUpdates.pendingMigrationCount}
             action={
               <PrimaryButton
                 onClick={conns.handleRunMigrations}
@@ -236,11 +250,7 @@ export default function DatabasesPanel(props: DatabasesPanelProps) {
                 Apply updates
               </PrimaryButton>
             }
-          >
-            {pendingMigrationCount === 1
-              ? '1 database schema update is ready to apply.'
-              : `${pendingMigrationCount} database schema updates are ready to apply.`}
-          </Banner>
+          />
         ) : null}
         {conns.migrationRunResult ? (
           <Banner

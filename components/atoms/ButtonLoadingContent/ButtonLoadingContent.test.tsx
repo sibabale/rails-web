@@ -14,7 +14,7 @@ describe('ButtonLoadingContent', () => {
 
   it('renders loadingText alongside spinner when loading with loadingText', () => {
     render(
-      <ButtonLoadingContent loading={true} loadingText="Saving...">
+      <ButtonLoadingContent loading loadingText="Saving...">
         <span>Save</span>
       </ButtonLoadingContent>
     );
@@ -23,7 +23,7 @@ describe('ButtonLoadingContent', () => {
 
   it('keeps invisible children for sizing when loading without loadingText', () => {
     render(
-      <ButtonLoadingContent loading={true}>
+      <ButtonLoadingContent loading>
         <span>Save</span>
       </ButtonLoadingContent>
     );

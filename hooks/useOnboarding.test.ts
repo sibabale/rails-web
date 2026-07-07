@@ -1,54 +1,58 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import React from 'react';
+import { describe, expect, it } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
-import { LEGACY_ONBOARDING_STORAGE_KEY } from '@/lib/onboardingStorage';
+import { Provider } from 'react-redux';
+import { configureStore } from '@reduxjs/toolkit';
 import { useOnboarding } from './useOnboarding';
+import environmentReducer from '@/state/slices/environmentSlice';
+import onboardingReducer from '@/state/slices/onboardingSlice';
 
 const sandboxId = 'env-sandbox-1';
 const productionId = 'env-production-1';
 
-describe('useOnboarding', () => {
-  afterEach(() => {
-    window.localStorage.clear();
+const makeStore = () =>
+  configureStore({
+    reducer: {
+      environment: environmentReducer,
+      onboarding: onboardingReducer,
+    },
   });
 
-  it('reloads state when environmentId changes', () => {
-    window.localStorage.setItem(
-      `${LEGACY_ONBOARDING_STORAGE_KEY}:${sandboxId}`,
-      JSON.stringify({
-        dbsConnected: true,
-        apiKeyGenerated: false,
-        firstRequestSent: false,
-        dismissed: false,
-      })
-    );
-    window.localStorage.setItem(
-      `${LEGACY_ONBOARDING_STORAGE_KEY}:${productionId}`,
-      JSON.stringify({
-        dbsConnected: false,
-        apiKeyGenerated: false,
-        firstRequestSent: false,
-        dismissed: false,
-      })
-    );
+describe('useOnboarding (redux-persist state model)', () => {
+  it('keeps onboarding state isolated per environment', () => {
+    const store = makeStore();
+    const wrapper = ({ children }: { children: React.ReactNode }) =>
+      React.createElement(Provider, { store }, children);
 
-    const { result, rerender } = renderHook(({ environmentId }) => useOnboarding(environmentId), {
-      initialProps: { environmentId: sandboxId },
-    });
+    const sandboxHook = renderHook(() => useOnboarding(sandboxId), { wrapper });
+    const productionHook = renderHook(() => useOnboarding(productionId), { wrapper });
 
-    expect(result.current.state.dbsConnected).toBe(true);
-
-    rerender({ environmentId: productionId });
-    expect(result.current.state.dbsConnected).toBe(false);
-  });
-
-  it('persists updates to the scoped storage key', () => {
-    const { result } = renderHook(() => useOnboarding(sandboxId));
-
+    expect(sandboxHook.result.current.state.dbsConnected).toBe(false);
+    expect(sandboxHook.result.current.state.initialMigrationsApplied).toBe(false);
+    expect(productionHook.result.current.state.dbsConnected).toBe(false);
+    expect(productionHook.result.current.state.initialMigrationsApplied).toBe(false);
     act(() => {
+      sandboxHook.result.current.updateStep('dbsConnected', true);
+    });
+    expect(sandboxHook.result.current.state.dbsConnected).toBe(true);
+    expect(productionHook.result.current.state.dbsConnected).toBe(false);
+  });
+
+  it('marks the flow complete only when all milestones are true', () => {
+    const store = makeStore();
+    const wrapper = ({ children }: { children: React.ReactNode }) =>
+      React.createElement(Provider, { store }, children);
+    const { result } = renderHook(() => useOnboarding(sandboxId), { wrapper });
+
+    expect(result.current.isComplete).toBe(false);
+    act(() => {
+      result.current.updateStep('dbsConnected', true);
       result.current.updateStep('apiKeyGenerated', true);
     });
-
-    const raw = window.localStorage.getItem(`${LEGACY_ONBOARDING_STORAGE_KEY}:${sandboxId}`);
-    expect(raw).toContain('"apiKeyGenerated":true');
+    expect(result.current.isComplete).toBe(false);
+    act(() => {
+      result.current.updateStep('firstRequestSent', true);
+    });
+    expect(result.current.isComplete).toBe(true);
   });
 });

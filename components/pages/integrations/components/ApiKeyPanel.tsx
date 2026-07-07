@@ -4,8 +4,6 @@ import { useCallback } from 'react';
 import ApiKeyManager from '@/components/organisms/ApiKeyManager/ApiKeyManager';
 import Banner from '@/components/molecules/Banner/Banner';
 import SecondaryButton from '@/components/atoms/SecondaryButton/SecondaryButton';
-import { isMigrationStatusCurrent } from '@/lib/databaseReadiness';
-import type { DatabaseConnectionMigrationStatusResponse } from '@/lib/api';
 
 interface Session {
   access_token: string;
@@ -16,7 +14,7 @@ interface Session {
 interface ApiKeyPanelProps {
   session?: Session | null;
   dbsConnected: boolean;
-  migrationStatus: DatabaseConnectionMigrationStatusResponse | null;
+  initialMigrationsApplied: boolean;
   pendingMigrationCount: number;
   onSwitchToDatabases: () => void;
   updateOnboardingStep: (step: 'apiKeyGenerated', value: boolean) => void;
@@ -25,17 +23,17 @@ interface ApiKeyPanelProps {
 export default function ApiKeyPanel({
   session,
   dbsConnected,
-  migrationStatus,
+  initialMigrationsApplied,
   pendingMigrationCount,
   onSwitchToDatabases,
   updateOnboardingStep,
 }: ApiKeyPanelProps) {
-  const canCreateApiKey = dbsConnected && isMigrationStatusCurrent(migrationStatus);
+  const canCreateApiKey = dbsConnected && initialMigrationsApplied;
 
   const blockedReason = !dbsConnected
     ? 'Connect all required database integrations before creating an API key.'
-    : !isMigrationStatusCurrent(migrationStatus)
-      ? 'Apply database updates before creating an API key.'
+    : !initialMigrationsApplied
+      ? 'Complete initial database setup before creating an API key.'
       : 'Complete setup before creating an API key.';
 
   const blockedBanner = !canCreateApiKey
@@ -44,13 +42,13 @@ export default function ApiKeyPanel({
           title: 'Database setup required',
           body: 'API key creation is disabled until every required database is connected for this environment. Connect Accounts, Users, Ledger, and Audit on the Databases tab, then return here to issue a key.',
         }
-      : !isMigrationStatusCurrent(migrationStatus)
+      : !initialMigrationsApplied
         ? {
-            title: 'Database updates required',
+            title: 'Initial database setup required',
             body:
               pendingMigrationCount > 0
-                ? `Connected databases still need ${pendingMigrationCount} schema update${pendingMigrationCount === 1 ? '' : 's'}. Open the Databases tab and choose Apply updates, then return here to create a key.`
-                : 'API key creation is disabled until schema migration status is confirmed for every service. Open the Databases tab, wait for migration checks to finish, apply any available updates, then return here.',
+                ? `Connected databases still need ${pendingMigrationCount} initial update${pendingMigrationCount === 1 ? '' : 's'}. Open the Databases tab and choose Apply updates, then return here to create a key.`
+                : 'API key creation is disabled until initial database setup is confirmed for every service. Open the Databases tab, wait for status checks to finish, apply available updates, then return here.',
           }
         : {
             title: 'Setup incomplete',
