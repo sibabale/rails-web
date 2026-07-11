@@ -117,6 +117,19 @@ function isTransactionFailedStatus(status: string | undefined): boolean {
   return status?.toLowerCase().trim() === 'failed';
 }
 
+function parseAccountBalance(balance: string | number | undefined): number {
+  if (typeof balance === 'number') {
+    return Number.isFinite(balance) ? balance : 0;
+  }
+  if (typeof balance === 'string') {
+    const normalized = balance.replace(/,/g, '').trim();
+    if (!normalized) return 0;
+    const parsed = Number(normalized);
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+  return 0;
+}
+
 function transactionStatusBadgeClass(status: string | undefined): string {
   if (isTransactionCompletedStatus(status)) {
     return 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-500';
@@ -976,6 +989,11 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, session, profile, isLoa
       const loadOverviewStats = async () => {
         const allAccounts = await fetchAllAccounts();
         const activeAccountsCount = allAccounts.filter((account) => account.status?.toLowerCase() === 'active').length;
+        const settledVolumeTotal = allAccounts.reduce(
+          (total, account) => total + parseAccountBalance(account.balance),
+          0
+        );
+        const firstCurrency = allAccounts.find((account) => typeof account.currency === 'string' && account.currency.trim().length > 0)?.currency;
 
         const allTransactions = await fetchAllTransactions();
         const postedTransactionsCount = allTransactions.filter((tx) => isTransactionCompletedStatus(tx.status))
@@ -984,8 +1002,8 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, session, profile, isLoa
         return {
           activeAccountsCount,
           postedEntriesCount: postedTransactionsCount,
-          settledVolumeTotal: 0,
-          currency: 'USD',
+          settledVolumeTotal,
+          currency: firstCurrency || 'USD',
         };
       };
 
