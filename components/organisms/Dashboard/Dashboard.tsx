@@ -987,7 +987,12 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, session, profile, isLoa
       setOverviewStatsError(null);
 
       const loadOverviewStats = async () => {
-        const allAccounts = await fetchAllAccounts();
+        const [accountsResult, transactionsResult] = await Promise.allSettled([
+          fetchAllAccounts(),
+          fetchAllTransactions(),
+        ]);
+
+        const allAccounts = accountsResult.status === 'fulfilled' ? accountsResult.value : [];
         const activeAccountsCount = allAccounts.filter((account) => account.status?.toLowerCase() === 'active').length;
         const settledVolumeTotal = allAccounts.reduce(
           (total, account) => total + parseAccountBalance(account.balance),
@@ -995,15 +1000,27 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, session, profile, isLoa
         );
         const firstCurrency = allAccounts.find((account) => typeof account.currency === 'string' && account.currency.trim().length > 0)?.currency;
 
-        const allTransactions = await fetchAllTransactions();
-        const postedTransactionsCount = allTransactions.filter((tx) => isTransactionCompletedStatus(tx.status))
-          .length;
+        const postedTransactionsCount =
+          transactionsResult.status === 'fulfilled'
+            ? transactionsResult.value.filter((tx) => isTransactionCompletedStatus(tx.status)).length
+            : 0;
+
+        const partialError =
+          accountsResult.status === 'rejected' || transactionsResult.status === 'rejected'
+            ? `Failed to load overview metrics from ${
+                [
+                  ...(accountsResult.status === 'rejected' ? ['accounts'] : []),
+                  ...(transactionsResult.status === 'rejected' ? ['transactions'] : []),
+                ].join(' and ')
+              }.`
+            : null;
 
         return {
           activeAccountsCount,
           postedEntriesCount: postedTransactionsCount,
           settledVolumeTotal,
           currency: firstCurrency || 'USD',
+          partialError,
         };
       };
 
@@ -1016,6 +1033,10 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout, session, profile, isLoa
             settledVolume: stats.settledVolumeTotal,
           });
           setOverviewCurrency(stats.currency);
+          if (stats.partialError) {
+            console.error('Partial overview stats failure:', stats.partialError);
+            setOverviewStatsError(stats.partialError);
+          }
         })
         .catch((err) => {
           if (!isActive) return;

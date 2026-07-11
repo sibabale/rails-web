@@ -214,4 +214,30 @@ describe('Dashboard environment selector', () => {
       { timeout: 5000 }
     );
   });
+
+  it('still computes settled volume when transactions fail to load', async () => {
+    listAccountsMock.mockResolvedValue({
+      data: [
+        { id: 'acc-1', account_type: 'checking', user_id: 'user-1', balance: '100.00', currency: 'USD', status: 'active', created_at: new Date().toISOString() },
+        { id: 'acc-2', account_type: 'saving', user_id: 'user-1', balance: '50.00', currency: 'USD', status: 'active', created_at: new Date().toISOString() },
+      ],
+      pagination: { page: 1, per_page: 100, total_count: 2, total_pages: 1 },
+    });
+    listTransactionsMock.mockRejectedValue(new Error('transactions unavailable'));
+
+    renderDashboard({
+      access_token: 'token',
+      environment_id: 'env-1',
+      environments: [{ id: 'env-1', type: 'sandbox' }],
+    });
+
+    await waitFor(
+      () => {
+        expect(
+          within(screen.getByTestId('dashboard-overview-stat-settled-volume')).getByText('$150.00')
+        ).toBeInTheDocument();
+      },
+      { timeout: 5000 }
+    );
+  });
 });
