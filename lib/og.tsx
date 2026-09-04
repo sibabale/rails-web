@@ -26,23 +26,41 @@ function loadFonts() {
   return fontsPromise;
 }
 
-/** The bars mark used across the site's favicon/logo, redrawn with plain divs for satori. */
-function LogoMark() {
+/**
+ * The site's actual logo mark (public/logo.svg): a rounded square with two
+ * full-height verticals and four evenly spaced horizontal rules between
+ * them — redrawn with plain divs since satori can't render arbitrary SVGs.
+ */
+function LogoMark({ size = 40 }: { size?: number }) {
+  const s = size / 24;
+  const lineThickness = Math.max(1, s);
+  const barLeftX = 6.24463 * s;
+  const barRightX = 18.229 * s;
+  const barTopY = 4 * s;
+  const barHeight = 16 * s;
+  const ruleLeftX = 6.4157 * s;
+  const ruleWidth = (18.229 - 6.4157) * s;
+  const ruleYs = [5.56665, 9.83325, 14.1001, 18.3667].map((y) => y * s);
+
   return (
     <div
       style={{
         display: 'flex',
-        width: 40,
-        height: 40,
-        borderRadius: 6,
+        width: size,
+        height: size,
+        borderRadius: 2 * s,
         background: '#000000',
-        border: '1px solid #27272a',
         position: 'relative',
       }}
     >
-      <div style={{ position: 'absolute', left: 10, top: 6, width: 2, height: 28, background: '#fff' }} />
-      <div style={{ position: 'absolute', left: 15, top: 9, width: 19, height: 2, background: '#fff' }} />
-      <div style={{ position: 'absolute', left: 15, top: 16, width: 19, height: 2, background: '#fff' }} />
+      <div style={{ position: 'absolute', left: barLeftX, top: barTopY, width: lineThickness, height: barHeight, background: '#fff' }} />
+      <div style={{ position: 'absolute', left: barRightX, top: barTopY, width: lineThickness, height: barHeight, background: '#fff' }} />
+      {ruleYs.map((y) => (
+        <div
+          key={y}
+          style={{ position: 'absolute', left: ruleLeftX, top: y, width: ruleWidth, height: lineThickness, background: '#fff' }}
+        />
+      ))}
     </div>
   );
 }
@@ -58,7 +76,7 @@ export type OgImageContent = {
  * structural grid, monospace eyebrow label, bold Space Grotesk headline,
  * and the Rails Infra wordmark — matching the site's marketing theme.
  */
-export async function renderOgImage({ eyebrow, title, description }: OgImageContent) {
+export async function renderOgImage({ eyebrow, title }: OgImageContent) {
   const fonts = await loadFonts();
 
   return new ImageResponse(
@@ -69,23 +87,23 @@ export async function renderOgImage({ eyebrow, title, description }: OgImageCont
           height: '100%',
           display: 'flex',
           flexDirection: 'column',
-          justifyContent: 'space-between',
-          background: '#020202',
-          backgroundImage:
-            'linear-gradient(to right, #1f1f1f 1px, transparent 1px), linear-gradient(to bottom, #1f1f1f 1px, transparent 1px)',
-          backgroundSize: '40px 40px',
-          padding: '64px 80px',
+          alignItems: 'center',
+          justifyContent: 'center',
+          background: '#000000',
           fontFamily: 'Space Grotesk',
+          padding: '64px',
+          textAlign: 'center',
+          position: 'relative',
         }}
       >
-        {/* Header: logo mark + wordmark */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-          <LogoMark />
+        {/* Logo mark + wordmark */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 40 }}>
+          <LogoMark size={48} />
           <span
             style={{
               fontFamily: 'Noto Sans Mono',
-              fontSize: 22,
-              letterSpacing: '0.05em',
+              fontSize: 24,
+              letterSpacing: '0.08em',
               color: '#ffffff',
               textTransform: 'uppercase',
             }}
@@ -94,59 +112,49 @@ export async function renderOgImage({ eyebrow, title, description }: OgImageCont
           </span>
         </div>
 
-        {/* Body: eyebrow, title, description */}
-        <div style={{ display: 'flex', flexDirection: 'column', maxWidth: 980 }}>
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 10,
-              marginBottom: 24,
-              fontFamily: 'Noto Sans Mono',
-              fontSize: 20,
-              letterSpacing: '0.05em',
-              textTransform: 'uppercase',
-              color: '#a1a1aa',
-            }}
-          >
-            <span style={{ display: 'flex', width: 10, height: 10, borderRadius: 999, background: '#059669' }} />
-            {eyebrow}
-          </div>
-          <div
-            style={{
-              display: 'flex',
-              fontSize: 68,
-              fontWeight: 700,
-              lineHeight: 1.08,
-              letterSpacing: '-0.02em',
-              color: '#ffffff',
-              marginBottom: 24,
-            }}
-          >
-            {title}
-          </div>
-          <div
-            style={{
-              display: 'flex',
-              fontFamily: 'Space Grotesk',
-              fontWeight: 500,
-              fontSize: 28,
-              lineHeight: 1.4,
-              color: '#a1a1aa',
-            }}
-          >
-            {description}
-          </div>
+        {/* Headline */}
+        <div
+          style={{
+            display: 'flex',
+            fontSize: 60,
+            fontWeight: 700,
+            lineHeight: 1.12,
+            letterSpacing: '-0.02em',
+            color: '#ffffff',
+            maxWidth: 920,
+            marginBottom: 28,
+          }}
+        >
+          {title}
+        </div>
+
+        {/* Eyebrow tag */}
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 10,
+            fontFamily: 'Noto Sans Mono',
+            fontSize: 20,
+            letterSpacing: '0.05em',
+            textTransform: 'uppercase',
+            color: '#71717a',
+          }}
+        >
+          <span style={{ display: 'flex', width: 8, height: 8, borderRadius: 999, background: '#059669' }} />
+          {eyebrow}
         </div>
 
         {/* Footer: site url */}
         <div
           style={{
             display: 'flex',
+            position: 'absolute',
+            bottom: 40,
             fontFamily: 'Noto Sans Mono',
-            fontSize: 18,
+            fontSize: 16,
             letterSpacing: '0.05em',
-            color: '#71717a',
+            color: '#3f3f46',
             textTransform: 'uppercase',
           }}
         >
